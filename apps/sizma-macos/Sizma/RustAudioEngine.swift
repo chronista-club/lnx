@@ -41,7 +41,7 @@ class RustLibrary {
             // Local development path
             NSHomeDirectory() + "/repos/sizma/crates/sizma-engine/target/release/libsizma_engine.dylib",
             // Copy in project directory
-            Bundle.main.bundlePath + "/../../../sizma/libsizma_engine.dylib",
+            Bundle.main.bundlePath + "/../../../apps/sizma-macos/libsizma_engine.dylib",
         ]
         
         for path in paths {
