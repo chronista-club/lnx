@@ -1,0 +1,1 @@
+{"rustc":12610991425282158916,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[5636674862735406428,"build_script_build",false,4543438158564128329]],"local":[{"RerunIfChanged":{"output":"debug/build/lnx-audio-engine-1e814f70fe87b9e3/output","paths":["src/lib.rs","src/ffi.rs"]}}],"rustflags":[],"config":0,"compile_kind":0}

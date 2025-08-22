@@ -1,0 +1,14 @@
+/Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/deps/clang_sys-b0b5c2077c307c42.d: /Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs /Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs /Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs /Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/macros.rs /Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/common.rs /Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/dynamic.rs
+
+/Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/deps/libclang_sys-b0b5c2077c307c42.rlib: /Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs /Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs /Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs /Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/macros.rs /Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/common.rs /Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/dynamic.rs
+
+/Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/deps/libclang_sys-b0b5c2077c307c42.rmeta: /Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs /Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs /Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs /Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/macros.rs /Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/common.rs /Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/dynamic.rs
+
+/Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/lib.rs:
+/Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/support.rs:
+/Users/mito/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.8.1/src/link.rs:
+/Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/macros.rs:
+/Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/common.rs:
+/Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out/dynamic.rs:
+
+# env-dep:OUT_DIR=/Users/mito/repos/lnx-experience/lnx-audio-engine/target/release/build/clang-sys-0b2c59932812773e/out
