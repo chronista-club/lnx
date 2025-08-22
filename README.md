@@ -4,7 +4,7 @@ sizma - 静馬 - dive together
 
 ## 概要
 
-sizma - 静馬は、**Low-Latency, High-Quality, Human-Friendly** をモットーとした、audio/visual表現のためのライブツールプロジェクトです。
+Sizma(静馬)は、**Low-Latency, High-Quality, Human-Friendly** をモットーとした、audio/visual表現のためのライブツールです。
 
 > **開発状況**: 現在、初期開発段階にあります。基本的なSwiftUIアプリケーションの構築を進めています。
 
