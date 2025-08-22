@@ -37,11 +37,11 @@ class RustLibrary {
         // Try to load from multiple possible locations
         let paths = [
             // Bundle path
-            Bundle.main.bundlePath + "/Contents/Frameworks/liblnx_audio_engine.dylib",
+            Bundle.main.bundlePath + "/Contents/Frameworks/libaudio_engine.dylib",
             // Local development path
-            NSHomeDirectory() + "/repos/lnx-experience/lnx-audio-engine/target/release/liblnx_audio_engine.dylib",
+            NSHomeDirectory() + "/repos/sizma/audio-engine/target/release/libaudio_engine.dylib",
             // Copy in project directory
-            Bundle.main.bundlePath + "/../../../LNXX/liblnx_audio_engine.dylib",
+            Bundle.main.bundlePath + "/../../../sizma/libaudio_engine.dylib",
         ]
         
         for path in paths {

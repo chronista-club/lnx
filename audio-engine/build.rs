@@ -9,7 +9,7 @@ fn main() {
     let config = cbindgen::Config::default();
     cbindgen::generate_with_config(&crate_dir, config)
         .expect("Unable to generate bindings")
-        .write_to_file(output_dir.join("lnx_audio_engine.h"));
+        .write_to_file(output_dir.join("audio_engine.h"));
     
     println!("cargo:rerun-if-changed=src/lib.rs");
     println!("cargo:rerun-if-changed=src/ffi.rs");

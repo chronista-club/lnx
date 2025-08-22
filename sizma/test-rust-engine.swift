@@ -6,8 +6,8 @@ import Foundation
 print("Testing Rust Audio Engine Library Loading...")
 
 let paths = [
-    NSHomeDirectory() + "/repos/lnx-experience/lnx-audio-engine/target/release/liblnx_audio_engine.dylib",
-    FileManager.default.currentDirectoryPath + "/LNXX/liblnx_audio_engine.dylib",
+    NSHomeDirectory() + "/repos/sizma/audio-engine/target/release/libaudio_engine.dylib",
+    FileManager.default.currentDirectoryPath + "/sizma/libaudio_engine.dylib",
 ]
 
 for path in paths {

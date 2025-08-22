@@ -1,10 +1,10 @@
 [package]
-name = "lnx-audio-engine"
+name = "audio-engine"
 version = "0.1.0"
 edition = "2024"
 
 [lib]
-name = "lnx_audio_engine"
+name = "audio_engine"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
