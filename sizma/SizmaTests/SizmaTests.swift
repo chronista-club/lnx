@@ -2,16 +2,34 @@
 //  SizmaTests.swift
 //  SizmaTests
 //
-//  Created by m.ito on 2025/08/03.
+//  Created by 伊藤 誠 on 2017/06/13.
+//  Copyright © 2017年 Anycreative, Inc. All rights reserved.
 //
 
-import Testing
+import XCTest
 @testable import Sizma
 
-struct SizmaTests {
+class SizmaTests: XCTestCase {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    override func setUp() {
+        super.setUp()
+        // Put setup code here. This method is called before the invocation of each test method in the class.
     }
 
+    override func tearDown() {
+        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        super.tearDown()
+    }
+
+    func testExample() {
+        // This is an example of a functional test case.
+        // Use XCTAssert and related functions to verify your tests produce the correct results.
+    }
+
+    func testPerformanceExample() {
+        // This is an example of a performance test case.
+        measure {
+            // Put the code you want to measure the time of here.
+        }
+    }
 }
