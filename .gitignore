@@ -115,3 +115,11 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# IDE
+.idea/
+
+# Rust
+target/
+**/*.rs.bk
+*.pdb
