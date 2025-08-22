@@ -1,6 +1,6 @@
 # sizma - 静馬
 
-sizma - 静馬 - dive together
+sizma - 静馬 - ride together
 
 ## 概要
 
