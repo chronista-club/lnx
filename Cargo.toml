@@ -1,13 +1,17 @@
-[package]
-name = "audio-engine"
-version = "0.1.0"
+[workspace]
+resolver = "2"
+members = [
+    "crates/sizma-engine",
+]
+
+[workspace.package]
+version = "0.1.0-alpha1"
 edition = "2024"
+authors = ["Sizma Team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/chronista-club/sizma"
 
-[lib]
-name = "audio_engine"
-crate-type = ["cdylib", "staticlib"]
-
-[dependencies]
+[workspace.dependencies]
 # Core audio processing
 cpal = "0.16.0"
 dasp = "0.11"
@@ -16,7 +20,7 @@ ringbuf = "0.4.8"
 # FFI and safety
 libc = "0.2"
 
-# Async runtime for control messages
+# Async runtime
 tokio = { version = "1.35", features = ["sync", "rt"] }
 
 # Lock-free data structures
@@ -26,7 +30,7 @@ atomic_float = "0.1"
 # MIDI support
 midir = "0.9"
 
-# Serialization for config
+# Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -34,13 +38,10 @@ serde_json = "1.0"
 log = "0.4"
 env_logger = "0.11"
 
-[target.'cfg(target_os = "macos")'.dependencies]
+# macOS specific
 coreaudio-rs = "0.13.0"
 coreaudio-sys = "0.2"
 core-foundation = "0.10.1"
-
-[build-dependencies]
-cbindgen = "0.29"
 
 [profile.release]
 opt-level = 3

@@ -37,11 +37,11 @@ class RustLibrary {
         // Try to load from multiple possible locations
         let paths = [
             // Bundle path
-            Bundle.main.bundlePath + "/Contents/Frameworks/libaudio_engine.dylib",
+            Bundle.main.bundlePath + "/Contents/Frameworks/libsizma_engine.dylib",
             // Local development path
-            NSHomeDirectory() + "/repos/sizma/audio-engine/target/release/libaudio_engine.dylib",
+            NSHomeDirectory() + "/repos/sizma/crates/sizma-engine/target/release/libsizma_engine.dylib",
             // Copy in project directory
-            Bundle.main.bundlePath + "/../../../sizma/libaudio_engine.dylib",
+            Bundle.main.bundlePath + "/../../../sizma/libsizma_engine.dylib",
         ]
         
         for path in paths {

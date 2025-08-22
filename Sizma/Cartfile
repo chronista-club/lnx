@@ -1,3 +1,0 @@
-github "audiokit/AudioKit"
-github "SwiftyBeaver/SwiftyBeaver"
-github "ReactiveX/RxSwift" ~> 3.0
