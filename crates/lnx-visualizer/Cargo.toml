@@ -1,0 +1,32 @@
+[package]
+name = "lnx-visualizer"
+version = "0.1.0"
+edition = "2024"
+authors = ["chronista"]
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Bevy game engine
+bevy = { version = "0.14", features = ["dynamic_linking"] }
+
+# Audio engine integration
+lnx-engine = { path = "../lnx-engine" }
+
+# Async runtime
+tokio = { version = "1.35", features = ["sync", "rt"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Lock-free data structures for audio data sharing
+crossbeam-channel = "0.5"
+ringbuf = "0.4.8"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+[[bin]]
+name = "lnx-visualizer"
+path = "src/main.rs"

@@ -115,3 +115,10 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# lnx設定ディレクトリ
+.lnx/
+
+# Rust
+target/
+Cargo.lock
