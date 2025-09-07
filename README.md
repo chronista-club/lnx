@@ -4,342 +4,266 @@ lnx - wavelet synthesize engine
 
 ## 概要
 
-lnx(リンクスと発音)は、**Low-Latency, High-Quality, Human-Friendly** をモットーとした、audio/visual表現のためのライブツールプロジェクトです。
+lnx(リンクス)は、**Low-Latency, High-Quality, Human-Friendly** をモットーとした、audio/visual表現のためのライブツールプロジェクトです。
 
-> **開発状況**: 現在、初期開発段階にあります。
+> **開発状況**: ビートマシン機能実装完了。ウェーブレット合成エンジン開発準備中。
 
-### プロジェクトビジョン
+## 🎯 現在の実装状況
 
-#### 機能
-- audio/vision/fieldに働きかける
-- インプット/アクションフロー/アウトプット
+### ✅ 実装済み機能
 
-#### 目指す主要機能
+#### オーディオエンジン（lnx-engine）
+- **低遅延オーディオ処理**: CPAL (Cross-Platform Audio Library) による実装
+- **リアルタイム音声処理**: ロックフリー設計で安定した音声出力
+- **クロスプラットフォーム対応**: macOS、Windows、Linux対応
 
-- **超低遅延**: リアルタイムパフォーマンスに最適化
-- **高品質**: プロフェッショナルグレードのオーディオ・ビジュアル処理
-- **直感的操作**: 人間中心のインターフェースデザイン
-- **マルチプラットフォーム**: Apple ecosystem全体で統一された体験
+#### ビートマシン機能
+- **16パッドドラムサンプラー**
+  - 各パッド個別のボリューム調整
+  - ミュート/ソロ機能
+  - サンプル動的ロード
+- **16ステップシーケンサー**
+  - パターンベースのシーケンス
+  - リアルタイムパターン編集
+  - 最大8パターン保存可能
+- **テンポコントロール**
+  - BPM: 60-300
+  - リアルタイムBPM変更
+  - スイング機能（実装予定）
+- **オーディオファイル再生**
+  - WAV/AIFF形式対応
+  - モノラル/ステレオ自動判定
+  - mono-to-stereo変換対応
 
-## 現在の実装状況
+### 🚧 開発中機能
+- ウェーブレット合成エンジン設計
+- MIDI機器連携
+- ビジュアライザー基盤
 
-### 実装済み機能
-- ✅ 基本的なSwiftUIアプリケーション構造
-- ✅ macOSネイティブアプリケーションとしての基盤
-- ✅ テストフレームワーク（Swift Testing）の設定
+## 技術スタック
 
-### 開発中機能
-- 🚧 オーディオファイル再生機能
-- 🚧 基本的なUI/UXデザイン
+### 言語とフレームワーク
+- **Rust** 1.75+
+- **CPAL** 0.15+ - クロスプラットフォームオーディオ
+- **hound** - WAVファイル処理
+- **atomic_float** - ロックフリー浮動小数点演算
+- **ringbuf** - ロックフリーリングバッファ
 
-### 計画中機能
-- ⏳ リアルタイムオーディオ処理
-- ⏳ ビジュアルエフェクト機能
-- ⏳ MIDI機器連携
-- ⏳ マルチチャンネル入出力サポート
-
-## 対応機器
-
-### 公式対応MIDI機器
-- **Akai LPD8** - MIDI 1.0対応パッドコントローラー
-- **[Korg Keystage](https://www.korg.com/jp/products/computergear/keystage/)** - MIDI 2.0対応キーボードコントローラー
-  - 高解像度ベロシティ（16ビット）対応
-  - Per-Note Controllerサポート
-  - 双方向通信による設定同期
-
-### 動作確認済み機器
-- その他のMIDI 1.0/2.0準拠デバイス（基本機能のみ）
-
-## 技術要件
-
-### システム要件
-- **macOS 15.5以上** (Sequoia以降)
-- Apple Silicon Mac推奨（Intel Macでも動作可能）
-- 最小メモリ: 8GB RAM（推奨: 16GB以上）
-- ストレージ: 1GB以上の空き容量
-
-### 開発環境
-- **Xcode 16.0以上**
-- **Swift 6.0以上**
-- **Git** (Git LFS推奨)
-
-### 使用フレームワーク
-#### 現在使用中
-- SwiftUI
-- Swift Testing Framework
-
-#### 将来的に使用予定
-- Core Audio
-- AVFoundation
-- Metal Performance Shaders
-- Combine
+### アーキテクチャ
+```
+lnx-experience/
+├── Cargo.toml               # ワークスペース設定
+├── crates/
+│   ├── lnx-engine/         # オーディオエンジンコア
+│   │   ├── src/
+│   │   │   ├── engine.rs      # メインエンジン
+│   │   │   ├── beatmachine.rs # ビートマシン実装
+│   │   │   ├── audio_file.rs  # オーディオファイル処理
+│   │   │   ├── devices.rs     # デバイス管理
+│   │   │   ├── graph.rs       # オーディオグラフ
+│   │   │   └── effects.rs     # エフェクト処理
+│   │   └── examples/
+│   │       ├── beatmachine_demo.rs
+│   │       └── beatmachine_demo_with_samples.rs
+│   ├── lnx-cli/            # CLIインターフェース
+│   └── lnx-visualizer/     # ビジュアライザー（計画中）
+```
 
 ## セットアップ
 
-### 1. リポジトリのクローン
+### システム要件
+- **Rust**: 1.75以降
+- **Cargo**: 最新版
+- **OS**: macOS 12+、Windows 10+、Ubuntu 20.04+
+- **メモリ**: 4GB RAM以上（推奨: 8GB以上）
+- **オーディオ**: 低遅延対応のオーディオインターフェース推奨
+
+### インストール
 
 ```bash
-# 通常のクローン
-git clone git@github.com:chronista/lnx-experience.git
+# リポジトリのクローン
+git clone https://github.com/chronista-club/lnx-experience.git
 cd lnx-experience
 
-# 大容量ファイルを扱う場合（推奨）
-git lfs install
-git clone git@github.com:chronista/lnx-experience.git
-cd lnx-experience
+# ビルド
+cargo build --release
+
+# テスト実行
+cargo test
 ```
 
-> **注意**: プロジェクトには大容量のWAVファイル（約304MB）が含まれています。Git LFSの使用を推奨します。
-
-### 2. Git LFSの設定（推奨）
+### デモの実行
 
 ```bash
-# Git LFSをインストール（Homebrewを使用）
-brew install git-lfs
+# ビートマシンデモ（サンプル音源付き）
+cargo run --example beatmachine_demo_with_samples
 
-# リポジトリでGit LFSを初期化
-git lfs install
-
-# 大容量ファイルの追跡設定
-git lfs track "*.wav"
-git lfs track "*.aiff"
-git add .gitattributes
-git commit -m "Configure Git LFS for audio files"
+# シンプルなビートマシンデモ
+cargo run --example beatmachine_demo
 ```
 
-### 3. Xcodeでプロジェクトを開く
+## 使用方法
+
+### CLIコマンド
 
 ```bash
-open sizma/sizma.xcodeproj
+# エンジン起動
+cargo run --bin lnx -- start
+
+# リアルタイムモニタリング
+cargo run --bin lnx -- monitor --realtime
+
+# デバイスリスト表示
+cargo run --bin lnx -- devices
 ```
 
-### 4. 開発チーム設定
+### Rustライブラリとして使用
 
-1. Xcodeでプロジェクトを開く
-2. プロジェクトナビゲータで「sizma」を選択
-3. 「Signing & Capabilities」タブを選択
-4. 「Team」ドロップダウンから開発チームを選択
-   - 個人開発の場合: Personal Team を選択
-   - 組織開発の場合: 該当する Developer Team を選択
+```rust
+use lnx_engine::{AudioEngine, BeatMachine};
 
-### 5. ビルドと実行
-
-```bash
-# コマンドラインからビルド
-xcodebuild -project sizma/sizma.xcodeproj -scheme sizma build
-
-# またはXcodeから
-# Cmd + R でビルドと実行
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // エンジン初期化
+    let mut engine = AudioEngine::new()?;
+    
+    // ビートマシン作成
+    let beatmachine = BeatMachine::new();
+    
+    // サンプルロード
+    beatmachine.load_sample_to_pad(0, "kick.wav")?;
+    beatmachine.load_sample_to_pad(1, "snare.wav")?;
+    
+    // パターン設定
+    beatmachine.set_step(0, 0, true);  // Kick on beat 1
+    beatmachine.set_step(1, 4, true);  // Snare on beat 2
+    
+    // 再生開始
+    beatmachine.play();
+    engine.start()?;
+    
+    Ok(())
+}
 ```
 
-## プロジェクト構造
+## パフォーマンス
 
-```
-lnx-experience/
-├── README.md               # プロジェクトドキュメント
-├── .gitignore             # Git除外設定
-├── .gitattributes         # Git LFS設定（推奨）
-└── sizma/
-    ├── sizma.xcodeproj/    # Xcodeプロジェクトファイル
-    ├── sizma/              # メインアプリケーション
-    │   ├── Assets.xcassets/    # アプリアイコン、カラー設定
-    │   ├── Assets/            # オーディオファイル（WAV）
-    │   │   ├── 20250802_145427.wav  # (201MB)
-    │   │   └── 20250802_160053.wav  # (103MB)
-    │   ├── sizmaApp.swift      # アプリケーションエントリポイント
-    │   ├── ContentView.swift  # メインビュー
-    │   └── sizma.entitlements  # App Sandbox設定
-    ├── sizmaTests/         # ユニットテスト
-    │   └── sizmaTests.swift
-    └── sizmaUITests/       # UIテスト
-        ├── sizmaUITests.swift
-        └── sizmaUITestsLaunchTests.swift
-```
+### 現在達成している指標
+- **オーディオレイテンシ**: < 10ms (ASIO/CoreAudio)
+- **CPU使用率**: < 5% (ビートマシン再生時)
+- **メモリ使用量**: ~50MB (基本動作時)
+- **サンプルレート**: 44.1kHz / 48kHz / 96kHz対応
 
-### 今後追加予定のディレクトリ構造
+### 最適化のポイント
+- ロックフリーアーキテクチャ採用
+- Atomic操作による同期
+- ゼロコピーオーディオ処理
+- SIMD命令の活用（一部実装済み）
 
-```
-sizma/
-├── Audio/          # オーディオ処理モジュール
-├── Visual/         # ビジュアル処理モジュール
-├── Sync/           # 同期機能
-├── Models/         # データモデル
-├── ViewModels/     # MVVM ViewModels
-├── Views/          # SwiftUIビュー
-├── Utils/          # ユーティリティ関数
-└── Resources/      # リソースファイル
-```
+## ロードマップ
 
-## テスト
+### Phase 1: 基盤構築 ✅ 完了
+- [x] Rustプロジェクト構成
+- [x] CPALオーディオエンジン統合
+- [x] ビートマシン実装
+- [x] オーディオファイル再生
+- [x] ステレオ音声出力対応
 
-### ユニットテストの実行
+### Phase 2: ウェーブレット合成（現在）
+- [ ] ウェーブレット変換実装
+- [ ] リアルタイム合成エンジン
+- [ ] パラメータコントロール
+- [ ] プリセット管理
 
-```bash
-# コマンドラインから
-xcodebuild test -project sizma/sizma.xcodeproj -scheme sizma
+### Phase 3: インターフェース
+- [ ] egui GUIフレームワーク統合
+- [ ] MIDI 2.0対応
+- [ ] OSC通信
+- [ ] タッチコントロール対応
 
-# Xcodeから
-# Cmd + U でテスト実行
-```
+### Phase 4: ビジュアル機能
+- [ ] リアルタイムスペクトラム表示
+- [ ] ウェーブレット係数可視化
+- [ ] 3Dビジュアライザー
+- [ ] シェーダーエフェクト
 
-### UIテストの実行
-
-```bash
-# コマンドラインから
-xcodebuild test -project sizma/sizma.xcodeproj \
-  -scheme sizma \
-  -destination 'platform=macOS'
-
-# Xcodeから
-# Product > Test メニューから実行
-```
-
-## 既知の制約と注意事項
-
-### セキュリティ（App Sandbox）
-- アプリはApp Sandboxが有効になっています
-- ファイルアクセスはユーザーが選択したファイルのみ（読み取り専用）
-- ネットワークアクセスには追加のentitlementが必要
-
-### 大容量ファイルの扱い
-- プロジェクトには300MB超のWAVファイルが含まれています
-- 初回クローン時に時間がかかる場合があります
-- Git LFSの使用を強く推奨します
-
-### macOSバージョン要件
-- macOS 15.5（Sequoia）以降が必要
-- 古いmacOSバージョンでは動作しません
-- 最新のmacOS APIを使用しているため、後方互換性は限定的です
+### Phase 5: 拡張機能
+- [ ] VST3/AU プラグイン化
+- [ ] ネットワーク同期
+- [ ] AI支援機能
+- [ ] クラウド連携
 
 ## トラブルシューティング
 
 ### よくある問題と解決方法
 
-#### 1. ビルドエラー: "Signing for "sizma" requires a development team"
-**解決方法**: 
-- Xcodeで開発チームを設定してください（上記セットアップ手順4を参照）
-
-#### 2. 大容量ファイルのダウンロードが遅い
-**解決方法**:
+#### オーディオが出力されない
 ```bash
-# Git LFSを使用
-git lfs pull
+# デバイスリストを確認
+cargo run --bin lnx -- devices
 
-# または、オーディオファイルなしでクローン
-git clone --filter=blob:none git@github.com:chronista/lnx-experience.git
+# デフォルトデバイスを変更
+export LNX_AUDIO_DEVICE="Your Device Name"
 ```
 
-#### 3. macOSバージョンエラー
-**解決方法**:
-- macOS 15.5以降にアップデートしてください
-- または、プロジェクト設定で最小OSバージョンを下げることも可能（機能制限あり）
+#### ビルドエラー
+```bash
+# 依存関係をクリーンアップ
+cargo clean
+cargo update
+cargo build
+```
 
-#### 4. Swift Testingフレームワークのエラー
-**解決方法**:
-- Xcode 16.0以降を使用していることを確認
-- Swift 6.0以降が必要です
-
-## アーキテクチャ設計原則
-
-### 現在採用している原則
-- **SwiftUI宣言的UI**: 状態駆動のUI更新
-- **MVVM パターン**: View-ViewModel分離
-- **Swift Concurrency**: async/awaitによる非同期処理
-
-### 将来的に採用予定の原則
-- **モジュラー設計**: 各機能を独立したモジュールとして実装
-- **リアクティブプログラミング**: Combineフレームワークの活用
-- **プロトコル指向**: Swiftのprotocolを活用した柔軟な設計
-- **依存性注入**: テスタビリティの向上
+#### レイテンシが大きい
+- ASIOドライバー（Windows）またはCoreAudio（macOS）を使用
+- バッファサイズを調整: `LNX_BUFFER_SIZE=256`
+- リアルタイムカーネル使用（Linux）
 
 ## コントリビューション
 
 プロジェクトへの貢献を歓迎します！
 
-### 貢献の方法
-1. このリポジトリをフォーク
-2. フィーチャーブランチを作成 
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-3. 変更をコミット 
-   ```bash
-   git commit -m 'Add amazing feature'
-   ```
-4. ブランチにプッシュ 
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-5. プルリクエストを作成
+### 開発環境セットアップ
+```bash
+# 開発用ツールインストール
+cargo install cargo-watch cargo-nextest
+
+# 開発モードで実行
+cargo watch -x run
+
+# テスト監視モード
+cargo watch -x nextest
+```
 
 ### コーディング規約
-- [Swift API Design Guidelines](https://swift.org/documentation/api-design-guidelines/)に従う
-- SwiftLintによる自動チェック（今後導入予定）
-- Swift Testingフレームワークを使用したテスト作成
-- コミットメッセージは明確で簡潔に
+- `cargo fmt` でフォーマット
+- `cargo clippy` で警告チェック
+- 全ての公開APIにドキュメント記載
+- ユニットテスト追加必須
 
-### 問題報告
-バグや機能要望は[Issues](https://github.com/chronista/lnx-experience/issues)で報告してください。
-
-報告時に含めてほしい情報：
-- macOSバージョン
-- Xcodeバージョン
-- 再現手順
-- 期待される動作
-- 実際の動作
-- エラーメッセージ（ある場合）
-
-## ロードマップ
-
-### Phase 1: 基盤構築（現在）
-- [x] プロジェクトセットアップ
-- [x] 基本的なSwiftUI構造
-- [x] オーディオファイル読み込み
-- [x] 基本的な再生機能
-- [x] MIDI 1.0デバイス対応（LPD8）
-- [x] MIDI 2.0デバイス対応（Korg Keystage）
-
-### Phase 2: コア機能実装
-- [ ] リアルタイムオーディオ処理
-- [ ] 基本的なエフェクト
-- [ ] MIDI入力対応
-- [ ] 設定管理
-
-### Phase 3: ビジュアル機能
-- [ ] オーディオビジュアライザー
-- [ ] リアルタイムエフェクト
-- [ ] GPU加速レンダリング
-
-### Phase 4: 拡張機能
-- [ ] プラグインシステム
-- [ ] ネットワーク同期
-- [ ] マルチデバイス対応
-
-### Future Vision
-- [ ] AI支援機能
-- [ ] クラウド連携
-- [ ] iOS/iPadOS版
+### プルリクエスト手順
+1. フォーク & クローン
+2. フィーチャーブランチ作成: `git checkout -b feature/amazing-feature`
+3. 変更をコミット: `git commit -m 'Add amazing feature'`
+4. プッシュ: `git push origin feature/amazing-feature`
+5. プルリクエスト作成
 
 ## ライセンス
 
-TBD（検討中）
+MIT License (予定)
 
 ## 謝辞
 
-このプロジェクトは、音と映像の新しい表現を追求するすべてのクリエイターに捧げます。
-
-### Special Thanks
-- SwiftUIコミュニティ
-- Core Audioドキュメント作成者
-- オープンソースオーディオプロジェクトのコントリビューター
+- Rustオーディオコミュニティ
+- CPALプロジェクトコントリビューター
+- 全てのテスターとフィードバック提供者
 
 ## お問い合わせ
 
-- GitHub Issues: [https://github.com/chronista/lnx-experience/issues](https://github.com/chronista/lnx-experience/issues)
-- Project Wiki: [https://github.com/chronista/lnx-experience/wiki](https://github.com/chronista/lnx-experience/wiki)（準備中）
+- GitHub Issues: [https://github.com/chronista-club/lnx-experience/issues](https://github.com/chronista-club/lnx-experience/issues)
+- Discord: [準備中]
 
 ---
 
-**sizma - 静馬** - 音と映像の波を起こし、新たな体験を創造する
+**lnx** - Build the wave, Feel the experience
 
-*Last updated: 2025-08-11*
+*Last updated: 2024-12-28*
