@@ -68,16 +68,22 @@ Sizma(静馬)は、**Low-Latency, High-Quality, Human-Friendly** をモットー
 - **Swift 6.0以上**
 - **Git** (Git LFS推奨)
 
-### 使用フレームワーク
-#### 現在使用中
-- SwiftUI
-- Swift Testing Framework
+### 使用技術スタック
 
-#### 将来的に使用予定
-- Core Audio
-- AVFoundation
-- Metal Performance Shaders
-- Combine
+#### Swift/macOS側
+- **SwiftUI**: ユーザーインターフェース
+- **Swift Testing**: テストフレームワーク
+- **Core Audio**: 低レベルオーディオ処理
+- **AVFoundation**: メディア再生
+- **Core MIDI**: MIDI機器連携
+
+#### Rust側
+- **cpal**: クロスプラットフォームオーディオI/O
+- **dasp**: デジタル信号処理
+- **ringbuf**: リングバッファ実装
+- **coreaudio-rs**: macOS Core Audioバインディング
+- **tokio**: 非同期ランタイム
+- **midir**: MIDI処理
 
 ## セットアップ
 
@@ -85,13 +91,13 @@ Sizma(静馬)は、**Low-Latency, High-Quality, Human-Friendly** をモットー
 
 ```bash
 # 通常のクローン
-git clone git@github.com:chronista/lnx-experience.git
-cd lnx-experience
+git clone git@github.com:chronista-club/sizma.git
+cd sizma
 
 # 大容量ファイルを扱う場合（推奨）
 git lfs install
-git clone git@github.com:chronista/lnx-experience.git
-cd lnx-experience
+git clone git@github.com:chronista-club/sizma.git
+cd sizma
 ```
 
 > **注意**: プロジェクトには大容量のWAVファイル（約304MB）が含まれています。Git LFSの使用を推奨します。
@@ -112,13 +118,25 @@ git add .gitattributes
 git commit -m "Configure Git LFS for audio files"
 ```
 
-### 3. Xcodeでプロジェクトを開く
+### 3. Rustツールチェーンのインストール（必須）
 
 ```bash
-open sizma/sizma.xcodeproj
+# Rustupのインストール（まだの場合）
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Rust開発環境のセットアップ
+rustup default stable
+rustup target add aarch64-apple-darwin  # Apple Silicon向け
+rustup target add x86_64-apple-darwin    # Intel Mac向け
 ```
 
-### 4. 開発チーム設定
+### 4. Xcodeでプロジェクトを開く
+
+```bash
+open apps/sizma-macos/sizma.xcodeproj
+```
+
+### 5. 開発チーム設定
 
 1. Xcodeでプロジェクトを開く
 2. プロジェクトナビゲータで「sizma」を選択
@@ -127,11 +145,16 @@ open sizma/sizma.xcodeproj
    - 個人開発の場合: Personal Team を選択
    - 組織開発の場合: 該当する Developer Team を選択
 
-### 5. ビルドと実行
+### 6. ビルドと実行
 
 ```bash
-# コマンドラインからビルド
-xcodebuild -project sizma/sizma.xcodeproj -scheme sizma build
+# Rustエンジンのビルド
+cd crates/sizma-engine
+cargo build --release
+cd ../..
+
+# macOSアプリのビルド
+xcodebuild -project apps/sizma-macos/sizma.xcodeproj -scheme Sizma build
 
 # またはXcodeから
 # Cmd + R でビルドと実行
@@ -140,48 +163,57 @@ xcodebuild -project sizma/sizma.xcodeproj -scheme sizma build
 ## プロジェクト構造
 
 ```
-lnx-experience/
-├── README.md               # プロジェクトドキュメント
-├── .gitignore             # Git除外設定
-├── .gitattributes         # Git LFS設定（推奨）
-└── sizma/
-    ├── sizma.xcodeproj/    # Xcodeプロジェクトファイル
-    ├── sizma/              # メインアプリケーション
-    │   ├── Assets.xcassets/    # アプリアイコン、カラー設定
-    │   ├── Assets/            # オーディオファイル（WAV）
-    │   │   ├── 20250802_145427.wav  # (201MB)
-    │   │   └── 20250802_160053.wav  # (103MB)
-    │   ├── sizmaApp.swift      # アプリケーションエントリポイント
-    │   ├── ContentView.swift  # メインビュー
-    │   └── sizma.entitlements  # App Sandbox設定
-    ├── sizmaTests/         # ユニットテスト
-    │   └── sizmaTests.swift
-    └── sizmaUITests/       # UIテスト
-        ├── sizmaUITests.swift
-        └── sizmaUITestsLaunchTests.swift
-```
-
-### 今後追加予定のディレクトリ構造
-
-```
 sizma/
-├── Audio/          # オーディオ処理モジュール
-├── Visual/         # ビジュアル処理モジュール
-├── Sync/           # 同期機能
-├── Models/         # データモデル
-├── ViewModels/     # MVVM ViewModels
-├── Views/          # SwiftUIビュー
-├── Utils/          # ユーティリティ関数
-└── Resources/      # リソースファイル
+├── README.md               # プロジェクトドキュメント
+├── CLAUDE.md               # Claude AI用プロジェクト仕様
+├── LICENSE                 # ライセンスファイル
+├── Cargo.toml              # Rustワークスペース設定
+├── .gitignore              # Git除外設定
+├── .gitattributes          # Git LFS設定
+├── .mise.toml              # 環境設定ツール
+├── apps/                   # アプリケーション
+│   └── sizma-macos/        # macOSアプリ
+│       ├── sizma.xcodeproj/    # Xcodeプロジェクト
+│       ├── Sizma/              # Swiftソースコード
+│       │   ├── Assets.xcassets/    # アセット
+│       │   ├── SizmaApp.swift      # エントリポイント
+│       │   ├── MainView.swift      # メインビュー
+│       │   ├── AudioEngine.swift   # オーディオ処理
+│       │   ├── RustAudioEngine.swift  # Rust連携
+│       │   ├── MIDIManager.swift   # MIDI処理
+│       │   └── ...その他のSwiftファイル
+│       ├── SizmaTests/         # ユニットテスト
+│       └── SizmaUITests/       # UIテスト
+├── crates/                 # Rustクレート
+│   └── sizma-engine/       # オーディオエンジン
+│       ├── Cargo.toml          # クレート設定
+│       ├── src/                # Rustソースコード
+│       │   ├── lib.rs          # ライブラリエントリ
+│       │   ├── audio/          # オーディオ処理
+│       │   ├── ffi/            # Swift連携用FFI
+│       │   └── ...その他のモジュール
+│       └── tests/              # テスト
+└── docs/                   # ドキュメント
+    └── ...各種ドキュメント
 ```
+
+### アーキテクチャの特徴
+
+- **ハイブリッドアーキテクチャ**: Swift（UI） + Rust（オーディオエンジン）
+- **モノレポ構造**: アプリとライブラリを統一管理
+- **FFI連携**: RustとSwiftの効率的な相互運用
+- **低遅延処理**: Rustによる高速オーディオ処理
 
 ## テスト
 
 ### ユニットテストの実行
 
 ```bash
-# コマンドラインから
-xcodebuild test -project sizma/sizma.xcodeproj -scheme sizma
+# Swiftテストの実行
+xcodebuild test -project apps/sizma-macos/sizma.xcodeproj -scheme Sizma
+
+# Rustテストの実行
+cargo test --workspace
 
 # Xcodeから
 # Cmd + U でテスト実行
@@ -191,8 +223,8 @@ xcodebuild test -project sizma/sizma.xcodeproj -scheme sizma
 
 ```bash
 # コマンドラインから
-xcodebuild test -project sizma/sizma.xcodeproj \
-  -scheme sizma \
+xcodebuild test -project apps/sizma-macos/sizma.xcodeproj \
+  -scheme Sizma \
   -destination 'platform=macOS'
 
 # Xcodeから
@@ -231,7 +263,7 @@ xcodebuild test -project sizma/sizma.xcodeproj \
 git lfs pull
 
 # または、オーディオファイルなしでクローン
-git clone --filter=blob:none git@github.com:chronista/lnx-experience.git
+git clone --filter=blob:none git@github.com:chronista-club/sizma.git
 ```
 
 #### 3. macOSバージョンエラー
@@ -243,6 +275,18 @@ git clone --filter=blob:none git@github.com:chronista/lnx-experience.git
 **解決方法**:
 - Xcode 16.0以降を使用していることを確認
 - Swift 6.0以降が必要です
+
+#### 5. Rustビルドエラー
+**解決方法**:
+```bash
+# Rust環境を最新に更新
+rustup update
+
+# 依存関係をクリーンビルド
+cd crates/sizma-engine
+cargo clean
+cargo build --release
+```
 
 ## アーキテクチャ設計原則
 
@@ -284,7 +328,7 @@ git clone --filter=blob:none git@github.com:chronista/lnx-experience.git
 - コミットメッセージは明確で簡潔に
 
 ### 問題報告
-バグや機能要望は[Issues](https://github.com/chronista/lnx-experience/issues)で報告してください。
+バグや機能要望は[Issues](https://github.com/chronista-club/sizma/issues)で報告してください。
 
 報告時に含めてほしい情報：
 - macOSバージョン
@@ -340,11 +384,11 @@ TBD（検討中）
 
 ## お問い合わせ
 
-- GitHub Issues: [https://github.com/chronista/lnx-experience/issues](https://github.com/chronista/lnx-experience/issues)
-- Project Wiki: [https://github.com/chronista/lnx-experience/wiki](https://github.com/chronista/lnx-experience/wiki)（準備中）
+- GitHub Issues: [https://github.com/chronista-club/sizma/issues](https://github.com/chronista-club/sizma/issues)
+- Project Wiki: [https://github.com/chronista-club/sizma/wiki](https://github.com/chronista-club/sizma/wiki)（準備中）
 
 ---
 
 **sizma - 静馬** - 音と映像の波を起こし、新たな体験を創造する
 
-*Last updated: 2025-08-11*
+*Last updated: 2025-09-25*
