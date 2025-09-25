@@ -118,7 +118,10 @@ git add .gitattributes
 git commit -m "Configure Git LFS for audio files"
 ```
 
-### 3. Rustツールチェーンのインストール（必須）
+### 3. Rustツールチェーンのインストール（開発版のみ必須）
+
+> **注意**: 現在のリリース版ではRustエンジンは開発中のため、macOSアプリのみで動作します。
+> Rust連携機能を開発する場合のみ、以下の手順を実行してください。
 
 ```bash
 # Rustupのインストール（まだの場合）
@@ -147,17 +150,25 @@ open apps/sizma-macos/sizma.xcodeproj
 
 ### 6. ビルドと実行
 
+#### オプションA: macOSアプリのみ（推奨）
 ```bash
-# Rustエンジンのビルド
+# Xcodeから直接実行
+open apps/sizma-macos/sizma.xcodeproj
+# Cmd + R でビルドと実行
+```
+
+#### オプションB: Rust連携を含む完全ビルド（開発者向け）
+```bash
+# 1. Rustエンジンのビルド
 cd crates/sizma-engine
 cargo build --release
-cd ../..
 
-# macOSアプリのビルド
+# 2. ビルド成果物をmacOSアプリにリンク
+# （自動化スクリプト準備中）
+
+# 3. macOSアプリのビルド
+cd ../../
 xcodebuild -project apps/sizma-macos/sizma.xcodeproj -scheme Sizma build
-
-# またはXcodeから
-# Cmd + R でビルドと実行
 ```
 
 ## プロジェクト構造
@@ -203,6 +214,24 @@ sizma/
 - **モノレポ構造**: アプリとライブラリを統一管理
 - **FFI連携**: RustとSwiftの効率的な相互運用
 - **低遅延処理**: Rustによる高速オーディオ処理
+
+## 現在の実装状況
+
+### 実装済み機能
+- ✅ 基本的なSwiftUIアプリケーション構造
+- ✅ macOSネイティブアプリケーションとしての基盤
+- ✅ テストフレームワーク（Swift Testing）の設定
+- ✅ Rust/Swiftプロジェクト構造の確立
+- ✅ 基本的なエンジンアーキテクチャ（Engine.swift、FirstSynth.swift）
+- ✅ ログシステムの実装（Loggable protocol）
+
+### 開発中機能
+- 🚧 オーディオファイル再生機能（Swift実装）
+- 🚧 基本的なUI/UXデザイン
+- 🚧 Rust/Swift FFI連携層の構築
+- 🚧 Core Audio統合
+- 🚧 MIDI機器連携
+- 🚧 リアルタイムビジュアライゼーション
 
 ## テスト
 
@@ -286,6 +315,30 @@ rustup update
 cd crates/sizma-engine
 cargo clean
 cargo build --release
+```
+
+## 依存関係とバージョン管理
+
+### Swift側
+- **Xcode**: 16.0以上（Swift 6.0含む）
+- **macOS SDK**: 15.5以上
+- **Swift**: 6.0以上
+
+### Rust側（開発版）
+- **Rust**: 1.75.0以上（Cargo.tomlで管理）
+- **cpal**: 0.15以上（クロスプラットフォームオーディオ）
+- **tokio**: 1.35以上（非同期ランタイム）
+- **dasp**: 0.11以上（デジタル信号処理）
+
+### バージョン同期
+プロジェクトルートの`.mise.toml`ファイルで開発環境のバージョンを管理しています。
+
+```bash
+# mise（旧rtx）のインストール
+curl https://mise.run | sh
+
+# 依存関係のインストール
+mise install
 ```
 
 ## アーキテクチャ設計原則
