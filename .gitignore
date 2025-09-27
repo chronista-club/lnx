@@ -119,6 +119,9 @@ Temporary Items
 # lnx設定ディレクトリ
 .lnx/
 
+# ichimi設定ディレクトリ
+.ichimi/
+
 # Rust
 target/
 Cargo.lock
