@@ -49,6 +49,12 @@ lnx(リンクス)は、**Low-Latency, High-Quality, Human-Friendly** をモッ�
 - **atomic_float** - ロックフリー浮動小数点演算
 - **ringbuf** - ロックフリーリングバッファ
 
+### 🔗 Unisonエコシステム統合
+- **Unison Protocol** - 分散システム間の高速通信プロトコル
+- **Unison Node** - 分散ノード管理とオーケストレーション
+- **Unison Runtime** - リアルタイム処理用ランタイム
+- **Unison Connect** - デバイス間接続と同期
+
 ### アーキテクチャ
 ```
 lnx-experience/
