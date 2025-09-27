@@ -40,6 +40,9 @@ env_logger = { workspace = true }
 # Audio file format support
 hound = { workspace = true }
 
+# NDI SDK bindings for network video/audio streaming
+grafton-ndi = { workspace = true }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 coreaudio-rs = { workspace = true }
 coreaudio-sys = { workspace = true }

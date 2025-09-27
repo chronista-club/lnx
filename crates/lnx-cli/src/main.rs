@@ -36,11 +36,11 @@ enum Commands {
         /// 使用する入力デバイス
         #[arg(short = 'i', long)]
         input_device: Option<String>,
-        /// サンプルレート
+        /// サンプルレート（NDI標準: 48kHz）
         #[arg(short = 's', long, default_value = "48000")]
         sample_rate: u32,
-        /// バッファサイズ
-        #[arg(short, long, default_value = "256")]
+        /// バッファサイズ（低レイテンシ推奨: 64サンプル）
+        #[arg(short, long, default_value = "64")]
         buffer_size: u32,
     },
     /// オーディオエンジンを停止
@@ -190,9 +190,10 @@ async fn handle_audio_command(command: AudioCommands) -> Result<()> {
         AudioCommands::Status => {
             info!("オーディオエンジンステータス:");
             println!("状態: 動作中");
-            println!("サンプルレート: 48000 Hz");
-            println!("バッファサイズ: 256 samples");
-            println!("レイテンシー: 5.3ms");
+            println!("サンプルレート: 48000 Hz (NDI標準)");
+            println!("バッファサイズ: 64 samples");
+            println!("ビット深度: 32bit float (NDI内部処理)");
+            println!("レイテンシー: 1.33ms");
         }
     }
     Ok(())
@@ -249,7 +250,7 @@ async fn handle_monitor(realtime: bool) -> Result<()> {
             // ダミーのパフォーマンスデータ（実際の実装では実データを取得）
             let cpu = 10.0 + (counter as f32 * 0.5) % 20.0;
             let memory = 1.2 + (counter as f32 * 0.1) % 2.0;
-            let latency = 5.0 + (counter as f32 * 0.2) % 3.0;
+            let latency = 1.3 + (counter as f32 * 0.05) % 0.5;
             
             // カーソルを行頭に戻して上書き
             print!("\rCPU: {:.1}% | メモリ: {:.1}GB | レイテンシー: {:.1}ms", 
@@ -304,9 +305,10 @@ async fn handle_status(detailed: bool) -> Result<()> {
     println!("    • Built-in Microphone [デフォルト]");
     if detailed {
         println!("  設定:");
-        println!("    • サンプルレート: 48000 Hz");
-        println!("    • バッファサイズ: 256 samples");
-        println!("    • レイテンシー: 5.3ms");
+        println!("    • サンプルレート: 48000 Hz (NDI標準)");
+        println!("    • バッファサイズ: 64 samples");
+        println!("    • ビット深度: 32bit float (NDI内部処理)");
+        println!("    • レイテンシー: 1.33ms");
     }
     
     // MIDIデバイス
@@ -326,7 +328,7 @@ async fn handle_status(detailed: bool) -> Result<()> {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("  CPU使用率: 12.3%");
     println!("  メモリ使用量: 1.2GB / 16GB");
-    println!("  オーディオレイテンシー: 5.2ms");
+    println!("  オーディオレイテンシー: 1.33ms");
     println!("  アクティブストリーム: 2");
     
     if detailed {
@@ -348,7 +350,9 @@ async fn handle_config_command(command: ConfigCommands) -> Result<()> {
         ConfigCommands::Show => {
             info!("現在の設定:");
             println!("audio.sample_rate = 48000");
-            println!("audio.buffer_size = 256");
+            println!("audio.buffer_size = 64");
+            println!("audio.bit_depth = 32");
+            println!("audio.bit_format = float32");
             println!("audio.default_device = \"Built-in Output\"");
             println!("midi.auto_connect = true");
             println!("ui.theme = \"dark\"");
