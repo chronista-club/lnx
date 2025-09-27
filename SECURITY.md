@@ -114,11 +114,11 @@ When we discover or are made aware of security vulnerabilities:
 
 For any security-related questions or concerns:
 - **Email**: security@chronista.club
-- **GitHub Security Advisories**: [View Advisories](https://github.com/chronista-club/unison-protocol/security/advisories)
+- **GitHub Security Advisories**: [View Advisories](https://github.com/chronista-club/lnx-experience/security/advisories)
 
 ## Acknowledgments
 
-We would like to thank the following for their responsible disclosure and contribution to the security of Unison Protocol:
+We would like to thank the following for their responsible disclosure and contribution to the security of lnx:
 
 *This list will be updated as we receive and address security reports.*
 
