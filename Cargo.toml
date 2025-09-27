@@ -46,7 +46,7 @@ env_logger = "0.11"
 hound = "3.5"  # WAV file I/O
 
 # NDI SDK bindings for network video/audio
-grafton-ndi = "0.1"  # NDI 6 SDK bindings (high-performance)
+grafton-ndi = "0.8"  # NDI 6 SDK bindings (high-performance)
 
 # macOS specific
 coreaudio-rs = "0.13.0"

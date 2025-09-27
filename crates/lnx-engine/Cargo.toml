@@ -41,7 +41,11 @@ env_logger = { workspace = true }
 hound = { workspace = true }
 
 # NDI SDK bindings for network video/audio streaming
-grafton-ndi = { workspace = true }
+grafton-ndi = { workspace = true, optional = true }
+
+[features]
+default = []
+ndi = ["dep:grafton-ndi"]  # NDI 6 SDK support
 
 [target.'cfg(target_os = "macos")'.dependencies]
 coreaudio-rs = { workspace = true }
