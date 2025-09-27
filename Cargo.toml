@@ -8,7 +8,7 @@ members = [
 
 [workspace.package]
 version = "0.1.0-alpha1"
-authors = ["chronista"]
+authors = ["Mako"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/chronista-club/lnx-experience"
@@ -22,7 +22,7 @@ ringbuf = "0.4.8"
 # FFI and safety
 libc = "0.2"
 
-# Async runtime for control messages
+# Async runtime
 tokio = { version = "1.35", features = ["sync", "rt"] }
 
 # Lock-free data structures
@@ -36,6 +36,7 @@ midir = "0.9"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
+
 
 # Logging
 log = "0.4"

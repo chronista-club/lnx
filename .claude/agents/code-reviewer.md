@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Use this agent to review code, documentation, and technical writing. The agent provides constructive feedback on clarity, structure, technical accuracy, and best practices. It excels at identifying improvements while respecting the author's intent and style.
+description: コード、ドキュメント、技術文書をレビューするエージェントです。明確性、構造、技術的正確性、ベストプラクティスについて建設的なフィードバックを提供します。著者の意図とスタイルを尊重しながら改善点を特定することに優れています。
 model: opus
 color: blue
 ---

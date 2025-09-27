@@ -122,6 +122,12 @@ Temporary Items
 # ichimi設定ディレクトリ
 .ichimi/
 
+# IDE
+.idea/
+
 # Rust
 target/
 Cargo.lock
+**/*.rs.bk
+*.pdb
+

@@ -75,6 +75,7 @@ lnx-experience/
 │   └── lnx-visualizer/     # ビジュアライザー（計画中）
 ```
 
+
 ## セットアップ
 
 ### システム要件
@@ -272,4 +273,4 @@ MIT License (予定)
 
 **lnx** - Build the wave, Feel the experience
 
-*Last updated: 2024-12-28*
+*Last updated: 2025-09-27*

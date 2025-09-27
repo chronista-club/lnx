@@ -1,0 +1,155 @@
+# Sizma Project Configuration
+# https://mise.jdx.dev/
+
+[env]
+# Project paths
+SIZMA_ROOT = "{{config_root}}"
+SIZMA_CRATES_DIR = "{{config_root}}/crates"
+SIZMA_APPS_DIR = "{{config_root}}/apps"
+SIZMA_DOCS_DIR = "{{config_root}}/docs"
+
+# Rust paths
+SIZMA_ENGINE_DIR = "{{config_root}}/crates/sizma-engine"
+SIZMA_ENGINE_TARGET = "{{config_root}}/target"
+
+# Swift paths
+SIZMA_MACOS_DIR = "{{config_root}}/apps/sizma-macos"
+SIZMA_XCODEPROJ = "{{config_root}}/apps/sizma-macos/sizma.xcodeproj"
+
+# Build outputs
+SIZMA_ENGINE_DYLIB = "{{config_root}}/target/release/libsizma_engine.dylib"
+SIZMA_ENGINE_DEBUG_DYLIB = "{{config_root}}/target/debug/libsizma_engine.dylib"
+
+# Development settings
+RUST_LOG = "debug"
+RUST_BACKTRACE = "1"
+
+[tools]
+# Rust toolchain
+rust = "1.82"
+cargo-watch = "latest"
+cargo-edit = "latest"
+cargo-expand = "latest"
+cbindgen = "latest"
+
+# Swift/macOS development
+swiftformat = "latest"
+swiftlint = "latest"
+
+# General development tools
+git = "latest"
+gh = "latest"
+pre-commit = "latest"
+
+[tasks.build]
+description = "Build all components"
+run = """
+  echo "🔨 Building Sizma..."
+  cargo build --release
+  echo "✅ Build complete"
+"""
+
+[tasks.build-engine]
+description = "Build Rust audio engine"
+run = """
+  echo "🔨 Building Sizma Engine..."
+  cargo build --release -p sizma-engine
+  echo "✅ Engine build complete"
+"""
+
+[tasks.test]
+description = "Run all tests"
+run = """
+  echo "🧪 Running tests..."
+  cargo test --all
+  echo "✅ Tests complete"
+"""
+
+[tasks.run-macos]
+description = "Run macOS app"
+run = """
+  echo "🚀 Launching Sizma for macOS..."
+  open {{config_root}}/apps/sizma-macos/sizma.xcodeproj
+"""
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = """
+  echo "🧹 Cleaning build artifacts..."
+  cargo clean
+  rm -rf {{config_root}}/apps/sizma-macos/DerivedData
+  echo "✅ Clean complete"
+"""
+
+[tasks.format]
+description = "Format all code"
+run = """
+  echo "💅 Formatting code..."
+  cargo fmt --all
+  if command -v swiftformat &> /dev/null; then
+    swiftformat {{config_root}}/apps/sizma-macos --swiftversion 5.9
+  fi
+  echo "✅ Formatting complete"
+"""
+
+[tasks.lint]
+description = "Lint all code"
+run = """
+  echo "🔍 Linting code..."
+  cargo clippy --all -- -D warnings
+  if command -v swiftlint &> /dev/null; then
+    swiftlint lint {{config_root}}/apps/sizma-macos
+  fi
+  echo "✅ Linting complete"
+"""
+
+[tasks.setup]
+description = "Initial project setup"
+run = """
+  echo "🔧 Setting up Sizma development environment..."
+  
+  # Install Rust dependencies
+  cargo fetch
+  
+  # Build the engine
+  mise run build-engine
+  
+  # Copy dylib to Swift project (for development)
+  cp {{config_root}}/target/release/libsizma_engine.dylib {{config_root}}/apps/sizma-macos/libsizma_engine.dylib || true
+  
+  echo "✅ Setup complete! You can now:"
+  echo "  - Run 'mise run build' to build everything"
+  echo "  - Run 'mise run run-macos' to open in Xcode"
+  echo "  - Run 'mise run test' to run tests"
+"""
+
+[tasks.watch]
+description = "Watch and rebuild Rust code"
+run = """
+  cargo watch -x "build --release -p sizma-engine"
+"""
+
+[tasks.info]
+description = "Show project information"
+run = """
+  echo "═══════════════════════════════════════════"
+  echo "  Sizma (静馬) - Audio/Visual Live Tool"
+  echo "═══════════════════════════════════════════"
+  echo ""
+  echo "📁 Project Structure:"
+  echo "  • Rust Engine: {{config_root}}/crates/sizma-engine"
+  echo "  • macOS App:   {{config_root}}/apps/sizma-macos"
+  echo "  • Docs:        {{config_root}}/docs"
+  echo ""
+  echo "🛠️  Available Commands:"
+  echo "  • mise run build      - Build all components"
+  echo "  • mise run test       - Run all tests"
+  echo "  • mise run run-macos  - Open in Xcode"
+  echo "  • mise run watch      - Watch & rebuild Rust"
+  echo "  • mise run format     - Format all code"
+  echo "  • mise run lint       - Lint all code"
+  echo "  • mise run clean      - Clean build artifacts"
+  echo ""
+  echo "📦 Version: 0.1.0-alpha1"
+  echo "🔗 Repository: https://github.com/chronista-club/sizma"
+"""
