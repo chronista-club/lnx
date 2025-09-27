@@ -1,0 +1,38 @@
+{
+    "mcpServers": {
+        "context7": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "-y",
+                "@upstash/context7-mc"
+            ],
+            "env": {}
+        },
+        "serena": {
+            "type": "stdio",
+            "command": "uvx",
+            "args": [
+                "--from",
+                "git+https://github.com/oraios/serena",
+                "serena-mcp-server",
+                "--context",
+                "ide-assistant"
+            ]
+        },
+        "SurrealDB": {
+            "type": "stdio",
+            "command": "surrealmcp",
+            "args": [
+                "start"
+            ]
+        },
+        "ichimi": {
+            "type": "stdio",
+            "command": "ichimi",
+            "args": [
+                "--web"
+            ]
+        }
+    }
+}

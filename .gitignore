@@ -116,10 +116,18 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+# lnx設定ディレクトリ
+.lnx/
+
+# ichimi設定ディレクトリ
+.ichimi/
+
 # IDE
 .idea/
 
 # Rust
 target/
+Cargo.lock
 **/*.rs.bk
 *.pdb
+
