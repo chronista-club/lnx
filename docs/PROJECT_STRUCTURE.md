@@ -100,9 +100,8 @@ lnx-experience/
     │   │   ├── AppIcon.appiconset/
     │   │   └── AccentColor.colorset/
     │   │
-    │   └── Assets/             # オーディオファイル (304MB)
-    │       ├── 20250802_145427.wav (201MB)
-    │       └── 20250802_160053.wav (103MB)
+    │   └── Assets/             # オーディオファイル
+    │       └── 20250802_160053.wav (1.1MB, 48kHz, モノラル)
     │
     ├── LNXXTests/              # ユニットテスト
     │   └── LNXXTests.swift
