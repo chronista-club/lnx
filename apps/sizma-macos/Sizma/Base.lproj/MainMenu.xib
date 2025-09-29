@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="12120" systemVersion="16F73" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="23727" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
-        <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="12120"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="23727"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -610,7 +609,7 @@
                             <menuItem title="Show Sidebar" keyEquivalent="s" id="kIP-vf-haE">
                                 <modifierMask key="keyEquivalentModifierMask" control="YES" command="YES"/>
                                 <connections>
-                                    <action selector="toggleSourceList:" target="-1" id="iwa-gc-5KM"/>
+                                    <action selector="toggleSidebar:" target="-1" id="iwa-gc-5KM"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Enter Full Screen" keyEquivalent="f" id="4J7-dP-txa">
@@ -659,34 +658,41 @@
                     </menu>
                 </menuItem>
             </items>
+            <point key="canvasLocation" x="79" y="141"/>
         </menu>
         <window title="Sizma" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="371">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowCollectionBehavior key="collectionBehavior" fullScreenPrimary="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="335" y="390" width="640" height="480"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1440" height="878"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1512" height="944"/>
             <view key="contentView" id="372" customClass="FirstView" customModule="Sizma" customModuleProvider="target">
                 <rect key="frame" x="0.0" y="0.0" width="640" height="480"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="4vx-kE-bir" customClass="AKOutputWaveformPlot" customModule="AudioKit">
-                        <rect key="frame" x="0.0" y="347" width="640" height="133"/>
+                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="play-button-1">
+                        <rect key="frame" x="300" y="220" width="40" height="40"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                    </customView>
-                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="bL6-J3-4L2">
-                        <rect key="frame" x="14" y="13" width="145" height="32"/>
-                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <buttonCell key="cell" type="push" title="MainMixer toggle" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="E3T-vA-4qF">
+                        <buttonCell key="cell" type="square" bezelStyle="shadowlessSquare" image="NSPlayTemplate" imagePosition="only" alignment="center" imageScaling="proportionallyUpOrDown" inset="2" id="play-button-cell">
                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                             <font key="font" metaFont="system"/>
                         </buttonCell>
+                        <connections>
+                            <action selector="playButtonClicked:" target="6VK-9e-z2a" id="play-action-1"/>
+                        </connections>
+                    </button>
+                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="settings-button-1">
+                        <rect key="frame" x="588" y="428" width="32" height="32"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES"/>
+                        <buttonCell key="cell" type="square" bezelStyle="shadowlessSquare" image="NSActionTemplate" imagePosition="only" alignment="center" imageScaling="proportionallyUpOrDown" inset="2" id="settings-button-cell">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="settingsButtonClicked:" target="6VK-9e-z2a" id="settings-action-1"/>
+                        </connections>
                     </button>
                 </subviews>
-                <connections>
-                    <outlet property="mainMixerToggle" destination="bL6-J3-4L2" id="Vtz-dt-gwD"/>
-                    <outlet property="plot" destination="4vx-kE-bir" id="kCn-FI-moH"/>
-                </connections>
             </view>
         </window>
         <customObject id="494" customClass="AppDelegate" customModule="Sizma" customModuleProvider="target">
@@ -699,8 +705,14 @@
         <viewController id="6VK-9e-z2a" customClass="FirstViewController" customModule="Sizma" customModuleProvider="target">
             <connections>
                 <outlet property="firstView" destination="372" id="LxU-vJ-DIS"/>
+                <outlet property="playButton" destination="play-button-1" id="play-button-outlet"/>
                 <outlet property="view" destination="372" id="10h-qp-6oc"/>
             </connections>
         </viewController>
     </objects>
+    <resources>
+        <image name="NSActionTemplate" width="20" height="20"/>
+        <image name="NSPlayTemplate" width="16" height="16"/>
+        <image name="NSPauseTemplate" width="16" height="16"/>
+    </resources>
 </document>

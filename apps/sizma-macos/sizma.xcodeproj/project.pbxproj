@@ -10,7 +10,6 @@
 		317C4B167659395E2A02CEBB /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 317C4B6D5899410378BE6533 /* Log.swift */; };
 		317C4BA60D6C13827D6AD803 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 317C4B6D5899410378BE6533 /* Log.swift */; };
 		317C4E2E8CF12E46B6199B0E /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 317C4B6D5899410378BE6533 /* Log.swift */; };
-		D10957271F1287F5000F3F59 /* RxSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D10957261F1287F5000F3F59 /* RxSwift.framework */; };
 		D1749A781EEF0D6B00F4024C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1749A771EEF0D6B00F4024C /* AppDelegate.swift */; };
 		D1749A7E1EEF0D6B00F4024C /* art.scnassets in Resources */ = {isa = PBXBuildFile; fileRef = D1749A7D1EEF0D6B00F4024C /* art.scnassets */; };
 		D1749A801EEF0D6B00F4024C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D1749A7F1EEF0D6B00F4024C /* Assets.xcassets */; };
@@ -25,9 +24,10 @@
 		D1A803E71F02C0A700F7B7B6 /* Loggable.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A803E61F02C0A700F7B7B6 /* Loggable.swift */; };
 		D1A803E81F02C0A700F7B7B6 /* Loggable.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A803E61F02C0A700F7B7B6 /* Loggable.swift */; };
 		D1A803EA1F02D69B00F7B7B6 /* FirstViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A803E91F02D69B00F7B7B6 /* FirstViewController.swift */; };
-		D1BF0A691F11698D00DB2C6F /* AudioKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1BF0A671F11698D00DB2C6F /* AudioKit.framework */; };
-		D1BF0A6A1F11698D00DB2C6F /* SwiftyBeaver.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1BF0A681F11698D00DB2C6F /* SwiftyBeaver.framework */; };
 		D1FBA02D1F02DCD100593D68 /* FirstView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1FBA02C1F02DCD100593D68 /* FirstView.swift */; };
+		D1AUDIO11F02DCD100593D68 /* 20250802_160053.wav in Resources */ = {isa = PBXBuildFile; fileRef = D1AUDIO21F02DCD100593D68 /* 20250802_160053.wav */; };
+		D1SETTINGS1F02DCD100593D68 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1SETTINGS2F02DCD100593D68 /* SettingsWindowController.swift */; };
+		D1SETTINGS3F02DCD100593D68 /* Settings.xib in Resources */ = {isa = PBXBuildFile; fileRef = D1SETTINGS4F02DCD100593D68 /* Settings.xib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +81,9 @@
 		D1BF0A6E1F11776700DB2C6F /* RxTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = RxTest.framework; path = "../../../Library/Developer/Xcode/DerivedData/Sizma-bolkjczmttxvlzfpuummkynmdvvv/Build/Products/Debug/RxTest.framework"; sourceTree = "<group>"; };
 		D1BF0A731F1178BD00DB2C6F /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
 		D1FBA02C1F02DCD100593D68 /* FirstView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FirstView.swift; sourceTree = "<group>"; };
+		D1AUDIO21F02DCD100593D68 /* 20250802_160053.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = 20250802_160053.wav; sourceTree = "<group>"; };
+		D1SETTINGS2F02DCD100593D68 /* SettingsWindowController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		D1SETTINGS4F02DCD100593D68 /* Settings.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = Settings.xib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,9 +91,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D10957271F1287F5000F3F59 /* RxSwift.framework in Frameworks */,
-				D1BF0A691F11698D00DB2C6F /* AudioKit.framework in Frameworks */,
-				D1BF0A6A1F11698D00DB2C6F /* SwiftyBeaver.framework in Frameworks */,
 				D1749ACD1EEF25C200F4024C /* SceneKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -162,6 +162,7 @@
 				D1749A7F1EEF0D6B00F4024C /* Assets.xcassets */,
 				D1749A811EEF0D6B00F4024C /* MainMenu.xib */,
 				D1749A841EEF0D6B00F4024C /* Info.plist */,
+				D1AUDIO21F02DCD100593D68 /* 20250802_160053.wav */,
 			);
 			path = Sizma;
 			sourceTree = "<group>";
@@ -192,6 +193,8 @@
 				D1749A791EEF0D6B00F4024C /* OperationView.swift */,
 				D1A803E91F02D69B00F7B7B6 /* FirstViewController.swift */,
 				D1FBA02C1F02DCD100593D68 /* FirstView.swift */,
+				D1SETTINGS2F02DCD100593D68 /* SettingsWindowController.swift */,
+				D1SETTINGS4F02DCD100593D68 /* Settings.xib */,
 			);
 			name = app;
 			sourceTree = "<group>";
@@ -265,7 +268,6 @@
 				D1749A701EEF0D6B00F4024C /* Sources */,
 				D1749A711EEF0D6B00F4024C /* Frameworks */,
 				D1749A721EEF0D6B00F4024C /* Resources */,
-				D15F2B651F03FBE100433242 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -369,6 +371,8 @@
 				D1749A801EEF0D6B00F4024C /* Assets.xcassets in Resources */,
 				D1749A7E1EEF0D6B00F4024C /* art.scnassets in Resources */,
 				D1749A831EEF0D6B00F4024C /* MainMenu.xib in Resources */,
+				D1AUDIO11F02DCD100593D68 /* 20250802_160053.wav in Resources */,
+				D1SETTINGS3F02DCD100593D68 /* Settings.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -388,21 +392,6 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		D15F2B651F03FBE100433242 /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "swiftformat $SRCROOT";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		D1749A701EEF0D6B00F4024C /* Sources */ = {
@@ -418,6 +407,7 @@
 				D1FBA02D1F02DCD100593D68 /* FirstView.swift in Sources */,
 				D1A803E71F02C0A700F7B7B6 /* Loggable.swift in Sources */,
 				317C4E2E8CF12E46B6199B0E /* Log.swift in Sources */,
+				D1SETTINGS1F02DCD100593D68 /* SettingsWindowController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -573,7 +563,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = blue.hifi.Sizma;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -591,7 +581,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = blue.hifi.Sizma;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -606,7 +596,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = blue.hifi.SizmaTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 6.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Sizma.app/Contents/MacOS/Sizma";
 			};
 			name = Debug;
@@ -622,7 +612,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = blue.hifi.SizmaTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 6.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Sizma.app/Contents/MacOS/Sizma";
 			};
 			name = Release;
@@ -637,7 +627,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = blue.hifi.SizmaUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 6.0;
 				TEST_TARGET_NAME = Sizma;
 			};
 			name = Debug;
@@ -652,7 +642,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = blue.hifi.SizmaUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 6.0;
 				TEST_TARGET_NAME = Sizma;
 			};
 			name = Release;

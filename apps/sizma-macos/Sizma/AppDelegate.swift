@@ -8,9 +8,8 @@
 
 import Cocoa
 import SceneKit
-import AudioKit
 
-@NSApplicationMain
+@main
 class AppDelegate: NSObject, NSApplicationDelegate, Loggable {
 
     @IBOutlet weak var window: NSWindow!
@@ -24,13 +23,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, Loggable {
 
     func applicationDidFinishLaunching(_: Notification) {
 
-        space = Space()
-        user = User()
-        engine = Engine(space: space!, user: user!)
+        space = Space(name: "Main Space")
+        user = User(name: "Default User")
+        engine = Engine.shared
 
         firstViewController.space = space
-        engine!.run()
-        log.verbose("start sizma")
+        engine!.start()
+        log("start sizma")
         //        dispatchQueue.async(execute: engineRunLoop)
     }
 
