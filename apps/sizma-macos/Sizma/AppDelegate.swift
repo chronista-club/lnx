@@ -22,15 +22,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, Loggable {
     let dispatchQueue = DispatchQueue(label: "blue.hifi.sizma", qos: DispatchQoS.default, attributes: .concurrent)
 
     func applicationDidFinishLaunching(_: Notification) {
-
         space = Space(name: "Main Space")
         user = User(name: "Default User")
         engine = Engine.shared
 
         firstViewController.space = space
         engine!.start()
-        log("start sizma")
-        //        dispatchQueue.async(execute: engineRunLoop)
+        log("Sizma started")
     }
 
     func applicationWillTerminate(_: Notification) {
