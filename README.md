@@ -41,6 +41,7 @@ lnx(リンクス)は、**Low-Latency, High-Quality, Human-Friendly** をモッ�
 ### 言語とフレームワーク
 - **Rust** 1.75+
 - **CPAL** 0.15+ - クロスプラットフォームオーディオ
+- **Slint** 1.9 - Rust製クロスプラットフォームGUIツールキット
 - **hound** - WAVファイル処理
 - **atomic_float** - ロックフリー浮動小数点演算
 - **ringbuf** - ロックフリーリングバッファ
@@ -178,7 +179,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [ ] プリセット管理
 
 ### Phase 3: インターフェース
-- [ ] egui GUIフレームワーク統合
+- [ ] Slint GUIフレームワーク統合（進行中）
+- [ ] ビートマシンコントロールUI
 - [ ] MIDI 2.0対応
 - [ ] OSC通信
 - [ ] タッチコントロール対応
@@ -269,4 +271,4 @@ MIT License (予定)
 
 **lnx** - Build the wave, Feel the experience
 
-*Last updated: 2025-09-27*
+*Last updated: 2025-10-13*
