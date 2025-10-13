@@ -6,10 +6,6 @@ lnx - wavelet synthesize engine
 
 lnx(リンクス)は、**Low-Latency, High-Quality, Human-Friendly** をモットーとした、audio/visual表現のためのライブツールプロジェクトです。
 
-> **開発状況**: ビートマシン機能実装完了。ウェーブレット合成エンジン開発準備中。
-
-## 🎯 現在の実装状況
-
 ### ✅ 実装済み機能
 
 #### オーディオエンジン（lnx-engine）
