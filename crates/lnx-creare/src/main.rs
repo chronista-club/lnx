@@ -2,12 +2,12 @@ use bevy::prelude::*;
 use bevy::window::WindowMode;
 
 fn main() {
-    println!("🎨 lnx visualizer 起動中...");
-    
+    println!("🎨 lnx creare 起動中...");
+
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "lnx visualizer".to_string(),
+                title: "lnx creare".to_string(),
                 resolution: (1280.0, 720.0).into(),
                 mode: WindowMode::Windowed,
                 ..default()
@@ -22,14 +22,14 @@ fn main() {
 
 fn setup(mut commands: Commands) {
     println!("📷 カメラセットアップ");
-    
+
     // 2Dカメラ
     commands.spawn(Camera2dBundle::default());
-    
+
     // タイトルテキスト
     commands.spawn(
         TextBundle::from_section(
-            "lnx visualizer",
+            "lnx creare",
             TextStyle {
                 font_size: 48.0,
                 color: Color::WHITE,
@@ -43,7 +43,7 @@ fn setup(mut commands: Commands) {
             ..default()
         }),
     );
-    
+
     // ステータステキスト
     commands.spawn((
         TextBundle::from_section(
@@ -62,7 +62,7 @@ fn setup(mut commands: Commands) {
         }),
         StatusText,
     ));
-    
+
     println!("✅ セットアップ完了");
 }
 
@@ -82,16 +82,13 @@ impl Default for FrameCounter {
     }
 }
 
-fn update_system(
-    mut frame_counter: Local<u32>,
-    mut query: Query<&mut Text, With<StatusText>>,
-) {
+fn update_system(mut frame_counter: Local<u32>, mut query: Query<&mut Text, With<StatusText>>) {
     *frame_counter += 1;
-    
+
     // 60フレームごと（約1秒）にコンソール出力
     if *frame_counter % 60 == 0 {
         println!("🔄 Frame: {}", *frame_counter);
-        
+
         // ステータステキストも更新
         for mut text in &mut query {
             text.sections[0].value = format!("Frame: {} | FPS: ~60", *frame_counter);

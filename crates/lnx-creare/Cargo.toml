@@ -1,5 +1,5 @@
 [package]
-name = "lnx-visualizer"
+name = "lnx-creare"
 version = "0.1.0"
 edition = "2024"
 authors = ["chronista"]
@@ -28,5 +28,5 @@ log = "0.4"
 env_logger = "0.11"
 
 [[bin]]
-name = "lnx-visualizer"
+name = "lnx-creare"
 path = "src/main.rs"

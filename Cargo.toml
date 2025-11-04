@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "crates/lnx-engine",
     "crates/lnx-cli",
-    "crates/lnx-visualizer",
+    "crates/lnx-creare",
 ]
 
 [workspace.package]
@@ -64,4 +64,3 @@ panic = "abort"
 
 [profile.dev]
 opt-level = 2  # Some optimization even in debug for audio performance
-

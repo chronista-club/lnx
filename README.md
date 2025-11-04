@@ -69,7 +69,7 @@ lnx-experience/
 │   │       ├── beatmachine_demo.rs
 │   │       └── beatmachine_demo_with_samples.rs
 │   ├── lnx-cli/            # CLIインターフェース
-│   └── lnx-visualizer/     # ビジュアライザー（計画中）
+│   └── lnx-creare/         # ビジュアルクリエーター（計画中）
 ```
 
 
