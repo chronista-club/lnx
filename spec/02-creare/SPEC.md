@@ -109,31 +109,138 @@ Level 4: カスタムシェーダーを書く
 
 ## アーキテクチャ (Architecture)
 
-### 技術スタック
+### マルチUI戦略
+
+lnx-creareは**複数のUIフロントエンド**を持ちます。
+コアロジックはRustで実装し、各プラットフォームに最適なUIを提供。
+
+```
+                    ┌─────────────────────┐
+                    │   lnx-creare-core   │
+                    │   (Rust)            │
+                    │                     │
+                    │ - Audio Analysis    │
+                    │ - Visual Generation │
+                    │ - State Management  │
+                    └─────────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+        ▼                    ▼                    ▼
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│   Web UI     │    │  Native UI   │    │  MCP Server  │
+│              │    │              │    │              │
+│  Sycamore    │    │   SwiftUI    │    │    rmcp      │
+│  Tabler.io   │    │   + Rust     │    │              │
+│  Trunk       │    │   (UniFFI)   │    │              │
+│              │    │              │    │              │
+│  ブラウザ    │    │ visionOS     │    │ AI/LLM       │
+│  クロス      │    │ macOS        │    │ 統合         │
+│  プラット    │    │ iOS          │    │              │
+│  フォーム    │    │              │    │              │
+└──────────────┘    └──────────────┘    └──────────────┘
+```
+
+### 各UIの特徴
+
+#### 1. Web UI (Sycamore + Tabler.io + Trunk)
+
+**対象ユーザー**: すべての人、クイックアクセス
+
+**技術スタック**:
+- **Sycamore**: リアクティブなRust製Webフレームワーク
+- **Tabler.io**: 美しいUIコンポーネントライブラリ
+- **Trunk**: RustのWASMビルドツール
+
+**特徴**:
+- ブラウザで即座にアクセス可能
+- インストール不要
+- クロスプラットフォーム（Windows/Mac/Linux/モバイル）
+- 軽量で高速
+- URLで共有可能
+
+**ユースケース**:
+- 初めての体験
+- クイックプロトタイピング
+- 配信・共有
+- 教育・ワークショップ
+
+#### 2. Native UI (Swift + Rust w/UniFFI)
+
+**対象ユーザー**: Apple エコシステムユーザー
+
+**技術スタック**:
+- **SwiftUI**: Apple純正のUIフレームワーク
+- **Rust Core**: lnx-creareコアロジック
+- **UniFFI**: Rust ↔ Swift FFI
+
+**特徴**:
+- ネイティブなルック＆フィール
+- OSとの深い統合
+- 最高のパフォーマンス
+- visionOS対応（空間コンピューティング）
+- macOS/iOS統一コードベース
+
+**ユースケース**:
+- プロフェッショナルワークフロー
+- VR/AR表現（visionOS）
+- モバイルパフォーマンス
+- オフライン使用
+
+#### 3. MCP Server (rmcp)
+
+**対象ユーザー**: AI/LLMユーザー、開発者
+
+**技術スタック**:
+- **rmcp**: Rust製MCP (Model Context Protocol) サーバー
+- **LNX API**: コア機能へのプログラマティックアクセス
+
+**特徴**:
+- Claude/GPTなどからの操作
+- プログラマティックな制御
+- 自動化・スクリプティング
+- バッチ処理
+
+**ユースケース**:
+- AI支援による創造
+- 自動ビジュアル生成
+- バッチレンダリング
+- 開発者向けAPI
+
+### コアアーキテクチャ
 
 ```
 ┌─────────────────────────────────────┐
-│         lnx-creare                  │
+│       lnx-creare-core (Rust)       │
 │                                     │
 │  ┌──────────────────────────────┐  │
-│  │   Bevy (Game Engine)         │  │
-│  │   - ECS Architecture         │  │
-│  │   - Rendering                │  │
-│  │   - Window Management        │  │
-│  └──────────────────────────────┘  │
-│                                     │
-│  ┌──────────────────────────────┐  │
-│  │   Visual Generation          │  │
-│  │   - Shader Pipeline          │  │
-│  │   - Effects System           │  │
-│  │   - Particle System          │  │
-│  └──────────────────────────────┘  │
-│                                     │
-│  ┌──────────────────────────────┐  │
-│  │   Audio Analysis             │  │
+│  │   Audio Analysis Module      │  │
 │  │   - FFT                      │  │
 │  │   - Beat Detection           │  │
 │  │   - Envelope Following       │  │
+│  │   - Spectrum Analysis        │  │
+│  └──────────────────────────────┘  │
+│                                     │
+│  ┌──────────────────────────────┐  │
+│  │   Visual Generation Module   │  │
+│  │   - Shader Pipeline          │  │
+│  │   - Effects System           │  │
+│  │   - Particle System          │  │
+│  │   - Preset Management        │  │
+│  └──────────────────────────────┘  │
+│                                     │
+│  ┌──────────────────────────────┐  │
+│  │   State Management           │  │
+│  │   - Parameters               │  │
+│  │   - Presets                  │  │
+│  │   - Session State            │  │
+│  └──────────────────────────────┘  │
+│                                     │
+│  ┌──────────────────────────────┐  │
+│  │   Platform Abstraction       │  │
+│  │   - Audio I/O                │  │
+│  │   - Graphics Backend         │  │
+│  │   - Input Handling           │  │
 │  └──────────────────────────────┘  │
 │                                     │
 └─────────────────────────────────────┘
@@ -253,34 +360,70 @@ Level 4: カスタムシェーダーを書く
 
 ## 開発ロードマップ (Roadmap)
 
-### Phase 1: Foundation (Current)
-- [x] Bevyベースの基本構造
-- [x] ウィンドウとカメラのセットアップ
-- [ ] オーディオ入力の実装
-- [ ] 基本的なビジュアライゼーション
+### Phase 1: Core Foundation
+**目標**: Rustコアロジックの確立
 
-### Phase 2: Core Features
-- [ ] リアルタイムFFT分析
-- [ ] ビート検出
-- [ ] 複数のビジュアルモード
-- [ ] パラメータコントロールUI
+- [x] プロジェクト構造の確立
+- [ ] lnx-creare-core の設計
+- [ ] Audio Analysis Module
+  - [ ] FFT実装
+  - [ ] Beat Detection
+  - [ ] Envelope Following
+- [ ] Visual Generation Module
+  - [ ] 基本的なシェーダーパイプライン
+  - [ ] エフェクトシステム
+- [ ] State Management
+  - [ ] パラメータ管理
+  - [ ] プリセットシステム
 
-### Phase 3: Polish
-- [ ] プリセットシステム
-- [ ] MIDI入力対応
-- [ ] パフォーマンス最適化
-- [ ] エラーハンドリング
+### Phase 2: Web UI
+**目標**: ブラウザで動くプロトタイプ
 
-### Phase 4: Advanced
+- [ ] Sycamore + Tabler.io セットアップ
+- [ ] WASMビルドパイプライン（Trunk）
+- [ ] Web Audio APIとの連携
+- [ ] WebGLレンダリング
+- [ ] 基本的なUIコンポーネント
+  - [ ] パラメータコントロール
+  - [ ] プリセット選択
+  - [ ] ビジュアルプレビュー
+
+### Phase 3: Native UI (Apple)
+**目標**: visionOS/macOS/iOSネイティブアプリ
+
+- [ ] UniFFIによるSwift FFI
+- [ ] SwiftUIインターフェース
+- [ ] Metal レンダリング
+- [ ] CoreAudio統合
+- [ ] visionOS空間UI
+- [ ] macOS/iOS最適化
+
+### Phase 4: MCP Server
+**目標**: AI/LLM統合
+
+- [ ] rmcpサーバー実装
+- [ ] LNX APIの設計
+- [ ] Claude/GPT連携
+- [ ] バッチ処理機能
+- [ ] 自動化スクリプト
+
+### Phase 5: Advanced Features
+**目標**: プロフェッショナル機能
+
 - [ ] カスタムシェーダー対応
-- [ ] 録画機能
-- [ ] XR対応の準備
-- [ ] ネットワーク機能
+- [ ] MIDI入力（全UI）
+- [ ] 録画・エクスポート機能
+- [ ] ネットワーク同期
+- [ ] XR拡張機能
 
-### Phase 5: Ecosystem
-- [ ] プリセット共有
+### Phase 6: Ecosystem
+**目標**: コミュニティと拡張性
+
+- [ ] プリセット共有プラットフォーム
 - [ ] プラグインシステム
-- [ ] コミュニティ機能
+- [ ] ドキュメント整備
+- [ ] チュートリアル作成
+- [ ] コミュニティフォーラム
 
 ## 関連 (Related)
 
