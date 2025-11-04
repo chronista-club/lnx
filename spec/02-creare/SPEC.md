@@ -1,6 +1,6 @@
 ---
-title: lnx-creare - Vision Creationの入り口
-version: 1.0.0
+title: lnx-creare - ヴィジョンクリエイティブツールの入り口
+version: 1.1.0
 date: 2025-11-05
 status: draft
 ---
@@ -26,7 +26,8 @@ lnx-creareは、LNXの哲学を体現する最前線であり、
 
 ### lnx-creareとは
 
-lnx-creareは、**vision creation**を実現するビジュアルクリエイティブツールです。
+lnx-creareは、**ヴィジョンクリエイティブツール**です。
+内なるビジョンを、オーディオとビジュアルの統合的表現として創造します。
 
 #### 3つの役割
 
@@ -117,19 +118,19 @@ lnx-creareは**複数のUIフロントエンド**を持ちます。
 ```mermaid
 graph TB
     Core["lnx-creare-core<br/>(Rust)<br/><br/>- Audio Analysis<br/>- Visual Generation<br/>- State Management"]
-    
+
     WebUI["Web UI<br/><br/>Sycamore + Tabler.io + Trunk<br/><br/>ブラウザ<br/>クロスプラットフォーム"]
     NativeUI["Native UI<br/><br/>SwiftUI + Rust (UniFFI)<br/><br/>visionOS / macOS / iOS"]
     MCPServer["MCP Server<br/><br/>rmcp<br/><br/>AI/LLM統合"]
-    
+
     Core --> WebUI
     Core --> NativeUI
     Core --> MCPServer
-    
+
     WebUI --> Users1["すべての人<br/>クイックアクセス"]
     NativeUI --> Users2["Apple ユーザー<br/>プロフェッショナル"]
     MCPServer --> Users3["AI/LLM<br/>開発者"]
-    
+
     style Core fill:#4a5568,stroke:#2d3748,stroke-width:3px,color:#fff
     style WebUI fill:#4299e1,stroke:#2b6cb0,stroke-width:2px,color:#fff
     style NativeUI fill:#48bb78,stroke:#2f855a,stroke-width:2px,color:#fff
@@ -143,11 +144,13 @@ graph TB
 **対象ユーザー**: すべての人、クイックアクセス
 
 **技術スタック**:
+
 - **Sycamore**: リアクティブなRust製Webフレームワーク
 - **Tabler.io**: 美しいUIコンポーネントライブラリ
 - **Trunk**: RustのWASMビルドツール
 
 **特徴**:
+
 - ブラウザで即座にアクセス可能
 - インストール不要
 - クロスプラットフォーム（Windows/Mac/Linux/モバイル）
@@ -155,6 +158,7 @@ graph TB
 - URLで共有可能
 
 **ユースケース**:
+
 - 初めての体験
 - クイックプロトタイピング
 - 配信・共有
@@ -165,11 +169,13 @@ graph TB
 **対象ユーザー**: Apple エコシステムユーザー
 
 **技術スタック**:
+
 - **SwiftUI**: Apple純正のUIフレームワーク
 - **Rust Core**: lnx-creareコアロジック
 - **UniFFI**: Rust ↔ Swift FFI
 
 **特徴**:
+
 - ネイティブなルック＆フィール
 - OSとの深い統合
 - 最高のパフォーマンス
@@ -177,6 +183,7 @@ graph TB
 - macOS/iOS統一コードベース
 
 **ユースケース**:
+
 - プロフェッショナルワークフロー
 - VR/AR表現（visionOS）
 - モバイルパフォーマンス
@@ -187,16 +194,19 @@ graph TB
 **対象ユーザー**: AI/LLMユーザー、開発者
 
 **技術スタック**:
+
 - **rmcp**: Rust製MCP (Model Context Protocol) サーバー
 - **LNX API**: コア機能へのプログラマティックアクセス
 
 **特徴**:
+
 - Claude/GPTなどからの操作
 - プログラマティックな制御
 - 自動化・スクリプティング
 - バッチ処理
 
 **ユースケース**:
+
 - AI支援による創造
 - 自動ビジュアル生成
 - バッチレンダリング
@@ -211,18 +221,18 @@ graph TD
         VisualGen["Visual Generation Module<br/>- Shader Pipeline<br/>- Effects System<br/>- Particle System<br/>- Preset Management"]
         StateManagement["State Management<br/>- Parameters<br/>- Presets<br/>- Session State"]
         PlatformAbstraction["Platform Abstraction<br/>- Audio I/O<br/>- Graphics Backend<br/>- Input Handling"]
-        
+
         AudioAnalysis --> VisualGen
         StateManagement --> AudioAnalysis
         StateManagement --> VisualGen
         PlatformAbstraction --> AudioAnalysis
         PlatformAbstraction --> VisualGen
     end
-    
+
     Engine["lnx-engine<br/>(Audio I/O)"]
-    
+
     PlatformAbstraction --> Engine
-    
+
     style AudioAnalysis fill:#667eea,stroke:#5a67d8,stroke-width:2px,color:#fff
     style VisualGen fill:#f687b3,stroke:#d53f8c,stroke-width:2px,color:#fff
     style StateManagement fill:#48bb78,stroke:#2f855a,stroke-width:2px,color:#fff
@@ -242,52 +252,52 @@ flowchart LR
         MIDI["🎹 MIDI"]
         Engine["lnx-engine"]
     end
-    
+
     subgraph Analysis["解析"]
         FFT["FFT<br/>(周波数分析)"]
         Beat["ビート検出"]
         Envelope["エンベロープ<br/>追従"]
     end
-    
+
     subgraph State["状態管理"]
         Params["パラメータ"]
         Presets["プリセット"]
     end
-    
+
     subgraph Generation["生成"]
         Shader["シェーダー<br/>パイプライン"]
         Effects["エフェクト<br/>システム"]
         Particles["パーティクル<br/>システム"]
     end
-    
+
     subgraph Output["出力"]
         Display["📺 ディスプレイ"]
         XR["🥽 XR デバイス"]
         Network["🌐 ネットワーク"]
     end
-    
+
     Mic --> FFT
     System --> FFT
     MIDI --> Beat
     Engine --> FFT
-    
+
     FFT --> Beat
     FFT --> Envelope
-    
+
     Beat --> Shader
     Envelope --> Shader
-    
+
     Params --> Shader
     Params --> Effects
     Presets --> Params
-    
+
     Shader --> Effects
     Effects --> Particles
-    
+
     Particles --> Display
     Particles --> XR
     Particles --> Network
-    
+
     style Input fill:#4299e1,stroke:#2b6cb0,color:#fff
     style Analysis fill:#667eea,stroke:#5a67d8,color:#fff
     style State fill:#48bb78,stroke:#2f855a,color:#fff
@@ -386,24 +396,29 @@ flowchart LR
 ### lnx-creareが目指さないもの
 
 ❌ **複雑な設定画面**
+
 - 起動時にウィザード、ではない
 - 設定を全て決めないと使えない、ではない
 
 ❌ **専門用語の羅列**
+
 - 技術的な用語で威圧しない
 - わかりやすい言葉で説明
 
 ❌ **一方的な表示**
+
 - ただビジュアルを流すだけ、ではない
 - インタラクションがない、ではない
 
 ❌ **パフォーマンスの犠牲**
+
 - 美しいが重い、ではない
 - 遅延が大きい、ではない
 
 ## 開発ロードマップ (Roadmap)
 
 ### Phase 1: Core Foundation
+
 **目標**: Rustコアロジックの確立
 
 - [x] プロジェクト構造の確立
@@ -420,6 +435,7 @@ flowchart LR
   - [ ] プリセットシステム
 
 ### Phase 2: Web UI
+
 **目標**: ブラウザで動くプロトタイプ
 
 - [ ] Sycamore + Tabler.io セットアップ
@@ -432,6 +448,7 @@ flowchart LR
   - [ ] ビジュアルプレビュー
 
 ### Phase 3: Native UI (Apple)
+
 **目標**: visionOS/macOS/iOSネイティブアプリ
 
 - [ ] UniFFIによるSwift FFI
@@ -442,6 +459,7 @@ flowchart LR
 - [ ] macOS/iOS最適化
 
 ### Phase 4: MCP Server
+
 **目標**: AI/LLM統合
 
 - [ ] rmcpサーバー実装
@@ -451,6 +469,7 @@ flowchart LR
 - [ ] 自動化スクリプト
 
 ### Phase 5: Advanced Features
+
 **目標**: プロフェッショナル機能
 
 - [ ] カスタムシェーダー対応
@@ -460,6 +479,7 @@ flowchart LR
 - [ ] XR拡張機能
 
 ### Phase 6: Ecosystem
+
 **目標**: コミュニティと拡張性
 
 - [ ] プリセット共有プラットフォーム
@@ -487,6 +507,7 @@ flowchart LR
 ## 履歴 (History)
 
 ### v1.0.0 (2025-11-05)
+
 - 初版作成
 - lnx-creareの役割と原則を定義
 - "Open and Create"コンセプトを提示

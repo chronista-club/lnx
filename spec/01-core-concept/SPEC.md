@@ -32,7 +32,7 @@ LNXは、Audio/Visualの**リアルタイム表現**を可能にするツール�
 **creare** [クレアーレ] - ラテン語で「創造する、生み出す、作る」
 
 lnx-creareは、単なるビジュアライザー（見るツール）ではありません。
-それは**vision creation**——ビジョンを創造するツールです。
+それは**ヴィジョンクリエイティブツール**——ビジョンを創造するツールです。
 
 - 受動的に「見る」のではなく
 - 能動的に「創る」
@@ -40,11 +40,22 @@ lnx-creareは、単なるビジュアライザー（見るツール）ではあ�
 - **ビジョン**（vision）を形にする
 
 **vision**には二つの意味があります：
+
 1. **視覚・映像** - 目に見える表現
 2. **ビジョン・展望** - 心に描く未来、理想、想像
 
 LNXは両方を創造します。
 内なるビジョンを、視覚的な表現として世界に顕現させる——これがLNXの哲学です。
+
+### Vision Creative Tool
+
+**ヴィジョンクリエイティブツール**という表現は：
+
+- Vision（ビジョン）- 内なる想像力、心に描く理想
+- Creative（クリエイティブ）- 創造的、能動的な行為
+- Tool（ツール）- すべての人が使える道具
+
+この3つの要素が統合され、LNXの本質を表現しています。
 
 ## LNXの全体像
 
@@ -52,52 +63,52 @@ LNXは両方を創造します。
 graph TB
     subgraph "LNX Ecosystem"
         Core["LNXコアコンセプト<br/>すべての人のための<br/>vision creation"]
-        
+
         subgraph "3つの柱"
             LowLatency["Low-Latency<br/>低遅延<br/>< 16ms"]
             HighQuality["High-Quality<br/>高品質<br/>プロレベル"]
             HumanFriendly["Human-Friendly<br/>人に優しい<br/>直感的"]
         end
-        
+
         subgraph "統合的表現"
             AudioVisual["オーディオ<br/>×<br/>ビジュアル"]
             RealVirtual["リアル<br/>×<br/>ヴァーチャル"]
             XR["XR<br/>(AR/VR/MR)"]
             Network["ネットワーク<br/>分散創造"]
         end
-        
+
         subgraph "コンポーネント"
             Engine["lnx-engine<br/>オーディオ処理"]
             CLI["lnx-cli<br/>コマンドライン"]
             Creare["lnx-creare<br/>vision creation"]
         end
-        
+
         Core --> LowLatency
         Core --> HighQuality
         Core --> HumanFriendly
-        
+
         Core --> AudioVisual
         Core --> RealVirtual
         Core --> XR
         Core --> Network
-        
+
         LowLatency --> Engine
         HighQuality --> Engine
         HumanFriendly --> CLI
         HumanFriendly --> Creare
-        
+
         Engine --> Creare
         CLI --> Engine
-        
+
         AudioVisual --> Creare
         RealVirtual --> Creare
         XR --> Creare
         Network --> Creare
     end
-    
+
     Users["👥 すべての人"]
     Users --> Creare
-    
+
     style Core fill:#4a5568,stroke:#2d3748,stroke-width:3px,color:#fff
     style LowLatency fill:#4299e1,stroke:#2b6cb0,stroke-width:2px,color:#fff
     style HighQuality fill:#48bb78,stroke:#2f855a,stroke-width:2px,color:#fff
@@ -132,21 +143,25 @@ LNXは特定の専門家のためのツールではありません。
 表現の境界を超える——これがLNXの本質です。
 
 #### オーディオとビジュアル
+
 - **相互作用**: 音が視覚を生み、視覚が音を導く
 - **統一された体験**: 一つの表現として知覚される
 - **クロスモーダル**: 感覚の境界を超える
 
 #### リアルとヴァーチャル
+
 - **空間の融合**: 物理空間とデジタル空間の境界が溶ける
 - **拡張された現実**: 現実を否定せず、拡張する
 - **存在の拡張**: 身体的制約を超えた表現
 
 #### XR (Extended Reality)
+
 - **没入的創造**: AR/VR/MRでの表現空間
 - **空間的オーディオ**: 3次元空間での音の配置と動き
 - **身体的インタラクション**: ジェスチャー、視線、動きでの創造
 
 #### ネットワーク
+
 - **距離の超越**: 物理的距離を超えた協働創造
 - **非同期と同期**: 時間を超えた表現の共有
 - **分散された創造**: 複数の場所、複数の人、一つの作品
@@ -218,18 +233,22 @@ LNXは特定の専門家のためのツールではありません。
 ### LNXが目指さないもの
 
 ❌ **専門家だけのツール**
+
 - 複雑な設定を強要しない
 - マニュアルを読まないと使えない、ではない
 
 ❌ **後処理ツール**
+
 - リアルタイム性を犠牲にした高品質、ではない
 - 録音・録画の編集ツール、ではない
 
 ❌ **単なるビジュアライザー**
+
 - 受動的に見るだけのツール、ではない
 - 決まったパターンを再生するだけ、ではない
 
 ❌ **技術デモ**
+
 - 技術的複雑さを誇示するもの、ではない
 - 「できること」より「創造できること」を優先
 
@@ -251,6 +270,7 @@ LNXは特定の専門家のためのツールではありません。
 ## 履歴 (History)
 
 ### v1.0.0 (2025-11-05)
+
 - 初版作成
 - コアコンセプトとして「すべての人のためのcreareツール」を定義
 - LNX-visualizer → LNX-creareへのリネームを反映
