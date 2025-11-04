@@ -46,6 +46,67 @@ lnx-creareは、単なるビジュアライザー（見るツール）ではあ�
 LNXは両方を創造します。
 内なるビジョンを、視覚的な表現として世界に顕現させる——これがLNXの哲学です。
 
+## LNXの全体像
+
+```mermaid
+graph TB
+    subgraph "LNX Ecosystem"
+        Core["LNXコアコンセプト<br/>すべての人のための<br/>vision creation"]
+        
+        subgraph "3つの柱"
+            LowLatency["Low-Latency<br/>低遅延<br/>< 16ms"]
+            HighQuality["High-Quality<br/>高品質<br/>プロレベル"]
+            HumanFriendly["Human-Friendly<br/>人に優しい<br/>直感的"]
+        end
+        
+        subgraph "統合的表現"
+            AudioVisual["オーディオ<br/>×<br/>ビジュアル"]
+            RealVirtual["リアル<br/>×<br/>ヴァーチャル"]
+            XR["XR<br/>(AR/VR/MR)"]
+            Network["ネットワーク<br/>分散創造"]
+        end
+        
+        subgraph "コンポーネント"
+            Engine["lnx-engine<br/>オーディオ処理"]
+            CLI["lnx-cli<br/>コマンドライン"]
+            Creare["lnx-creare<br/>vision creation"]
+        end
+        
+        Core --> LowLatency
+        Core --> HighQuality
+        Core --> HumanFriendly
+        
+        Core --> AudioVisual
+        Core --> RealVirtual
+        Core --> XR
+        Core --> Network
+        
+        LowLatency --> Engine
+        HighQuality --> Engine
+        HumanFriendly --> CLI
+        HumanFriendly --> Creare
+        
+        Engine --> Creare
+        CLI --> Engine
+        
+        AudioVisual --> Creare
+        RealVirtual --> Creare
+        XR --> Creare
+        Network --> Creare
+    end
+    
+    Users["👥 すべての人"]
+    Users --> Creare
+    
+    style Core fill:#4a5568,stroke:#2d3748,stroke-width:3px,color:#fff
+    style LowLatency fill:#4299e1,stroke:#2b6cb0,stroke-width:2px,color:#fff
+    style HighQuality fill:#48bb78,stroke:#2f855a,stroke-width:2px,color:#fff
+    style HumanFriendly fill:#ed8936,stroke:#c05621,stroke-width:2px,color:#fff
+    style Engine fill:#667eea,stroke:#5a67d8,stroke-width:2px,color:#fff
+    style CLI fill:#667eea,stroke:#5a67d8,stroke-width:2px,color:#fff
+    style Creare fill:#f687b3,stroke:#d53f8c,stroke-width:2px,color:#fff
+```
+
 ## 原則 (Principles)
 
 ### 1. すべての人のために (For Everyone)

@@ -114,31 +114,26 @@ Level 4: カスタムシェーダーを書く
 lnx-creareは**複数のUIフロントエンド**を持ちます。
 コアロジックはRustで実装し、各プラットフォームに最適なUIを提供。
 
-```
-                    ┌─────────────────────┐
-                    │   lnx-creare-core   │
-                    │   (Rust)            │
-                    │                     │
-                    │ - Audio Analysis    │
-                    │ - Visual Generation │
-                    │ - State Management  │
-                    └─────────────────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-        ▼                    ▼                    ▼
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│   Web UI     │    │  Native UI   │    │  MCP Server  │
-│              │    │              │    │              │
-│  Sycamore    │    │   SwiftUI    │    │    rmcp      │
-│  Tabler.io   │    │   + Rust     │    │              │
-│  Trunk       │    │   (UniFFI)   │    │              │
-│              │    │              │    │              │
-│  ブラウザ    │    │ visionOS     │    │ AI/LLM       │
-│  クロス      │    │ macOS        │    │ 統合         │
-│  プラット    │    │ iOS          │    │              │
-│  フォーム    │    │              │    │              │
-└──────────────┘    └──────────────┘    └──────────────┘
+```mermaid
+graph TB
+    Core["lnx-creare-core<br/>(Rust)<br/><br/>- Audio Analysis<br/>- Visual Generation<br/>- State Management"]
+    
+    WebUI["Web UI<br/><br/>Sycamore + Tabler.io + Trunk<br/><br/>ブラウザ<br/>クロスプラットフォーム"]
+    NativeUI["Native UI<br/><br/>SwiftUI + Rust (UniFFI)<br/><br/>visionOS / macOS / iOS"]
+    MCPServer["MCP Server<br/><br/>rmcp<br/><br/>AI/LLM統合"]
+    
+    Core --> WebUI
+    Core --> NativeUI
+    Core --> MCPServer
+    
+    WebUI --> Users1["すべての人<br/>クイックアクセス"]
+    NativeUI --> Users2["Apple ユーザー<br/>プロフェッショナル"]
+    MCPServer --> Users3["AI/LLM<br/>開発者"]
+    
+    style Core fill:#4a5568,stroke:#2d3748,stroke-width:3px,color:#fff
+    style WebUI fill:#4299e1,stroke:#2b6cb0,stroke-width:2px,color:#fff
+    style NativeUI fill:#48bb78,stroke:#2f855a,stroke-width:2px,color:#fff
+    style MCPServer fill:#ed8936,stroke:#c05621,stroke-width:2px,color:#fff
 ```
 
 ### 各UIの特徴
@@ -209,50 +204,98 @@ lnx-creareは**複数のUIフロントエンド**を持ちます。
 
 ### コアアーキテクチャ
 
-```
-┌─────────────────────────────────────┐
-│       lnx-creare-core (Rust)       │
-│                                     │
-│  ┌──────────────────────────────┐  │
-│  │   Audio Analysis Module      │  │
-│  │   - FFT                      │  │
-│  │   - Beat Detection           │  │
-│  │   - Envelope Following       │  │
-│  │   - Spectrum Analysis        │  │
-│  └──────────────────────────────┘  │
-│                                     │
-│  ┌──────────────────────────────┐  │
-│  │   Visual Generation Module   │  │
-│  │   - Shader Pipeline          │  │
-│  │   - Effects System           │  │
-│  │   - Particle System          │  │
-│  │   - Preset Management        │  │
-│  └──────────────────────────────┘  │
-│                                     │
-│  ┌──────────────────────────────┐  │
-│  │   State Management           │  │
-│  │   - Parameters               │  │
-│  │   - Presets                  │  │
-│  │   - Session State            │  │
-│  └──────────────────────────────┘  │
-│                                     │
-│  ┌──────────────────────────────┐  │
-│  │   Platform Abstraction       │  │
-│  │   - Audio I/O                │  │
-│  │   - Graphics Backend         │  │
-│  │   - Input Handling           │  │
-│  └──────────────────────────────┘  │
-│                                     │
-└─────────────────────────────────────┘
-           │
-           ↓
-    ┌─────────────┐
-    │ lnx-engine  │
-    │ (Audio I/O) │
-    └─────────────┘
+```mermaid
+graph TD
+    subgraph "lnx-creare-core (Rust)"
+        AudioAnalysis["Audio Analysis Module<br/>- FFT<br/>- Beat Detection<br/>- Envelope Following<br/>- Spectrum Analysis"]
+        VisualGen["Visual Generation Module<br/>- Shader Pipeline<br/>- Effects System<br/>- Particle System<br/>- Preset Management"]
+        StateManagement["State Management<br/>- Parameters<br/>- Presets<br/>- Session State"]
+        PlatformAbstraction["Platform Abstraction<br/>- Audio I/O<br/>- Graphics Backend<br/>- Input Handling"]
+        
+        AudioAnalysis --> VisualGen
+        StateManagement --> AudioAnalysis
+        StateManagement --> VisualGen
+        PlatformAbstraction --> AudioAnalysis
+        PlatformAbstraction --> VisualGen
+    end
+    
+    Engine["lnx-engine<br/>(Audio I/O)"]
+    
+    PlatformAbstraction --> Engine
+    
+    style AudioAnalysis fill:#667eea,stroke:#5a67d8,stroke-width:2px,color:#fff
+    style VisualGen fill:#f687b3,stroke:#d53f8c,stroke-width:2px,color:#fff
+    style StateManagement fill:#48bb78,stroke:#2f855a,stroke-width:2px,color:#fff
+    style PlatformAbstraction fill:#ed8936,stroke:#c05621,stroke-width:2px,color:#fff
+    style Engine fill:#4299e1,stroke:#2b6cb0,stroke-width:2px,color:#fff
 ```
 
-### コンポーネント
+### データフロー
+
+オーディオ入力からビジュアル出力までのリアルタイム処理フロー：
+
+```mermaid
+flowchart LR
+    subgraph Input["入力"]
+        Mic["🎤 マイク"]
+        System["🔊 システムオーディオ"]
+        MIDI["🎹 MIDI"]
+        Engine["lnx-engine"]
+    end
+    
+    subgraph Analysis["解析"]
+        FFT["FFT<br/>(周波数分析)"]
+        Beat["ビート検出"]
+        Envelope["エンベロープ<br/>追従"]
+    end
+    
+    subgraph State["状態管理"]
+        Params["パラメータ"]
+        Presets["プリセット"]
+    end
+    
+    subgraph Generation["生成"]
+        Shader["シェーダー<br/>パイプライン"]
+        Effects["エフェクト<br/>システム"]
+        Particles["パーティクル<br/>システム"]
+    end
+    
+    subgraph Output["出力"]
+        Display["📺 ディスプレイ"]
+        XR["🥽 XR デバイス"]
+        Network["🌐 ネットワーク"]
+    end
+    
+    Mic --> FFT
+    System --> FFT
+    MIDI --> Beat
+    Engine --> FFT
+    
+    FFT --> Beat
+    FFT --> Envelope
+    
+    Beat --> Shader
+    Envelope --> Shader
+    
+    Params --> Shader
+    Params --> Effects
+    Presets --> Params
+    
+    Shader --> Effects
+    Effects --> Particles
+    
+    Particles --> Display
+    Particles --> XR
+    Particles --> Network
+    
+    style Input fill:#4299e1,stroke:#2b6cb0,color:#fff
+    style Analysis fill:#667eea,stroke:#5a67d8,color:#fff
+    style State fill:#48bb78,stroke:#2f855a,color:#fff
+    style Generation fill:#f687b3,stroke:#d53f8c,color:#fff
+    style Output fill:#ed8936,stroke:#c05621,color:#fff
+```
+
+### コンポーネント詳細
 
 1. **Audio Input Module**
    - マイク入力
@@ -261,8 +304,8 @@ lnx-creareは**複数のUIフロントエンド**を持ちます。
    - lnx-engineからのストリーム
 
 2. **Analysis Module**
-   - リアルタイムFFT
-   - ビート検出
+   - リアルタイムFFT（< 10ms）
+   - ビート検出（BPM推定）
    - エンベロープ追従
    - 周波数帯域分析
 
