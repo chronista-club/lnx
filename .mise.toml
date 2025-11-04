@@ -1,24 +1,21 @@
-# Sizma Project Configuration
+# lnx Project Configuration
 # https://mise.jdx.dev/
 
 [env]
 # Project paths
-SIZMA_ROOT = "{{config_root}}"
-SIZMA_CRATES_DIR = "{{config_root}}/crates"
-SIZMA_APPS_DIR = "{{config_root}}/apps"
-SIZMA_DOCS_DIR = "{{config_root}}/docs"
+LNX_ROOT = "{{config_root}}"
+LNX_CRATES_DIR = "{{config_root}}/crates"
+LNX_DOCS_DIR = "{{config_root}}/docs"
 
 # Rust paths
-SIZMA_ENGINE_DIR = "{{config_root}}/crates/sizma-engine"
-SIZMA_ENGINE_TARGET = "{{config_root}}/target"
-
-# Swift paths
-SIZMA_MACOS_DIR = "{{config_root}}/apps/sizma-macos"
-SIZMA_XCODEPROJ = "{{config_root}}/apps/sizma-macos/sizma.xcodeproj"
+LNX_ENGINE_DIR = "{{config_root}}/crates/lnx-engine"
+LNX_CLI_DIR = "{{config_root}}/crates/lnx-cli"
+LNX_CREARE_DIR = "{{config_root}}/crates/lnx-creare"
+LNX_TARGET = "{{config_root}}/target"
 
 # Build outputs
-SIZMA_ENGINE_DYLIB = "{{config_root}}/target/release/libsizma_engine.dylib"
-SIZMA_ENGINE_DEBUG_DYLIB = "{{config_root}}/target/debug/libsizma_engine.dylib"
+LNX_ENGINE_LIB = "{{config_root}}/target/release/liblnx_engine.rlib"
+LNX_ENGINE_DEBUG_LIB = "{{config_root}}/target/debug/liblnx_engine.rlib"
 
 # Development settings
 RUST_LOG = "debug"
@@ -30,11 +27,6 @@ rust = "1.82"
 cargo-watch = "latest"
 cargo-edit = "latest"
 cargo-expand = "latest"
-cbindgen = "latest"
-
-# Swift/macOS development
-swiftformat = "latest"
-swiftlint = "latest"
 
 # General development tools
 git = "latest"
@@ -44,7 +36,7 @@ pre-commit = "latest"
 [tasks.build]
 description = "Build all components"
 run = """
-  echo "🔨 Building Sizma..."
+  echo "🔨 Building lnx..."
   cargo build --release
   echo "✅ Build complete"
 """
@@ -52,9 +44,25 @@ run = """
 [tasks.build-engine]
 description = "Build Rust audio engine"
 run = """
-  echo "🔨 Building Sizma Engine..."
-  cargo build --release -p sizma-engine
+  echo "🔨 Building lnx-engine..."
+  cargo build --release -p lnx-engine
   echo "✅ Engine build complete"
+"""
+
+[tasks.build-cli]
+description = "Build CLI"
+run = """
+  echo "🔨 Building lnx-cli..."
+  cargo build --release -p lnx-cli
+  echo "✅ CLI build complete"
+"""
+
+[tasks.build-creare]
+description = "Build visual creator"
+run = """
+  echo "🔨 Building lnx-creare..."
+  cargo build --release -p lnx-creare
+  echo "✅ Creare build complete"
 """
 
 [tasks.test]
@@ -65,11 +73,18 @@ run = """
   echo "✅ Tests complete"
 """
 
-[tasks.run-macos]
-description = "Run macOS app"
+[tasks.run-cli]
+description = "Run CLI"
 run = """
-  echo "🚀 Launching Sizma for macOS..."
-  open {{config_root}}/apps/sizma-macos/sizma.xcodeproj
+  echo "🚀 Launching lnx CLI..."
+  cargo run --bin lnx -- status
+"""
+
+[tasks.run-creare]
+description = "Run visual creator"
+run = """
+  echo "🎨 Launching lnx creare..."
+  cargo run --bin lnx-creare
 """
 
 [tasks.clean]
@@ -77,7 +92,6 @@ description = "Clean build artifacts"
 run = """
   echo "🧹 Cleaning build artifacts..."
   cargo clean
-  rm -rf {{config_root}}/apps/sizma-macos/DerivedData
   echo "✅ Clean complete"
 """
 
@@ -86,9 +100,6 @@ description = "Format all code"
 run = """
   echo "💅 Formatting code..."
   cargo fmt --all
-  if command -v swiftformat &> /dev/null; then
-    swiftformat {{config_root}}/apps/sizma-macos --swiftversion 5.9
-  fi
   echo "✅ Formatting complete"
 """
 
@@ -97,59 +108,62 @@ description = "Lint all code"
 run = """
   echo "🔍 Linting code..."
   cargo clippy --all -- -D warnings
-  if command -v swiftlint &> /dev/null; then
-    swiftlint lint {{config_root}}/apps/sizma-macos
-  fi
   echo "✅ Linting complete"
 """
 
 [tasks.setup]
 description = "Initial project setup"
 run = """
-  echo "🔧 Setting up Sizma development environment..."
-  
+  echo "🔧 Setting up lnx development environment..."
+
   # Install Rust dependencies
   cargo fetch
-  
-  # Build the engine
-  mise run build-engine
-  
-  # Copy dylib to Swift project (for development)
-  cp {{config_root}}/target/release/libsizma_engine.dylib {{config_root}}/apps/sizma-macos/libsizma_engine.dylib || true
-  
+
+  # Build all components
+  mise run build
+
   echo "✅ Setup complete! You can now:"
   echo "  - Run 'mise run build' to build everything"
-  echo "  - Run 'mise run run-macos' to open in Xcode"
+  echo "  - Run 'mise run run-cli' to run the CLI"
+  echo "  - Run 'mise run run-creare' to run the visual creator"
   echo "  - Run 'mise run test' to run tests"
 """
 
 [tasks.watch]
 description = "Watch and rebuild Rust code"
 run = """
-  cargo watch -x "build --release -p sizma-engine"
+  cargo watch -x "build --all"
+"""
+
+[tasks.watch-engine]
+description = "Watch and rebuild engine"
+run = """
+  cargo watch -x "build -p lnx-engine"
 """
 
 [tasks.info]
 description = "Show project information"
 run = """
   echo "═══════════════════════════════════════════"
-  echo "  Sizma (静馬) - Audio/Visual Live Tool"
+  echo "  lnx (リンクス) - Audio/Visual Live Tool"
   echo "═══════════════════════════════════════════"
   echo ""
   echo "📁 Project Structure:"
-  echo "  • Rust Engine: {{config_root}}/crates/sizma-engine"
-  echo "  • macOS App:   {{config_root}}/apps/sizma-macos"
+  echo "  • Rust Engine: {{config_root}}/crates/lnx-engine"
+  echo "  • CLI:         {{config_root}}/crates/lnx-cli"
+  echo "  • Creare:      {{config_root}}/crates/lnx-creare"
   echo "  • Docs:        {{config_root}}/docs"
   echo ""
   echo "🛠️  Available Commands:"
-  echo "  • mise run build      - Build all components"
-  echo "  • mise run test       - Run all tests"
-  echo "  • mise run run-macos  - Open in Xcode"
-  echo "  • mise run watch      - Watch & rebuild Rust"
-  echo "  • mise run format     - Format all code"
-  echo "  • mise run lint       - Lint all code"
-  echo "  • mise run clean      - Clean build artifacts"
+  echo "  • mise run build        - Build all components"
+  echo "  • mise run test         - Run all tests"
+  echo "  • mise run run-cli      - Run CLI"
+  echo "  • mise run run-creare   - Run visual creator"
+  echo "  • mise run watch        - Watch & rebuild all"
+  echo "  • mise run format       - Format all code"
+  echo "  • mise run lint         - Lint all code"
+  echo "  • mise run clean        - Clean build artifacts"
   echo ""
   echo "📦 Version: 0.1.0-alpha1"
-  echo "🔗 Repository: https://github.com/chronista-club/sizma"
+  echo "🔗 Repository: https://github.com/chronista-club/lnx-experience"
 """

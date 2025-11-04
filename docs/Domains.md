@@ -16,7 +16,7 @@
 ---
 
 #### Engine Domain
-- Sizma Systemの提供
+- lnx Systemの提供
 
 - 1プロセスにつき、1つ存在
     - cli

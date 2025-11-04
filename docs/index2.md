@@ -1,4 +1,4 @@
-# Sizma
+# lnx
 
 ## What is this?
 
