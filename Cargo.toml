@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "crates/lnx-engine",
     "crates/lnx-cli",
-    "crates/lnx-visualizer",
+    "crates/lnx-creare",
 ]
 
 [workspace.package]
@@ -45,6 +45,9 @@ env_logger = "0.11"
 # Audio file format support
 hound = "3.5"  # WAV file I/O
 
+# GUI framework
+slint = "1.9"  # Rust-native cross-platform GUI toolkit
+
 # NDI SDK bindings for network video/audio
 grafton-ndi = "0.8"  # NDI 6 SDK bindings (high-performance)
 
@@ -61,4 +64,3 @@ panic = "abort"
 
 [profile.dev]
 opt-level = 2  # Some optimization even in debug for audio performance
-

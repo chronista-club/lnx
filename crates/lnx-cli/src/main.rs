@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use env_logger::Env;
-use log::{info, debug};
+use log::{debug, info};
 
 /// lnx - wavelet synthesize engine コマンドラインインターフェース
 #[derive(Parser, Debug)]
@@ -27,7 +27,7 @@ enum Commands {
         /// デーモンモードで起動（バックグラウンド実行）
         #[arg(short, long)]
         daemon: bool,
-        /// GUIビジュアライザーを起動
+        /// GUIクリエーターを起動
         #[arg(short = 'g', long)]
         gui: bool,
         /// 使用するオーディオデバイス
@@ -148,16 +148,30 @@ async fn main() -> Result<()> {
         1 => "debug",
         _ => "trace",
     };
-    
-    env_logger::Builder::from_env(Env::default().default_filter_or(log_level))
-        .init();
+
+    env_logger::Builder::from_env(Env::default().default_filter_or(log_level)).init();
 
     debug!("lnxコマンド起動");
 
     match cli.command {
-        Commands::Start { daemon, gui, output_device, input_device, sample_rate, buffer_size } => {
-            handle_start(daemon, gui, output_device, input_device, sample_rate, buffer_size).await?
-        },
+        Commands::Start {
+            daemon,
+            gui,
+            output_device,
+            input_device,
+            sample_rate,
+            buffer_size,
+        } => {
+            handle_start(
+                daemon,
+                gui,
+                output_device,
+                input_device,
+                sample_rate,
+                buffer_size,
+            )
+            .await?
+        }
         Commands::Stop { force } => handle_stop(force).await?,
         Commands::Status { detailed } => handle_status(detailed).await?,
         Commands::Audio { command } => handle_audio_command(command).await?,
@@ -233,33 +247,35 @@ async fn handle_monitor(realtime: bool) -> Result<()> {
     if realtime {
         use std::time::Duration;
         use tokio::time;
-        
+
         info!("リアルタイムモニタリング開始");
         println!("パフォーマンスモニター (Ctrl+Cで終了)");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
+
         // Ctrl+Cハンドラの設定
         let (tx, mut rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             tokio::signal::ctrl_c().await.ok();
             let _ = tx.send(());
         });
-        
+
         let mut counter = 0;
         loop {
             // ダミーのパフォーマンスデータ（実際の実装では実データを取得）
             let cpu = 10.0 + (counter as f32 * 0.5) % 20.0;
             let memory = 1.2 + (counter as f32 * 0.1) % 2.0;
             let latency = 1.3 + (counter as f32 * 0.05) % 0.5;
-            
+
             // カーソルを行頭に戻して上書き
-            print!("\rCPU: {:.1}% | メモリ: {:.1}GB | レイテンシー: {:.1}ms", 
-                   cpu, memory, latency);
+            print!(
+                "\rCPU: {:.1}% | メモリ: {:.1}GB | レイテンシー: {:.1}ms",
+                cpu, memory, latency
+            );
             use std::io::{self, Write};
             io::stdout().flush()?;
-            
+
             counter += 1;
-            
+
             // Ctrl+Cが押されたか、または1秒待機
             tokio::select! {
                 _ = &mut rx => {
@@ -281,12 +297,12 @@ async fn handle_monitor(realtime: bool) -> Result<()> {
 
 async fn handle_status(detailed: bool) -> Result<()> {
     info!("システムステータス表示");
-    
+
     // ヘッダー
     println!("\n╔══════════════════════════════════════════════════════════╗");
     println!("║                    lnx v0.1.0                             ║");
     println!("╚══════════════════════════════════════════════════════════╝");
-    
+
     // システム情報
     println!("\n📊 システム情報");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -294,7 +310,7 @@ async fn handle_status(detailed: bool) -> Result<()> {
     println!("  CPU: Apple M2 Pro");
     println!("  メモリ: 16GB");
     println!("  エンジン: lnx-engine v0.1.0");
-    
+
     // オーディオデバイス
     println!("\n🎵 オーディオデバイス");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -310,7 +326,7 @@ async fn handle_status(detailed: bool) -> Result<()> {
         println!("    • ビット深度: 32bit float (NDI内部処理)");
         println!("    • レイテンシー: 1.33ms");
     }
-    
+
     // MIDIデバイス
     println!("\n🎹 MIDIデバイス");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -322,7 +338,7 @@ async fn handle_status(detailed: bool) -> Result<()> {
         println!("    • 入力: 2 ports active");
         println!("    • 出力: 1 port active");
     }
-    
+
     // パフォーマンス状態
     println!("\n⚡ パフォーマンス");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -330,7 +346,7 @@ async fn handle_status(detailed: bool) -> Result<()> {
     println!("  メモリ使用量: 1.2GB / 16GB");
     println!("  オーディオレイテンシー: 1.33ms");
     println!("  アクティブストリーム: 2");
-    
+
     if detailed {
         println!("\n📝 追加情報");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -338,10 +354,10 @@ async fn handle_status(detailed: bool) -> Result<()> {
         println!("  ログファイル: .lnx/logs/");
         println!("  プラグイン: 0 loaded");
     }
-    
+
     println!("\n💡 ヒント: 詳細情報を見るには 'lnx status --detailed' を使用");
     println!();
-    
+
     Ok(())
 }
 
@@ -384,40 +400,40 @@ async fn handle_start(
     buffer_size: u32,
 ) -> Result<()> {
     info!("オーディオエンジンを起動");
-    
+
     // 現在のバイナリパスを取得
     let current_exe = std::env::current_exe()?;
     let lnx_bin = current_exe.to_string_lossy().to_string();
-    
+
     if daemon {
         println!("\n🚀 lnx audio engine 起動中...");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
+
         // エンジン設定の表示
         println!("📋 設定:");
         println!("  サンプルレート: {} Hz", sample_rate);
         println!("  バッファサイズ: {} samples", buffer_size);
-        
+
         if let Some(ref device) = output_device {
             println!("  出力デバイス: {}", device);
         } else {
             println!("  出力デバイス: システムデフォルト");
         }
-        
+
         if let Some(ref device) = input_device {
             println!("  入力デバイス: {}", device);
         } else {
             println!("  入力デバイス: システムデフォルト");
         }
-        
+
         println!("\n🔄 デーモンモードで起動...");
-        
+
         // ichimiのプロセスIDを作成
         let process_id = "lnx-engine";
-        
+
         // まず既存のプロセスを確認
         println!("📝 既存のプロセスを確認中...");
-        
+
         // コマンドラインの引数を構築
         let mut args = vec![
             "start".to_string(),
@@ -426,99 +442,105 @@ async fn handle_start(
             "--buffer-size".to_string(),
             buffer_size.to_string(),
         ];
-        
+
         if let Some(ref device) = output_device {
             args.push("--output-device".to_string());
             args.push(device.clone());
         }
-        
+
         if let Some(ref device) = input_device {
             args.push("--input-device".to_string());
             args.push(device.clone());
         }
-        
+
         // ichimiで起動（フォアグラウンドモードで実行）
         println!("🚀 ichimiでプロセスを管理...");
         println!("   プロセスID: {}", process_id);
         println!("   コマンド: {} {}", lnx_bin, args.join(" "));
-        
+
         // TODO: 実際のichimi APIを呼び出す
         // 現在は仮実装
         println!("\n⚠️  ichimi統合は実装中です");
         println!("   実際には以下のコマンドが実行されます:");
-        println!("   ichimi create-process --id {} --command '{}' --args '{}'", 
-                process_id, lnx_bin, args.join(" "));
+        println!(
+            "   ichimi create-process --id {} --command '{}' --args '{}'",
+            process_id,
+            lnx_bin,
+            args.join(" ")
+        );
         println!("   ichimi start-process --id {}", process_id);
-        
-        // GUIオプションがある場合はビジュアライザーも起動
+
+        // GUIオプションがある場合はクリエーターも起動
         if gui {
-            println!("\n🎨 GUIビジュアライザーを起動...");
-            println!("   プロセスID: lnx-visualizer");
-            
+            println!("\n🎨 GUIクリエーターを起動...");
+            println!("   プロセスID: lnx-creare");
+
             // TODO: 実際のichimi APIを呼び出す
             println!("   実際には以下のコマンドが実行されます:");
-            println!("   ichimi create-process --id lnx-visualizer --command 'cargo' --args 'run --bin lnx-visualizer'");
-            println!("   ichimi start-process --id lnx-visualizer");
+            println!(
+                "   ichimi create-process --id lnx-creare --command 'cargo' --args 'run --bin lnx-creare'"
+            );
+            println!("   ichimi start-process --id lnx-creare");
         }
-        
+
         println!("\n✅ エンジンがバックグラウンドで起動しました");
         println!("   停止するには: lnx stop");
         println!("   状態確認: lnx status");
     } else {
         println!("\n🚀 lnx audio engine 起動中...");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
+
         // エンジン設定の表示
         println!("📋 設定:");
         println!("  サンプルレート: {} Hz", sample_rate);
         println!("  バッファサイズ: {} samples", buffer_size);
-        
+
         if let Some(ref device) = output_device {
             println!("  出力デバイス: {}", device);
         } else {
             println!("  出力デバイス: システムデフォルト");
         }
-        
+
         if let Some(ref device) = input_device {
             println!("  入力デバイス: {}", device);
         } else {
             println!("  入力デバイス: システムデフォルト");
         }
-        
+
         println!("\n▶️  フォアグラウンドモードで起動...");
         println!("   Ctrl+Cで終了");
-        
-        // GUIオプションがある場合はビジュアライザーを起動
+
+        // GUIオプションがある場合はクリエーターを起動
         if gui {
-            println!("\n🎨 GUIビジュアライザーを起動...");
-            
-            // ビジュアライザーを別スレッドで起動
+            println!("\n🎨 GUIクリエーターを起動...");
+
+            // クリエーターを別スレッドで起動
             std::thread::spawn(|| {
                 println!("   Bevyウィンドウを開いています...");
-                // TODO: 実際のビジュアライザー起動
-                // ここで cargo run --bin lnx-visualizer を実行するか、
-                // または直接 lnx_visualizer::run() を呼び出す
-                println!("   （ビジュアライザーの実装は開発中）");
+                // TODO: 実際のクリエーター起動
+                // ここで cargo run --bin lnx-creare を実行するか、
+                // または直接 lnx_creare::run() を呼び出す
+                println!("   （クリエーターの実装は開発中）");
             });
         }
-        
+
         // エンジンの初期化と起動
         // TODO: 実際のエンジン起動実装
         println!("\n   （エンジンの実装は開発中）");
-        
+
         // Ctrl+Cハンドラの設定
         let (tx, mut rx) = tokio::sync::oneshot::channel();
         tokio::spawn(async move {
             tokio::signal::ctrl_c().await.ok();
             let _ = tx.send(());
         });
-        
+
         println!("\n✅ オーディオエンジン動作中");
         if gui {
-            println!("✅ ビジュアライザー動作中");
+            println!("✅ クリエーター動作中");
         }
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        
+
         // エンジン実行ループ
         loop {
             tokio::select! {
@@ -535,35 +557,38 @@ async fn handle_start(
             }
         }
     }
-    
+
     Ok(())
 }
 
 async fn handle_stop(force: bool) -> Result<()> {
     info!("オーディオエンジンを停止");
-    
+
     let process_id = "lnx-engine";
-    
+
     if force {
         println!("⚠️  エンジンを強制停止しています...");
         println!("   プロセスID: {}", process_id);
-        
+
         // TODO: 実際のichimi APIを呼び出す
         println!("   実際には以下のコマンドが実行されます:");
         println!("   ichimi stop-process --id {} --force", process_id);
-        
+
         println!("✅ エンジンを強制停止しました");
     } else {
         println!("⏹  エンジンを停止しています...");
         println!("   プロセスID: {}", process_id);
-        
+
         // TODO: 実際のichimi APIを呼び出す
         println!("   実際には以下のコマンドが実行されます:");
-        println!("   ichimi stop-process --id {} --grace-period 5000", process_id);
-        
+        println!(
+            "   ichimi stop-process --id {} --grace-period 5000",
+            process_id
+        );
+
         println!("✅ エンジンが停止しました");
     }
-    
+
     Ok(())
 }
 

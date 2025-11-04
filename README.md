@@ -6,10 +6,6 @@ lnx - wavelet synthesize engine
 
 lnx(リンクス)は、**Low-Latency, High-Quality, Human-Friendly** をモットーとした、audio/visual表現のためのライブツールプロジェクトです。
 
-> **開発状況**: ビートマシン機能実装完了。ウェーブレット合成エンジン開発準備中。
-
-## 🎯 現在の実装状況
-
 ### ✅ 実装済み機能
 
 #### オーディオエンジン（lnx-engine）
@@ -45,6 +41,7 @@ lnx(リンクス)は、**Low-Latency, High-Quality, Human-Friendly** をモッ�
 ### 言語とフレームワーク
 - **Rust** 1.75+
 - **CPAL** 0.15+ - クロスプラットフォームオーディオ
+- **Slint** 1.9 - Rust製クロスプラットフォームGUIツールキット
 - **hound** - WAVファイル処理
 - **atomic_float** - ロックフリー浮動小数点演算
 - **ringbuf** - ロックフリーリングバッファ
@@ -72,7 +69,7 @@ lnx-experience/
 │   │       ├── beatmachine_demo.rs
 │   │       └── beatmachine_demo_with_samples.rs
 │   ├── lnx-cli/            # CLIインターフェース
-│   └── lnx-visualizer/     # ビジュアライザー（計画中）
+│   └── lnx-creare/         # ビジュアルクリエーター（計画中）
 ```
 
 
@@ -182,7 +179,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [ ] プリセット管理
 
 ### Phase 3: インターフェース
-- [ ] egui GUIフレームワーク統合
+- [ ] Slint GUIフレームワーク統合（進行中）
+- [ ] ビートマシンコントロールUI
 - [ ] MIDI 2.0対応
 - [ ] OSC通信
 - [ ] タッチコントロール対応
@@ -273,4 +271,4 @@ MIT License (予定)
 
 **lnx** - Build the wave, Feel the experience
 
-*Last updated: 2025-09-27*
+*Last updated: 2025-10-13*
