@@ -54,7 +54,7 @@ lnx(リンクス)は、**Low-Latency, High-Quality, Human-Friendly** をモッ�
 
 ### アーキテクチャ
 ```
-lnx-experience/
+lnx/
 ├── Cargo.toml               # ワークスペース設定
 ├── crates/
 │   ├── lnx-engine/         # オーディオエンジンコア
@@ -86,8 +86,8 @@ lnx-experience/
 
 ```bash
 # リポジトリのクローン
-git clone https://github.com/chronista-club/lnx-experience.git
-cd lnx-experience
+git clone https://github.com/chronista-club/lnx.git
+cd lnx
 
 # ビルド
 cargo build --release
@@ -264,7 +264,7 @@ MIT License (予定)
 
 ## お問い合わせ
 
-- GitHub Issues: [https://github.com/chronista-club/lnx-experience/issues](https://github.com/chronista-club/lnx-experience/issues)
+- GitHub Issues: [https://github.com/chronista-club/lnx/issues](https://github.com/chronista-club/lnx/issues)
 - Discord: [準備中]
 
 ---

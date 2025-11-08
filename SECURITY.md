@@ -114,7 +114,7 @@ When we discover or are made aware of security vulnerabilities:
 
 For any security-related questions or concerns:
 - **Email**: security@chronista.club
-- **GitHub Security Advisories**: [View Advisories](https://github.com/chronista-club/lnx-experience/security/advisories)
+- **GitHub Security Advisories**: [View Advisories](https://github.com/chronista-club/lnx/security/advisories)
 
 ## Acknowledgments
 

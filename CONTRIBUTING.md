@@ -32,13 +32,13 @@ This project and everyone participating in it is governed by our [Code of Conduc
 1. Fork the repository on GitHub
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/your-username/lnx-experience.git
-   cd lnx-experience
+   git clone https://github.com/your-username/lnx.git
+   cd lnx
    ```
 
 3. Add the upstream repository as a remote:
    ```bash
-   git remote add upstream https://github.com/chronista-club/lnx-experience.git
+   git remote add upstream https://github.com/chronista-club/lnx.git
    ```
 
 4. Build the project:

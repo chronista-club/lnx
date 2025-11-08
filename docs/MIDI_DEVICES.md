@@ -1,4 +1,4 @@
-# MIDI機器仕様書 - lnx-experience
+# MIDI機器仕様書 - LNX
 
 ## 使用機器
 

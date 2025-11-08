@@ -67,7 +67,7 @@ lnx系プロダクトは、**出来るだけ実装言語はRustで統一**しま
 ## プロジェクト構造
 
 ```
-lnx-experience/
+lnx/
 ├── crates/              # Rustクレート
 │   ├── lnx-engine/      # オーディオエンジン
 │   ├── lnx-cli/         # CLIツール
