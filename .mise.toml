@@ -23,7 +23,7 @@ RUST_BACKTRACE = "1"
 
 [tools]
 # Rust toolchain
-rust = "1.82"
+rust = "1.91"
 cargo-watch = "latest"
 cargo-edit = "latest"
 cargo-expand = "latest"
