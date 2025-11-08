@@ -122,6 +122,9 @@ Temporary Items
 # ichimi設定ディレクトリ
 .ichimi/
 
+# Serena設定ディレクトリ
+.serena/
+
 # IDE
 .idea/
 
