@@ -39,7 +39,7 @@ lnx(リンクス)は、**Low-Latency, High-Quality, Human-Friendly** をモッ�
 ## 技術スタック
 
 ### 言語とフレームワーク
-- **Rust** 1.75+
+- **Rust** 1.95 以上（開発は mise の 1.99）
 - **CPAL** 0.15+ - クロスプラットフォームオーディオ
 - **Slint** 1.9 - Rust製クロスプラットフォームGUIツールキット
 - **hound** - WAVファイル処理
@@ -79,7 +79,7 @@ lnx/
 ## セットアップ
 
 ### システム要件
-- **Rust**: 1.75以降
+- **Rust**: 1.95 以降（club-unison の要求。mise が 1.99 を入れる）
 - **Cargo**: 最新版
 - **OS**: macOS 12+、Windows 10+、Ubuntu 20.04+
 - **メモリ**: 4GB RAM以上（推奨: 8GB以上）
