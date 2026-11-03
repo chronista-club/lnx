@@ -21,12 +21,16 @@ LNX_ENGINE_DEBUG_LIB = "{{config_root}}/target/debug/liblnx_engine.rlib"
 RUST_LOG = "debug"
 RUST_BACKTRACE = "1"
 
+# iOS: 既定のシミュレータ（iPad をメイン開発機とする。別端末は環境変数で上書き）
+LNX_IOS_SIM = "iPad Pro 11-inch (M5)"
+
 [tools]
 # Rust toolchain
 rust = "1.91"
 cargo-watch = "latest"
 cargo-edit = "latest"
 cargo-expand = "latest"
+xcodegen = "latest"
 
 # General development tools
 git = "latest"
@@ -141,6 +145,23 @@ run = """
   cargo watch -x "build -p lnx-engine"
 """
 
+[tasks."ios:gen"]
+description = "iOS アプリの Xcode プロジェクトを生成（XcodeGen、apps/ios/project.yml が正）"
+dir = "{{config_root}}/apps/ios"
+run = "xcodegen generate"
+
+[tasks."ios:build"]
+description = "iOS アプリをシミュレータ向けにビルド"
+depends = ["ios:gen"]
+dir = "{{config_root}}/apps/ios"
+run = "xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination 'generic/platform=iOS Simulator' -quiet build"
+
+[tasks."ios:test"]
+description = "iOS アプリの単体テストを iPad シミュレータで実行（LNX_IOS_SIM で端末を変更）"
+depends = ["ios:gen"]
+dir = "{{config_root}}/apps/ios"
+run = "xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination \"platform=iOS Simulator,name=$LNX_IOS_SIM\" -quiet test"
+
 [tasks.info]
 description = "Show project information"
 run = """
@@ -152,6 +173,7 @@ run = """
   echo "  • Rust Engine: {{config_root}}/crates/lnx-engine"
   echo "  • CLI:         {{config_root}}/crates/lnx-cli"
   echo "  • Creare:      {{config_root}}/crates/lnx-creare"
+  echo "  • iOS app:     {{config_root}}/apps/ios"
   echo "  • Docs:        {{config_root}}/docs"
   echo ""
   echo "🛠️  Available Commands:"
@@ -159,6 +181,8 @@ run = """
   echo "  • mise run test         - Run all tests"
   echo "  • mise run run-cli      - Run CLI"
   echo "  • mise run run-creare   - Run visual creator"
+  echo "  • mise run ios:build    - Build iOS app (simulator)"
+  echo "  • mise run ios:test     - Test iOS app (iPad simulator)"
   echo "  • mise run watch        - Watch & rebuild all"
   echo "  • mise run format       - Format all code"
   echo "  • mise run lint         - Lint all code"

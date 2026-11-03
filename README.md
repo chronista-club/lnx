@@ -70,6 +70,8 @@ lnx/
 │   │       └── beatmachine_demo_with_samples.rs
 │   ├── lnx-cli/            # CLIインターフェース
 │   └── lnx-creare/         # ビジュアルクリエーター（計画中）
+└── apps/
+    └── ios/                # iOS アプリ「lnx creare」（SwiftUI + XcodeGen、メイン開発機は iPad）
 ```
 
 
@@ -105,6 +107,20 @@ cargo run --example beatmachine_demo_with_samples
 # シンプルなビートマシンデモ
 cargo run --example beatmachine_demo
 ```
+
+### iOS アプリ（lnx creare）
+
+```bash
+cd apps/ios
+xcodegen generate            # LnxCreare.xcodeproj を生成（git 管理外）
+open LnxCreare.xcodeproj     # Xcode で開く
+
+# コマンドラインから
+mise run ios:build           # シミュレータ向けビルド
+mise run ios:test            # 単体テスト（既定は iPad シミュレータ）
+```
+
+詳細は [apps/ios/README.md](apps/ios/README.md)。
 
 ## 使用方法
 
@@ -180,6 +196,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Phase 3: インターフェース
 - [ ] Slint GUIフレームワーク統合（進行中）
+- [x] iOS アプリ（lnx creare）のプロジェクト作成 — SwiftUI + XcodeGen、iPad をメイン開発機に
 - [ ] ビートマシンコントロールUI
 - [ ] MIDI 2.0対応
 - [ ] OSC通信

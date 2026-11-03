@@ -135,3 +135,6 @@ Cargo.lock
 *.pdb
 
 .mise.local.toml
+
+# XcodeGen の生成物（apps/ios/project.yml が正）
+apps/ios/*.xcodeproj/

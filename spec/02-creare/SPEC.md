@@ -451,6 +451,7 @@ flowchart LR
 
 **目標**: visionOS/macOS/iOSネイティブアプリ
 
+- [x] iOS アプリの Xcode プロジェクト作成（apps/ios、SwiftUI + XcodeGen、メイン開発機は iPad）
 - [ ] UniFFIによるSwift FFI
 - [ ] SwiftUIインターフェース
 - [ ] Metal レンダリング

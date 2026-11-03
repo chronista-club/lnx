@@ -1,0 +1,67 @@
+# lnx creare（iOS）— XcodeGen 定義。これが正、LnxCreare.xcodeproj は生成物（git 管理外）
+#   生成:   xcodegen generate
+#   ビルド: mise run ios:build   /   テスト: mise run ios:test
+name: LnxCreare
+
+options:
+  bundleIdPrefix: club.chronista.lnx
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: J627YTC8NE
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  LnxCreare:
+    type: application
+    platform: iOS
+    sources:
+      - path: LnxCreare
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare
+        PRODUCT_NAME: LnxCreare
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: lnx creare
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: 周囲の音をビジュアルに変えるために、マイクを使います。
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+  LnxCreareTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: LnxCreareTests
+    dependencies:
+      - target: LnxCreare
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  LnxCreare:
+    build:
+      targets:
+        LnxCreare: all
+        LnxCreareTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - LnxCreareTests
