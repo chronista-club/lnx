@@ -7,5 +7,8 @@ struct LnxCreareApp: App {
         WindowGroup {
             RootView()
         }
+        #if os(macOS)
+        .defaultSize(width: 900, height: 720)
+        #endif
     }
 }
