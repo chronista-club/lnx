@@ -73,6 +73,24 @@ final class LinkSupervisor {
         return pins.certificate(for: name) != nil
     }
 
+    /// ペアリングを解除できるか（今の先が LAN のサーバ）
+    var canUnpair: Bool {
+        if case .host(_, _, _?) = target { return true }
+        return false
+    }
+
+    /// ペアリングを解除する。pin を消して接続を畳み、ペアリング画面へ（LAN の先だけ）
+    func unpair() {
+        guard case .host(_, _, let name?) = target else { return }
+        LinkLog.note("unpair: \(name) の pin を消す")
+        pins.remove(for: name)
+        runner?.cancel()
+        runner = nil
+        heartbeat = nil
+        selection = nil
+        state = .needsPairing(serverName: name)
+    }
+
     /// ペアリングをやり直す（サーバの証明書が変わって pin が合わないとき）。LAN の先だけ
     func requestPairing() {
         guard case .host(_, _, let name) = target else { return }

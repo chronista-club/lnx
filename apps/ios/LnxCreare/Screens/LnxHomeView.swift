@@ -26,6 +26,13 @@ struct LnxHomeView: View {
                 .foregroundStyle(.white.opacity(0.5))
             Spacer()
             serverList
+            if supervisor.canUnpair {
+                // 動作確認と、サーバを入れ替えたとき用。pin を消してペアリング画面へ
+                Button("ペアリングを解除") { supervisor.unpair() }
+                    .font(.footnote)
+                    .tint(.white.opacity(0.5))
+                    .accessibilityIdentifier("home.unpair")
+            }
         }
         .padding(32)
     }

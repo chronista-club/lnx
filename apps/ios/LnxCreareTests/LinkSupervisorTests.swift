@@ -208,6 +208,35 @@ struct LinkSupervisorTests {
         #expect(await transport.connectCount == 1)
     }
 
+    @Test("ペアリングを解除すると pin を消し、接続を畳んで needsPairing")
+    func unpairForgetsPin() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+
+        supervisor.unpair()
+        #expect(pins.certificate(for: "lnx-mac") == nil)
+        #expect(supervisor.state == .needsPairing(serverName: "lnx-mac"))
+        #expect(!supervisor.canCancelPairing)
+        try await Task.sleep(for: .milliseconds(60))
+        #expect(await transport.connectCount == 1)
+    }
+
+    @Test("同じ機械の先ではペアリングを解除できない")
+    func unpairIgnoresLocalDaemon() async throws {
+        let supervisor = makeSupervisor(FakeTransport())
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(!supervisor.canUnpair)
+        supervisor.unpair()
+        #expect(supervisor.state == .connected(FakeSession.welcome))
+    }
+
     @Test("stop で idle に戻り、以後つなぎ直さない")
     func stopGoesIdle() async throws {
         let transport = FakeTransport()
