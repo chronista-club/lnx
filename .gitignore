@@ -135,3 +135,6 @@ Cargo.lock
 *.pdb
 
 .mise.local.toml
+
+# Node (mcp-builder skill scripts 等で bun を使う)
+**/node_modules/

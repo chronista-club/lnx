@@ -115,7 +115,7 @@ export class MCPConnectionSSE extends MCPConnection {
   async connect(): Promise<void> {
     const transport = new SSEClientTransport(
       new URL(this.url),
-      { headers: this.headers }
+      { requestInit: { headers: this.headers } }
     );
 
     this.client = new Client({
