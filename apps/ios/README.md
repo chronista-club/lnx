@@ -63,6 +63,7 @@ apps/ios/
 | 対応 OS | iOS 26.0 以上、macOS 26.0 以上 | 一つのターゲットで iOS と macOS（`supportedDestinations`）。Mac は同じ機械の localhost も接続候補 |
 | メイン開発機 | iPad（iPhone も `TARGETED_DEVICE_FAMILY` に残す） | ユーザー指定（2026-11-03）。iPad は 4 方向すべて対応（Stage Manager 前提） |
 | 言語 | Swift 6 言語モード、strict concurrency complete | 新規なので最初から |
+| アイコン | [Phosphor Icons](https://github.com/phosphor-icons/swift)（`PhosphorSwift` 2.1.0、MIT、exactVersion で固定） | mako の裁定（2026-11-04、`mem_1Cggjxznnx1u4qGDwjftB6`）。SF Symbols は使わない。呼ぶのは `Icon.view` / メニュー項目は `Icon.menuImage`（小さく描き直したテンプレート） |
 | UI / テスト | SwiftUI / Swift Testing | spec の Native UI 方針、XCTest より軽い |
 | プロジェクト管理 | XcodeGen | `.pbxproj` を手で触らない。差分がレビューできる |
 

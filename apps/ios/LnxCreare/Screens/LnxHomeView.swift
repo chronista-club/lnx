@@ -1,3 +1,4 @@
+import PhosphorSwift
 import SwiftUI
 
 /// LNX 自身の画面。心拍が脈打ち、知っているサーバが並ぶ
@@ -56,9 +57,11 @@ struct LnxHomeView: View {
     private var menu: some View {
         #if os(macOS)
         Menu {
-            Button("iPad をペアリング") { offeringPairing = true }
+            Button { offeringPairing = true } label: {
+                Label { Text("iPad をペアリング") } icon: { Icon.menuImage(.qrCode) }
+            }
         } label: {
-            Image(systemName: "ellipsis.circle")
+            Icon.view(.dotsThreeCircle, size: 20)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -67,11 +70,13 @@ struct LnxHomeView: View {
         #else
         if supervisor.canUnpair {
             Menu {
-                Button("ペアリングを解除", systemImage: "link.badge.minus", role: .destructive) { confirmingUnpair = true }
+                Button(role: .destructive) { confirmingUnpair = true } label: {
+                    Label { Text("ペアリングを解除") } icon: { Icon.menuImage(.linkBreak) }
+                }
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.title2)
+                Icon.view(.dotsThreeCircle, size: 28)
                     .foregroundStyle(.white.opacity(0.7))
+                    .contentShape(Rectangle())
             }
             .accessibilityIdentifier("home.menu")
         }
@@ -125,7 +130,7 @@ struct LnxHomeView: View {
                                     .foregroundStyle(.white.opacity(0.5))
                             }
                             Spacer()
-                            Image(systemName: "chevron.right")
+                            Icon.view(.caretRight, size: 16)
                                 .foregroundStyle(.white.opacity(0.5))
                         }
                         .padding(14)
