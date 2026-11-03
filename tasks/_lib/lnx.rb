@@ -33,7 +33,7 @@ module Lnx
   # UDP の port で待ち受けているプロセスを止める（TERM → 3 秒待って残れば KILL）。
   # 止めるのは lnx-server だけ。別のプロセスが握っていたら止めずに知らせて抜ける
   def stop_listeners(port)
-    pids = `lsof -nP -t -iUDP:#{port}`.split.map(&:to_i).uniq - [Process.pid]
+    pids = listener_pids(port) - [Process.pid]
     return if pids.empty?
 
     pids.each do |pid|
@@ -50,6 +50,20 @@ module Lnx
       puts "止まらないので KILL（pid #{pid}）"
       Process.kill("KILL", pid)
     end
+  end
+
+  # UDP の port で「待ち受けている」プロセス。相手が決まったソケット（"a->b"）はつながっているクライアント
+  # （Mac 版 lnx creare など）なので除く。lsof -F の n 行がソケットの名前、p 行がプロセス
+  def listener_pids(port)
+    pids = []
+    current = nil
+    `lsof -nP -F pn -iUDP:#{port}`.each_line do |line|
+      case line[0]
+      when "p" then current = line[1..].to_i
+      when "n" then pids << current if current && !line.include?("->")
+      end
+    end
+    pids.uniq
   end
 
   def alive?(pid)
