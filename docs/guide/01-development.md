@@ -87,7 +87,21 @@ mise run ios:run             # ターミナル 2 → 同じ Mac の LNX につ�
 mise run ios:test            # UI テストはサーバが居るときだけ走る（居なければ skip）
 ```
 
-シミュレータと Mac 版は同じ機械の `[::1]:12730` にも直結する。実機は Bonjour で探す（実機での確認は未）。
+シミュレータと Mac 版は同じ機械の `[::1]:12730` にも直結する。実機は Bonjour で探す（iPhone / iPad で確認済み 2026-11-04、design 01）。
+
+### 実機（iPhone / iPad）に入れる
+
+署名チームは `3EQKG4B352`（ANYCREATIVE, K.K.）。端末はロックを解除し、USB か同じ Wi-Fi で Mac から見える状態にする。
+
+```bash
+cd apps/ios
+xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination 'id=<UDID>' \
+  -allowProvisioningUpdates -derivedDataPath build-device build   # 初回は端末をチームに登録する
+xcrun devicectl device install app --device <UDID> build-device/Build/Products/Debug-iphoneos/LnxCreare.app
+xcrun devicectl device process launch --device <UDID> club.chronista.lnx.creare
+```
+
+UDID は `xcrun devicectl list devices` で見る。「LNX を探しています」のまま止まるときは、端末の設定でローカルネットワークの許可を確認する（design 01 の「やってはいけない」）。
 
 ### 変更の流れ
 

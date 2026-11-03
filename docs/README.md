@@ -32,7 +32,7 @@
 
 ## archive
 
-[archive/README.md](archive/README.md) に一覧。Swift / SwiftUI（LNXX）時代の 12 本、Unison 前提の旧 ARCHITECTURE、2017 年のメモと GitHub Pages の残骸、旧 `spec/README.md`。
+[archive/README.md](archive/README.md) に一覧。Swift / SwiftUI（LNXX）時代の 12 本と PROJECT_STRUCTURE、Unison 前提の旧 ARCHITECTURE、2017 年の Domains メモ、GRAND_DESIGN の mindmap、GitHub Pages の残骸、旧 `spec/README.md`。
 
 ## 書き方（SDG）
 
