@@ -60,3 +60,45 @@ async fn 窓を開けると名乗りと心拍が来て一覧が引ける() {
 
     handle.shutdown().await.unwrap();
 }
+
+/// 保存した証明書だけを信頼するクライアント（= アプリの pin と同じ）でつながる
+#[tokio::test]
+async fn 保存した証明書に_pin_したクライアントがつながる() {
+    use lnx_server::identity::ServerIdentity;
+    use rustls_pki_types::CertificateDer;
+    use unison::network::TrustAnchors;
+
+    let dir = std::env::temp_dir().join(format!("lnx-link-pin-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let id = ServerIdentity::load_or_create(&dir).unwrap();
+
+    let server = serve::build(ServerConfig::from_toml(CONFIG).unwrap())
+        .await
+        .unwrap();
+    let handle = Arc::new(server)
+        .listener("[::1]:0")
+        .cert(id.cert_source())
+        .spawn()
+        .await
+        .unwrap();
+
+    let anchors = TrustAnchors::Custom(vec![CertificateDer::from(id.cert_der().to_vec())]);
+    let transport = QuicClient::builder()
+        .trust_anchors(anchors)
+        .build()
+        .unwrap();
+    let client = ProtocolClient::new(transport);
+    client
+        .connect(&handle.local_addr().to_string())
+        .await
+        .unwrap();
+    let session = client.open_channel("session").await.unwrap();
+    let welcome: Value = session
+        .request("Hello", &json!({ "client": "pin-test" }))
+        .await
+        .unwrap();
+    assert_eq!(welcome["server_name"], "lnx-test");
+
+    handle.shutdown().await.unwrap();
+    std::fs::remove_dir_all(&dir).unwrap();
+}

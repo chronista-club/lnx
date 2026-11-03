@@ -46,7 +46,7 @@ graph LR
 | サーバの場所 | **Mac** | 「別に今ラズパイいらないね。ここのサーバで良いわ」 |
 | iPad 側の接続 | **club-unison の Swift client**（Rust / UniFFI は使わない） | SDK があり配布実績もある。Rust コアは音の段で |
 | 再接続 | **アプリが持つ**（Unison の client は意図的に auto-reconnect しない） | 倍々の間（0.5 秒 → 上限 10 秒）。心拍が止まったら切れたとみなす |
-| 信頼 | dev は `skipVerify`、サーバは `dev_localhost` の自己署名 | pin（`TrustPolicy.pinned`）は次の区切り |
+| 信頼 | サーバは保存した自己署名、アプリは QR ペアリングで pin（`TrustPolicy.pinned`）| 2026-11-04 に第一区切りの `skipVerify` から移行中（アプリ側は ios lane）|
 | 音 | この区切りでは出さない | lnx-engine の接続は次 |
 
 ### 「常時接続」の iOS での意味
@@ -80,7 +80,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 - `serve_registry`: `List` で `Registry::snapshot()`、`watch` の変化を `RegistryChanged` で押し出す
 - `Registry` は `tokio::sync::watch` の `Sender` を正本に持つ（`send_replace` で購読者ゼロでも更新できる）
 - `Advertiser`（mdns-sd）が `_lnx._udp` を広告。TXT に `version` と `protocol=unison`
-- 待ち受けは `[::]:12730`（UDP / QUIC、dual stack）。cert は既定の `dev_localhost`。`--no-mdns` / `--name` / `--config` / `LNX_SERVER_ADDR`
+- 待ち受けは `[::]:12730`（UDP / QUIC、dual stack）。cert は `identity::ServerIdentity` が一度だけ作って保存した自己署名（`--state-dir` / `LNX_SERVER_STATE`、既定は `~/Library/Application Support/club.chronista.lnx-server` の `cert.pem` と `key.pem`、鍵は 0600）。起動時にペアリング用の QR と URL（`lnx://pair?v=1&name=<名乗り>&cert=<leaf DER の base64url、padding なし>`）を出す（`--no-qr` で QR を省く）。`--no-mdns` / `--name` / `--config` / `LNX_SERVER_ADDR`
 - 試験は実 QUIC で回す（`tests/link.rs`）: `listener("[::1]:0").spawn()` → `ProtocolClient::new(QuicClient::insecure_localhost())`
 
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
@@ -127,6 +127,8 @@ mise run ios:run         # ビルド → シミュレータへインストール
 - Bonjour 探索は iPhone 16 Pro と iPad（iPad13,16）の実機で確認済み（2026-11-04）。解決は IPv4 を優先し、だめなら IPv6（scope つき）
 
 ## Status log
+
+- 2026-11-04: 証明書を保存して使い続けるようにし、起動時にペアリング用 QR / URL を出す（ios lane の QR ペアリングと合意した契約、起票 mem_1Cgghdxbp4bGRPyQccDFDn）。保存した証明書だけを信頼するクライアントでつながる結合テストを追加
 
 - 2026-11-04: LnxCreare ターゲットを iOS + macOS の multiplatform に。`mise run mac:run` で Mac 版が開き、同じ Mac のサーバにつながる
 - 2026-11-04: iPhone 16 Pro と iPad の実機で Bonjour → 接続を確認（署名チームは ANYCREATIVE, K.K.）。LnxFinder は IPv4 優先で解決し、`[link]` の足跡を stderr に出す
