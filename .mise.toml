@@ -23,6 +23,8 @@ RUST_BACKTRACE = "1"
 
 # iOS: 既定のシミュレータ（iPad をメイン開発機とする。別端末は環境変数で上書き）
 LNX_IOS_SIM = "iPad Pro 11-inch (M5)"
+# 同名の端末が runtime ごとにあるので OS も指定する（27.0 の runtime は 2026-11-03 時点で "path not found"）
+LNX_IOS_OS = "26.5"
 
 [tools]
 # Rust toolchain
@@ -145,6 +147,18 @@ run = """
   cargo watch -x "build -p lnx-engine"
 """
 
+[tasks."server:run"]
+description = "LNX サーバを Mac で起動（[::]:12730、一覧は crates/lnx-server/lnx-server.example.toml）"
+run = "cargo run -p lnx-server -- --config {{config_root}}/crates/lnx-server/lnx-server.example.toml"
+
+[tasks."server:mock"]
+description = "unison mock で LNX の偽サーバを立てる（スキーマだけで応答。心拍は出ない）"
+run = "unison mock --schema {{config_root}}/crates/lnx-server/schemas/lnx.kdl --addr '[::1]:12730'"
+
+[tasks."server:test"]
+description = "lnx-server のテスト（実 QUIC の往復を含む）"
+run = "cargo test -p lnx-server"
+
 [tasks."ios:gen"]
 description = "iOS アプリの Xcode プロジェクトを生成（XcodeGen、apps/ios/project.yml が正）"
 dir = "{{config_root}}/apps/ios"
@@ -160,7 +174,26 @@ run = "xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination 'g
 description = "iOS アプリの単体テストを iPad シミュレータで実行（LNX_IOS_SIM で端末を変更）"
 depends = ["ios:gen"]
 dir = "{{config_root}}/apps/ios"
-run = "xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination \"platform=iOS Simulator,name=$LNX_IOS_SIM\" -quiet test"
+run = "xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination \"platform=iOS Simulator,name=$LNX_IOS_SIM,OS=$LNX_IOS_OS\" -quiet test"
+
+[tasks."ios:run"]
+description = "iOS アプリを iPad シミュレータで起動（ビルド → インストール → 起動）"
+depends = ["ios:gen"]
+dir = "{{config_root}}/apps/ios"
+run = """
+set -e
+# 名前 + OS から UDID を引く（同名の端末が runtime ごとにあるため）
+UDID=$(xcrun simctl list devices available -j | /usr/bin/python3 -c 'import json,os,sys
+devices = json.load(sys.stdin)["devices"]
+runtime = "iOS-" + os.environ["LNX_IOS_OS"].replace(".", "-")
+name = os.environ["LNX_IOS_SIM"]
+print(next(d["udid"] for key, ds in devices.items() if key.endswith(runtime) for d in ds if d["name"] == name))')
+xcrun simctl boot "$UDID" 2>/dev/null || true
+xcrun simctl bootstatus "$UDID" -b
+xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination "id=$UDID" -derivedDataPath build -quiet build
+xcrun simctl install "$UDID" build/Build/Products/Debug-iphonesimulator/LnxCreare.app
+xcrun simctl launch "$UDID" club.chronista.lnx.creare
+"""
 
 [tasks.info]
 description = "Show project information"
@@ -183,6 +216,7 @@ run = """
   echo "  • mise run run-creare   - Run visual creator"
   echo "  • mise run ios:build    - Build iOS app (simulator)"
   echo "  • mise run ios:test     - Test iOS app (iPad simulator)"
+  echo "  • mise run server:run   - Run LNX server on this Mac"
   echo "  • mise run watch        - Watch & rebuild all"
   echo "  • mise run format       - Format all code"
   echo "  • mise run lint         - Lint all code"

@@ -10,6 +10,11 @@ options:
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
+packages:
+  club-unison:
+    url: https://github.com/chronista-club/club-unison.git
+    exactVersion: 2.2.0
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -25,9 +30,15 @@ targets:
     platform: iOS
     sources:
       - path: LnxCreare
+        excludes:
+          - Info.plist
+    dependencies:
+      - package: club-unison
+        product: UnisonClient
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare
+        INFOPLIST_FILE: LnxCreare/Info.plist
         PRODUCT_NAME: LnxCreare
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
@@ -48,9 +59,23 @@ targets:
       - path: LnxCreareTests
     dependencies:
       - target: LnxCreare
+      - package: club-unison
+        product: UnisonClient
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+  LnxCreareUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: LnxCreareUITests
+    dependencies:
+      - target: LnxCreare
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare.uitests
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
@@ -59,9 +84,11 @@ schemes:
       targets:
         LnxCreare: all
         LnxCreareTests: [test]
+        LnxCreareUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - LnxCreareTests
+        - LnxCreareUITests
