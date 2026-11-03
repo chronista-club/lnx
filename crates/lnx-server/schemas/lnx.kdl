@@ -1,0 +1,46 @@
+// LNX サーバのプロトコル（docs/design/01-lnx-server-link.md）。
+// iPad の lnx creare が開く「窓」。1 本の接続に 2 つの channel。
+//
+// - session:  名乗り（Hello / Welcome）と心拍（Heartbeat、1 秒ごと）
+// - registry: LNX が知っているサーバの一覧（List）と、その変化（RegistryChanged）
+//
+// servers の形（v0、json）:
+//   { "id": "ladyland.field", "name": "Ladyland Field", "kind": "field",
+//     "host": "mako-mac.local", "port": 7879 }
+
+protocol "lnx" version="0.1.0" {
+    namespace "club.chronista.lnx"
+
+    channel "session" from="client" lifetime="persistent" {
+        // 窓を開ける。応答はサーバの名乗り。以後この channel に心拍が流れる
+        request "Hello" description="Open the window. The server introduces itself and starts the heartbeat." {
+            field "client" type="string" required=#true
+            field "client_version" type="string"
+            returns "Welcome" {
+                field "server_name" type="string" required=#true
+                field "server_version" type="string" required=#true
+                field "server_time_ms" type="int" required=#true
+            }
+        }
+
+        // 常駐の生存証明。変化がなくても 1 秒に 1 回
+        event "Heartbeat" {
+            field "seq" type="int" required=#true
+            field "uptime_ms" type="int" required=#true
+        }
+    }
+
+    channel "registry" from="client" lifetime="persistent" {
+        // 知っているサーバの一覧（snapshot）
+        request "List" description="Snapshot of the servers LNX knows about." {
+            returns "ServerList" {
+                field "servers" type="json" required=#true
+            }
+        }
+
+        // 一覧が変わるたびに全体を押し出す（差分ではなく snapshot）
+        event "RegistryChanged" {
+            field "servers" type="json" required=#true
+        }
+    }
+}

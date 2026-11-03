@@ -17,8 +17,8 @@ open LnxCreare.xcodeproj     # Xcode で開いて Run
 
 # コマンドラインから（リポジトリのどこからでも）
 mise run ios:gen             # 生成だけ
-mise run ios:build           # シミュレータ向けビルド
-mise run ios:test            # 単体テスト（Swift Testing、既定は iPad シミュレータ）
+mise run ios:test            # テスト（Swift Testing + UI テスト、既定は iPad シミュレータ）
+mise run ios:run             # シミュレータで起動
 ```
 
 メイン開発機は iPad。`ios:test` の既定端末は iPad Pro 11-inch (M5)（`.mise.toml` の `LNX_IOS_SIM`）。
@@ -27,6 +27,16 @@ mise run ios:test            # 単体テスト（Swift Testing、既定は iPad 
 `.xcodeproj` は生成物。ターゲットや設定を変えるときは `project.yml` を編集して生成し直す。
 Xcode 上でファイルを追加した場合も、ディレクトリに置けば次の生成で拾われる。
 
+## LNX サーバとつなぐ
+
+```bash
+mise run server:run          # 別ターミナルで LNX サーバ（Mac、[::]:12730）
+mise run ios:run             # シミュレータで起動 → localhost の LNX につながり、心拍が脈打つ
+```
+
+シミュレータは同じ Mac の `[::1]:12730` に直結する。実機は Bonjour（`_lnx._udp`）で探す（実機確認待ち）。
+接続の設計は [docs/design/01-lnx-server-link.md](../../docs/design/01-lnx-server-link.md)。
+
 ## 構成
 
 ```
@@ -34,10 +44,12 @@ apps/ios/
 ├── project.yml                 # XcodeGen 定義（これが正）
 ├── LnxCreare/                  # アプリ本体
 │   ├── App/LnxCreareApp.swift  # エントリポイント
-│   ├── Views/ContentView.swift # 最初の画面（今は看板）
-│   ├── Model/AppInfo.swift     # 表示名・タグライン
+│   ├── Link/                   # LNX への常時接続（LinkSupervisor、UnisonLnxTransport、LnxFinder、LnxProtocol）
+│   ├── Screens/                # 画面（RootView、Connecting、LnxHome、RemoteServer、ScreenRoute）
+│   ├── Model/AppInfo.swift     # 表示名・タグライン・版
 │   └── Resources/Assets.xcassets
-└── LnxCreareTests/             # 単体テスト（Swift Testing）
+├── LnxCreareTests/             # 単体テスト（Swift Testing）
+└── LnxCreareUITests/           # 画面切り替えの UI テスト（実サーバが居るときだけ。無ければ skip）
 ```
 
 ## 決めたこと

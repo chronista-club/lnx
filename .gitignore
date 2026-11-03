@@ -138,3 +138,5 @@ Cargo.lock
 
 # XcodeGen の生成物（apps/ios/project.yml が正）
 apps/ios/*.xcodeproj/
+# ios:run のビルド置き場
+apps/ios/build/

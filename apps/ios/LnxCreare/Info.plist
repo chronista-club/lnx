@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Bonjour で LNX サーバ（_lnx._udp）を探すための宣言。他の INFOPLIST_KEY_* は project.yml 側 -->
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_lnx._udp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>同じネットワークにいる LNX サーバを見つけてつなぐために使います。</string>
+</dict>
+</plist>

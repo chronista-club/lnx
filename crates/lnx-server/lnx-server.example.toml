@@ -1,0 +1,10 @@
+# lnx-server の設定（例）。--config で渡す
+name = "lnx-mac"
+
+# LNX が知っているサーバ。iPad の一覧に出て、選ぶと画面が切り替わる
+[[servers]]
+id = "ladyland.field"
+name = "Ladyland Field"
+kind = "field"
+host = "localhost"
+port = 7879
