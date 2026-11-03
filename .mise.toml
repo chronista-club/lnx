@@ -13,8 +13,7 @@ LNX_IOS_SIM = "iPad Pro 11-inch (M5)"
 LNX_IOS_OS = "26.5"
 
 [tools]
-# Rust toolchain（club-unison 2.2 / club-kdl 0.14 が rustc 1.95 以上を要求。2026-11-04 に 1.91 → 1.96）
-rust = "1.96"
+# Rust は rust-toolchain.toml（rustup）で固定する。mise には rust を書かない（裁定 2026-09-15、mem_1Cf5RnR2KKVdmemBSpiU9A）
 # cargo-watch / cargo-edit / cargo-expand は外した: どのタスクも使わず、mise run のたびに auto_install が走って
 # cargo-edit が rustc 1.97 以上を要求して止まる（2026-11-04）
 xcodegen = "latest"

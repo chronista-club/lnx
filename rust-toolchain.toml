@@ -1,0 +1,6 @@
+# Rust の版はここで固定する（rustup が読む）。mise には rust を書かない。
+# 裁定 2026-09-15「Rust toolchain は rustup 一本、mise では rust も cargo: ツールも宣言しない」（mem_1Cf5RnR2KKVdmemBSpiU9A）
+# 1.99.1 は裁定 2026-11-04「1.99で行こう」「1.99.1」。club-unison 2.2 / club-kdl 0.14 の要求は rustc 1.95 以上
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
