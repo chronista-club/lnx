@@ -8,6 +8,7 @@ use tracing::{info, warn};
 
 use lnx_server::advertise::Advertiser;
 use lnx_server::config::ServerConfig;
+use lnx_server::identity::{self, ServerIdentity};
 use lnx_server::{DEFAULT_PORT, serve};
 
 #[derive(Parser, Debug)]
@@ -28,6 +29,13 @@ struct Cli {
     /// Bonjour で名乗らない
     #[arg(long)]
     no_mdns: bool,
+    /// 証明書と鍵の置き場（既定は ~/Library/Application Support/club.chronista.lnx-server）。
+    /// 消すと次の起動で作り直し、アプリはペアリングし直しになる
+    #[arg(long, env = "LNX_SERVER_STATE")]
+    state_dir: Option<PathBuf>,
+    /// 起動時にペアリング用の QR を出さない（URL の一行は出す）
+    #[arg(long)]
+    no_qr: bool,
 }
 
 #[tokio::main]
@@ -72,9 +80,30 @@ async fn main() -> Result<()> {
         }
     };
 
+    // 身元: 一度作った自己署名証明書を使い続ける（アプリはこれを pin する）
+    let state_dir = cli
+        .state_dir
+        .clone()
+        .or_else(identity::default_dir)
+        .ok_or_else(|| anyhow::anyhow!("証明書の置き場を決められない（--state-dir で指定）"))?;
+    let id = ServerIdentity::load_or_create(&state_dir)?;
+    info!("証明書: {}", id.cert_path().display());
+    let url = identity::pairing_url(&cfg.name, id.cert_der());
+    if !cli.no_qr {
+        println!(
+            "\nlnx creare でこの QR を読むとペアリングする:\n{}",
+            identity::render_qr(&url)?
+        );
+    }
+    println!("ペアリング URL: {url}\n");
+
     let server = serve::build(cfg).await?;
     info!("{} で待ち受け", cli.addr);
-    // ここで待つ（常駐の本体）。dev cert（自己署名）で LAN に開く
-    Arc::new(server).listener(&cli.addr).run().await?;
+    // ここで待つ（常駐の本体）。保存した自己署名証明書で LAN に開く
+    Arc::new(server)
+        .listener(&cli.addr)
+        .cert(id.cert_source())
+        .run()
+        .await?;
     Ok(())
 }

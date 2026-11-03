@@ -25,3 +25,12 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Bonjour 広告（_lnx._udp）
 mdns-sd = "0.21"
+# サーバの身元（保存する自己署名証明書）とペアリング QR
+rcgen = "0.14"
+rustls-pemfile = "2.2"
+base64 = "0.22"
+qrcode = { version = "0.14", default-features = false }
+directories = "5"
+
+[dev-dependencies]
+rustls-pki-types = "1"
