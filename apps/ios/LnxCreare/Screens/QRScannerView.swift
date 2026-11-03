@@ -64,7 +64,7 @@ struct QRScannerView: UIViewControllerRepresentable {
                     LinkLog.note("QR: \(event) で認識したが payload が無い（\(barcode.observation.symbology.rawValue)）")
                     continue
                 }
-                if payload == lastPayload { return }
+                if payload == lastPayload { continue }
                 lastPayload = payload
                 LinkLog.note("QR: \(event) で読めた（\(payload.utf8.count) バイト）")
                 onFound(payload)

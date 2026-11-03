@@ -16,6 +16,17 @@ struct LnxFinderTests {
         #expect(LnxFinder.choose(from: [a, b], pins: pins) == b)
     }
 
+    @Test("pin が無くても、まだ見つかっている今の先を手放さない（解除したあと別のサーバへ飛ばない）")
+    func keepsCurrent() {
+        let pins = MemoryPinStore()
+        #expect(LnxFinder.choose(from: [b, a], pins: pins, current: a) == a)
+        // ペアリング済みの先があればそちら
+        pins.save(Data([1]), for: "lnx-b")
+        #expect(LnxFinder.choose(from: [b, a], pins: pins, current: a) == b)
+        // 今の先がもう見つからなければ先頭
+        #expect(LnxFinder.choose(from: [b], pins: MemoryPinStore(), current: a) == b)
+    }
+
     @Test("ペアリング済みが無ければ先頭")
     func fallsBackToFirst() {
         #expect(LnxFinder.choose(from: [a, b], pins: MemoryPinStore()) == a)

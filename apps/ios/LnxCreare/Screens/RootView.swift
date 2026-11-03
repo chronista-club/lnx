@@ -20,6 +20,8 @@ struct RootView: View {
                     onPaired: { supervisor.paired($0) },
                     onCancel: supervisor.canCancelPairing ? { supervisor.cancelPairing() } : nil
                 )
+                // 待つサーバが変わったら作り直す（スキャナの覚えている中身やエラー文を持ち越さない）
+                .id(name)
             case .lnxHome:
                 LnxHomeView(supervisor: supervisor)
             case .remote(let server):
@@ -39,7 +41,7 @@ struct RootView: View {
     private func connectWhenFound() async {
         finder.start()
         while !Task.isCancelled {
-            if let target = finder.preferred(pins: pins), supervisor.target != target {
+            if let target = finder.preferred(pins: pins, current: supervisor.target), supervisor.target != target {
                 supervisor.start(target: target)
             }
             try? await Task.sleep(for: .milliseconds(500))

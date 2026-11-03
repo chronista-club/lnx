@@ -226,6 +226,24 @@ struct LinkSupervisorTests {
         #expect(await transport.connectCount == 1)
     }
 
+    @Test("解除してからペアリングし直すと、新しい pin でつなぎ直す。選んでいたサーバは外れる")
+    func unpairThenPair() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        supervisor.selection = FakeSession.servers[0]
+
+        supervisor.unpair()
+        #expect(supervisor.selection == nil)
+        supervisor.paired(PairingCode(serverName: "lnx-mac", certificate: Data([2])))
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(await transport.trusts == [.pinned(Data([1])), .pinned(Data([2]))])
+    }
+
     @Test("同じ機械の先ではペアリングを解除できない")
     func unpairIgnoresLocalDaemon() async throws {
         let supervisor = makeSupervisor(FakeTransport())

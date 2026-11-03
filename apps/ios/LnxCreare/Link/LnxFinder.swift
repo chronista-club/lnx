@@ -19,22 +19,24 @@ final class LnxFinder {
 
     /// 最初につなぐ先。シミュレータと Mac は同じ機械の localhost（LAN の先はペアリングが要り、
     /// シミュレータと Mac はカメラで QR を読めない）。実機は見つかった先から選ぶ
-    func preferred(pins: any PinStore) -> LinkTarget? {
+    func preferred(pins: any PinStore, current: LinkTarget?) -> LinkTarget? {
         #if targetEnvironment(simulator) || os(macOS)
         return .localDaemon(port: LnxDefaults.port)
         #else
-        return Self.choose(from: found, pins: pins)
+        return Self.choose(from: found, pins: pins, current: current)
         #endif
     }
 
-    /// ペアリング済みの先を優先する（LAN に別の `_lnx._udp` が居ても、そのペアリング画面に縛られない）。
-    /// 無ければ先頭（IPv4 が前）
-    nonisolated static func choose(from found: [LinkTarget], pins: any PinStore) -> LinkTarget? {
+    /// 選ぶ順: ペアリング済みの先（LAN に別の `_lnx._udp` が居ても、そのペアリング画面に縛られない）→
+    /// まだ見つかっている今の先（解除した直後に別のサーバへ飛ばない）→ 先頭（IPv4 が前）
+    nonisolated static func choose(from found: [LinkTarget], pins: any PinStore, current: LinkTarget? = nil) -> LinkTarget? {
         let paired = found.first { target in
             guard case .host(_, _, let name?) = target else { return false }
             return pins.certificate(for: name) != nil
         }
-        return paired ?? found.first
+        if let paired { return paired }
+        if let current, found.contains(current) { return current }
+        return found.first
     }
 
     func start() {
@@ -58,6 +60,7 @@ final class LnxFinder {
         browser = nil
         for connection in resolving.values { connection.cancel() }
         resolving.removeAll()
+        advertised.removeAll()
     }
 
     /// service endpoint を host:port に解く（UDP の "接続" は path 解決だけで ready になる）。
@@ -79,7 +82,7 @@ final class LnxFinder {
         LinkLog.note("resolving: \(endpoint) (ipv4Only=\(ipv4Only))")
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: Self.resolveTimeout)
-            self?.giveUpIfStuck(endpoint, connection)
+            self?.giveUpIfStuck(endpoint, connection, ipv4Only: ipv4Only)
         }
         connection.stateUpdateHandler = { [weak self, weak connection] state in
             guard let connection else { return }
@@ -90,15 +93,18 @@ final class LnxFinder {
                     let name = Self.serviceName(endpoint)
                     LinkLog.note("resolved: \(endpoint) → \(address):\(port.rawValue) (ipv4Only=\(ipv4Only))")
                     Task { @MainActor in self?.add(.host(address, port: port.rawValue, name: name)) }
+                    connection.cancel()
                 } else {
                     LinkLog.note("resolved: \(endpoint) → remoteEndpoint 無し (ipv4Only=\(ipv4Only))")
+                    Task { @MainActor in self?.retryLater(endpoint, connection, ipv4Only: !ipv4Only) }
                 }
-                connection.cancel()
             case .failed(let error):
                 LinkLog.note("resolve failed: \(endpoint) \(error) (ipv4Only=\(ipv4Only))")
-                connection.cancel()
                 if ipv4Only {
+                    connection.cancel()
                     Task { @MainActor in self?.resolve(endpoint, ipv4Only: false) }
+                } else {
+                    Task { @MainActor in self?.retryLater(endpoint, connection, ipv4Only: true) }
                 }
             case .waiting(let error):
                 LinkLog.note("resolve waiting: \(endpoint) \(error) (ipv4Only=\(ipv4Only))")
@@ -109,16 +115,23 @@ final class LnxFinder {
         connection.start(queue: .main)
     }
 
-    /// 期限までに解けなかった。畳んで、まだ広告されていれば間を置いて試し直す
-    private func giveUpIfStuck(_ endpoint: NWEndpoint, _ connection: NWConnection) {
+    /// 期限までに解けなかった。IPv4 だけで刺さったなら次は IPv6 も許す（交互に試す）
+    private func giveUpIfStuck(_ endpoint: NWEndpoint, _ connection: NWConnection, ipv4Only: Bool) {
         guard resolving[endpoint] === connection, connection.state != .cancelled else { return }
         LinkLog.note("resolve timeout: \(endpoint)（\(Self.resolveTimeout) で解けない。試し直す）")
+        retryLater(endpoint, connection, ipv4Only: !ipv4Only)
+    }
+
+    /// この試行を畳み、まだ広告されていれば間を置いて試し直す。
+    /// 失敗・remoteEndpoint 無し・刺さり、のどれで終わっても同じ道を通す（試行中の印を残さない）
+    private func retryLater(_ endpoint: NWEndpoint, _ connection: NWConnection, ipv4Only: Bool) {
+        guard resolving[endpoint] === connection else { return }
         connection.cancel()
         resolving[endpoint] = nil
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: Self.resolveRetry)
             guard let self, self.browser != nil, self.advertised.contains(endpoint), self.resolving[endpoint] == nil else { return }
-            self.resolve(endpoint, ipv4Only: true)
+            self.resolve(endpoint, ipv4Only: ipv4Only)
         }
     }
 
