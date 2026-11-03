@@ -3,10 +3,21 @@ import SwiftUI
 /// LNX 自身の画面。心拍が脈打ち、知っているサーバが並ぶ
 struct LnxHomeView: View {
     let supervisor: LinkSupervisor
+    #if os(macOS)
+    @State private var offeringPairing = false
+    #endif
 
     var body: some View {
         VStack(spacing: 24) {
             header
+            #if os(macOS)
+            // Mac 版だけ: iPad に読ませるペアリングの QR を出す（裁定 mem_1CggiZeAYrK7rqz3VNpszU）
+            Button("iPad をペアリング") { offeringPairing = true }
+                .accessibilityIdentifier("home.pairIPad")
+                .sheet(isPresented: $offeringPairing) {
+                    PairingOfferView { offeringPairing = false }
+                }
+            #endif
             Spacer()
             Pulse(seq: supervisor.heartbeat?.seq ?? 0)
             Text(heartbeatLine)

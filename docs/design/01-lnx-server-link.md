@@ -75,6 +75,7 @@ lnx://pair?v=1&name=<サーバ名>&cert=<leaf 証明書 DER の base64url、padd
 - club-unison Swift の `pinned` は leaf DER の**バイト一致だけ**を見る（hostname / SAN は見ない）。だからサーバは証明書を**作り直してはいけない**（作り直すと pin が外れ、アプリは「ペアリングし直す」まで回り続ける）
 - 読み取りは VisionKit の `DataScannerViewController`（実機のみ）。読めない機械（シミュレータ、Mac）は同じ文字列を貼る
 - `cert` は `SecCertificateCreateWithData` で証明書として読めるものだけ受け取る（壊れた QR を pin にすると回り続ける）
+- QR を出すのは **Mac 版**（裁定 `mem_1CggiZeAYrK7rqz3VNpszU`）。ホームの「iPad をペアリング」→ 手元用 `[::1]:12731` に `skipVerify` でつなぎ `pairing.Get` → `PairingCode` で読めるか確かめてから `CIQRCodeGenerator` で出す（`PairingOffer` / `PairingOfferView`）
 
 `servers` の 1 件（`ServerEntry`）: `id`（例 `ladyland.field`）, `name`, `kind`（画面の選択に使う）, `host`, `port`。
 設定ファイル（TOML）の `[[servers]]` がそのまま一覧になる。例は `crates/lnx-server/lnx-server.example.toml`。
