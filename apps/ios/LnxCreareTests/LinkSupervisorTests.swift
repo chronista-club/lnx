@@ -344,6 +344,20 @@ struct LinkSupervisorTests {
         #expect(await transport.connectCount == 1)
     }
 
+    @Test("先を切り替えたら、前のサーバの心拍は残さない")
+    func switchingTargetClearsHeartbeat() async throws {
+        let transport = FakeTransport()
+        let supervisor = makeSupervisor(transport)
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        await transport.latestSession().emit(Heartbeat(seq: 9, uptimeMs: 9000))
+        try await eventually { supervisor.heartbeat != nil }
+
+        supervisor.start(target: .localDaemon(port: 2))
+        #expect(supervisor.heartbeat == nil)
+    }
+
     @Test("stop で idle に戻り、以後つなぎ直さない")
     func stopGoesIdle() async throws {
         let transport = FakeTransport()

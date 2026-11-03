@@ -16,18 +16,20 @@ func withTimeout<T: Sendable>(
     return try await withTaskCancellationHandler {
         try await withCheckedThrowingContinuation { continuation in
             gate.install(continuation)
-            let work = Task {
+            // 最初から cancel されていたら（onCancel が先に戸を閉めた）、処理を始めない
+            guard !gate.isFinished else { return }
+            gate.attach(Task {
                 do {
                     let value = try await operation()
                     if !gate.finish(.success(value)) { await onLateSuccess?(value) }
                 } catch {
                     gate.finish(.failure(error))
                 }
-            }
-            Task {
+            })
+            gate.attach(Task {
                 try? await Task.sleep(for: .seconds(seconds))
-                if gate.finish(.failure(LinkTimeout(seconds: seconds))) { work.cancel() }
-            }
+                gate.finish(.failure(LinkTimeout(seconds: seconds)))
+            })
         }
     } onCancel: {
         gate.finish(.failure(CancellationError()))
@@ -39,12 +41,14 @@ struct LinkTimeout: Error, CustomStringConvertible {
     var description: String { "\(seconds) 秒待っても応答がない" }
 }
 
-/// 一度だけ開く戸。最初の finish だけが continuation を進める（install より先に来たら結果を預かる）
+/// 一度だけ開く戸。最初の finish だけが continuation を進める（install より先に来たら結果を預かる）。
+/// 戸が閉まったら、預かったタスク（処理と期限）を cancel する（cancel に応じる処理は止まり、期限は眠り続けない）
 private final class TimeoutGate<T: Sendable>: Sendable {
     private struct State: ~Copyable {
         var continuation: CheckedContinuation<T, any Error>?
         var early: Result<T, any Error>?
         var finished = false
+        var tasks: [Task<Void, Never>] = []
     }
 
     private let state = Mutex(State())
@@ -61,20 +65,35 @@ private final class TimeoutGate<T: Sendable>: Sendable {
         if let early { continuation.resume(with: early) }
     }
 
+    var isFinished: Bool { state.withLock { $0.finished } }
+
+    /// タスクを預ける。もう閉まっていればすぐ cancel する
+    func attach(_ task: Task<Void, Never>) {
+        let closed = state.withLock { s -> Bool in
+            if s.finished { return true }
+            s.tasks.append(task)
+            return false
+        }
+        if closed { task.cancel() }
+    }
+
     /// 最初の 1 回だけ true
     @discardableResult
     func finish(_ result: Result<T, any Error>) -> Bool {
-        let (first, continuation) = state.withLock { s -> (Bool, CheckedContinuation<T, any Error>?) in
-            guard !s.finished else { return (false, nil) }
+        let (first, continuation, tasks) = state.withLock { s -> (Bool, CheckedContinuation<T, any Error>?, [Task<Void, Never>]) in
+            guard !s.finished else { return (false, nil, []) }
             s.finished = true
+            let tasks = s.tasks
+            s.tasks = []
             guard let continuation = s.continuation else {
                 s.early = result
-                return (true, nil)
+                return (true, nil, tasks)
             }
             s.continuation = nil
-            return (true, continuation)
+            return (true, continuation, tasks)
         }
         continuation?.resume(with: result)
+        for task in tasks { task.cancel() }
         return first
     }
 }

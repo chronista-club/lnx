@@ -21,6 +21,9 @@ final class MemoryPinStore: PinStore {
 /// 読み出しを覚える置き場。画面は 0.5 秒ごとに pin の有無を見るので、毎回 Keychain（main thread の
 /// SecItemCopyMatching）を読まない。無いことも覚える。保存・削除は下の置き場にも書く（deep レビュー P3-6）
 final class CachedPinStore: PinStore {
+    /// アプリ全体で 1 つ。窓（scene）ごとに作ると、ある窓の解除・ペアリングが他の窓の cache に届かない
+    static let shared = CachedPinStore(KeychainPinStore())
+
     private let base: any PinStore
     private let cache = Mutex<[String: Data?]>([:])
 

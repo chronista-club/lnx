@@ -99,7 +99,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 
 - `LnxTransport` / `LnxSession` が接続の抽象。実物は `UnisonLnxTransport`（connect / openChannel / request を**すべて timeout で包む**）、テストは `FakeTransport`
 - `withTimeout`（`Link/Timeout.swift`）: club-unison の待ちは cancel に応じないので、処理と期限を構造化しない Task で競わせ、先に終わった方で一度だけ戻る（`withThrowingTaskGroup` だと子が終わるまで戻れない）。外からの cancel でもすぐ戻る。遅れて成功した値は `onLateSuccess` へ（connect は接続を閉じる）
-- `LinkTrust.decide(target, pins)`: localhost は `.connect(.skipVerify)`、ペアリング済みの LAN は `.connect(.pinned(der))`、未ペアリングは `.needsPairing(name)`。`PinStore` の実物は `CachedPinStore(KeychainPinStore())`（画面が 0.5 秒ごとに pin の有無を見るので、Keychain は名前ごとに一度だけ読む）、テストは `MemoryPinStore`
+- `LinkTrust.decide(target, pins)`: localhost は `.connect(.skipVerify)`、ペアリング済みの LAN は `.connect(.pinned(der))`、未ペアリングは `.needsPairing(name)`。`PinStore` の実物は `CachedPinStore.shared`（Keychain の上の cache をアプリ全体で 1 つ。画面が 0.5 秒ごとに pin の有無を見るので、Keychain は名前ごとに一度だけ読む。窓ごとに作ると解除・ペアリングが他の窓に届かない）、テストは `MemoryPinStore`
 - `LinkSupervisor`（`@MainActor @Observable`）: `idle → connecting(attempt) → connected(Welcome) → reconnecting(attempt, delay)`。
   未ペアリングの LAN の先では `needsPairing(serverName)` で止まり、つながない。`paired(code)` で pin を残してつなぎ直す。
   `requestPairing()` は再接続中の画面の「ペアリングし直す」から呼ぶ（LAN の先だけ）。前の pin が残っていれば `cancelPairing()` で戻れる。

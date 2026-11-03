@@ -127,11 +127,12 @@ final class LinkSupervisor {
         heartbeat = nil
     }
 
-    /// 今の世代を終わらせる（走っているタスクは以後、状態を書かない）
+    /// 今の世代を終わらせる（走っているタスクは以後、状態を書かない）。前の世代の心拍は残さない
     private func halt() {
         epoch += 1
         runner?.cancel()
         runner = nil
+        heartbeat = nil
     }
 
     private func isCurrent(_ epoch: Int) -> Bool {

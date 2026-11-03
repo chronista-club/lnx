@@ -5,13 +5,11 @@ struct RootView: View {
     @State private var supervisor: LinkSupervisor
     @State private var finder = LnxFinder()
     @Environment(\.scenePhase) private var scenePhase
-    /// supervisor と同じ置き場（cache を共有する）
-    private let pins: any PinStore
+    /// pin の置き場はアプリ全体で 1 つ（窓が複数あっても cache を共有する）
+    private let pins: any PinStore = CachedPinStore.shared
 
     init() {
-        let pins = CachedPinStore(KeychainPinStore())
-        self.pins = pins
-        _supervisor = State(initialValue: LinkSupervisor(transport: UnisonLnxTransport(), pins: pins))
+        _supervisor = State(initialValue: LinkSupervisor(transport: UnisonLnxTransport(), pins: CachedPinStore.shared))
     }
 
     var body: some View {

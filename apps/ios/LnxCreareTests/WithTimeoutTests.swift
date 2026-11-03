@@ -53,6 +53,42 @@ struct WithTimeoutTests {
         try await waitUntil { late.withLock { $0 } == [9] }
     }
 
+    @Test("最初から cancel されていたら、処理を始めずに戻る（接続を張ってから閉じない）")
+    func preCancelledDoesNotStart() async throws {
+        let started = Mutex(0)
+        let task = Task {
+            while !Task.isCancelled { await Task.yield() }
+            return try await withTimeout(seconds: 1) {
+                started.withLock { $0 += 1 }
+                return 1
+            }
+        }
+        task.cancel()
+        await #expect(throws: CancellationError.self) { try await task.value }
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(started.withLock { $0 } == 0)
+    }
+
+    @Test("外から cancel したら、cancel に応じる処理にも cancel が届く")
+    func outerCancelReachesCooperativeWork() async throws {
+        let cancelledInside = Mutex(false)
+        let task = Task {
+            try await withTimeout(seconds: 10) { () async throws -> Int in
+                do {
+                    try await Task.sleep(for: .seconds(10))
+                } catch {
+                    cancelledInside.withLock { $0 = true }
+                    throw error
+                }
+                return 1
+            }
+        }
+        try await Task.sleep(for: .milliseconds(50))
+        task.cancel()
+        await #expect(throws: CancellationError.self) { try await task.value }
+        try await waitUntil { cancelledInside.withLock { $0 } }
+    }
+
     @Test("処理の失敗はそのまま投げる")
     func propagatesError() async {
         struct Boom: Error {}

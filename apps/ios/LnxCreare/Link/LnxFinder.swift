@@ -16,6 +16,8 @@ final class LnxFinder {
     private var advertised: Set<NWEndpoint> = []
     /// service ごとの名乗り（TXT の name、無ければインスタンス名）。pin の鍵
     private var names: [NWEndpoint: String] = [:]
+    /// stop のたびに進める。作り直しを待つタスクは、間に stop されていたら何もしない
+    private var generation = 0
     /// 解決を待つ上限と、試し直すまでの間。落ちたサーバの広告（幽霊）は SRV が返らず、いつまでも ready にならない。
     /// 同じ名前で本物が立ち上がっても browse の変化は来ないので、試し直さないと永遠に見つからない
     static let resolveTimeout: Duration = .seconds(5)
@@ -71,14 +73,19 @@ final class LnxFinder {
         resolving.removeAll()
         advertised.removeAll()
         names.removeAll()
+        // 作り直したら全部解き直す（古いアドレスを持ち越さない）
+        ledger = FoundTargets()
+        generation += 1
     }
 
     private func restart(after failed: NWBrowser) {
         guard browser === failed else { return }
         stop()
+        let generation = generation
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: Self.resolveRetry)
-            guard let self, self.browser == nil else { return }
+            // 待つ間に誰かが stop（窓が消えた）か start していたら、何もしない
+            guard let self, self.generation == generation, self.browser == nil else { return }
             self.start()
         }
     }
