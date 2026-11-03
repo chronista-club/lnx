@@ -58,11 +58,18 @@ final class LinkSupervisor {
         }
     }
 
-    /// QR を読み終えた。pin を残して、今の先へつなぎ直す
-    func paired(_ code: PairingCode) {
+    /// QR を読み終えた。今の先の QR なら pin を残してつなぎ直す。
+    /// 名前が違う・今の先の名前が分からないときは受け取らない（pin を引けず、成功したように見えて固まるので）
+    @discardableResult
+    func paired(_ code: PairingCode) -> Bool {
+        guard let target, case .host(_, _, let name?) = target, name == code.serverName else {
+            LinkLog.note("paired: \(code.serverName) は今の先（\(target?.displayName ?? "なし")）の QR ではない")
+            return false
+        }
         LinkLog.note("paired: \(code.serverName)（証明書 \(code.certificate.count) バイト）")
         pins.save(code.certificate, for: code.serverName)
-        if let target { start(target: target) }
+        start(target: target)
+        return true
     }
 
     /// ペアリングをやめて、今の先へつなぎ直す（pin が残っていればそれで。無ければ needsPairing に戻るだけ）
@@ -99,6 +106,19 @@ final class LinkSupervisor {
         halt()
         heartbeat = nil
         state = .needsPairing(serverName: name)
+    }
+
+    /// つなぎ直しの待ちを飛ばして、今すぐつなぎにいく（前面に戻ったとき。design 01「戻ったら即つなぎ直す」）。
+    /// 待っている（reconnecting）か、止まっている（idle）ときだけ
+    func reconnectNow() {
+        guard let target else { return }
+        switch state {
+        case .reconnecting, .idle:
+            LinkLog.note("reconnectNow: \(target.displayName)")
+            start(target: target)
+        case .connecting, .connected, .needsPairing:
+            break
+        }
     }
 
     func stop() {

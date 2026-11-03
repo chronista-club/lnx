@@ -286,6 +286,64 @@ struct LinkSupervisorTests {
         #expect(supervisor.state == .idle)
     }
 
+    @Test("今の先と名前が違う QR は受け取らず、pin も残さない")
+    func pairedRejectsOtherServer() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+
+        #expect(!supervisor.paired(PairingCode(serverName: "lnx-pi", certificate: Data([7]))))
+        #expect(pins.certificate(for: "lnx-pi") == nil)
+        #expect(supervisor.state == .needsPairing(serverName: "lnx-mac"))
+        #expect(await transport.connectCount == 0)
+    }
+
+    @Test("名前の分からない先には QR を受け取らない（受け取っても pin を引けず固まる）")
+    func pairedRejectsNamelessTarget() async throws {
+        let pins = MemoryPinStore()
+        let supervisor = makeSupervisor(FakeTransport(), pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730))
+        defer { supervisor.stop() }
+
+        #expect(!supervisor.paired(PairingCode(serverName: "lnx-mac", certificate: Data([7]))))
+        #expect(pins.certificate(for: "lnx-mac") == nil)
+    }
+
+    @Test("つなぎ直しを待っている間に reconnectNow すると、待たずにつなぎにいく（前面に戻ったとき）")
+    func reconnectNowSkipsBackoff() async throws {
+        let transport = FakeTransport(failures: 1)
+        let supervisor = LinkSupervisor(
+            transport: transport,
+            pins: MemoryPinStore(),
+            backoff: BackoffPolicy(base: .seconds(30), max: .seconds(30))
+        )
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+        try await eventually {
+            if case .reconnecting = supervisor.state { return true }
+            return false
+        }
+
+        supervisor.reconnectNow()
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(await transport.connectCount == 2)
+    }
+
+    @Test("つながっている・ペアリング待ちのときの reconnectNow は何もしない")
+    func reconnectNowIgnoredWhenNotWaiting() async throws {
+        let transport = FakeTransport()
+        let supervisor = makeSupervisor(transport)
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+
+        supervisor.reconnectNow()
+        try await Task.sleep(for: .milliseconds(60))
+        #expect(await transport.connectCount == 1)
+    }
+
     @Test("stop で idle に戻り、以後つなぎ直さない")
     func stopGoesIdle() async throws {
         let transport = FakeTransport()
