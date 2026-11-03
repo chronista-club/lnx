@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="iOS アプリのテストを iPad シミュレータで実行（LNX_IOS_SIM / LNX_IOS_OS で端末を変更）"
+#MISE depends=["ios:gen"]
+
+require_relative "../_lib/lnx"
+
+udid = Lnx.simulator_udid
+Lnx.run("xcodebuild", "-project", "LnxCreare.xcodeproj", "-scheme", "LnxCreare",
+        "-destination", "id=#{udid}", "-quiet", "test", chdir: Lnx::IOS_DIR)
+puts "ok: #{Lnx::SIM_NAME} (iOS #{Lnx::SIM_OS})"

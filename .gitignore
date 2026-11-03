@@ -136,5 +136,10 @@ Cargo.lock
 
 .mise.local.toml
 
-# Node (mcp-builder skill scripts 等で bun を使う)
+# XcodeGen の生成物（apps/ios/project.yml が正）
+apps/ios/*.xcodeproj/
+# ios:run のビルド置き場
+apps/ios/build/
+
+# スキル同梱の scripts の node_modules（#17）
 **/node_modules/

@@ -39,7 +39,7 @@ lnx(リンクス)は、**Low-Latency, High-Quality, Human-Friendly** をモッ�
 ## 技術スタック
 
 ### 言語とフレームワーク
-- **Rust** 1.75+
+- **Rust** 1.95 以上（開発は mise の 1.99）
 - **CPAL** 0.15+ - クロスプラットフォームオーディオ
 - **Slint** 1.9 - Rust製クロスプラットフォームGUIツールキット
 - **hound** - WAVファイル処理
@@ -69,14 +69,17 @@ lnx/
 │   │       ├── beatmachine_demo.rs
 │   │       └── beatmachine_demo_with_samples.rs
 │   ├── lnx-cli/            # CLIインターフェース
-│   └── lnx-creare/         # ビジュアルクリエーター（計画中）
+│   ├── lnx-creare/         # ビジュアルクリエーター（計画中）
+│   └── lnx-server/         # LNX サーバ（Unison / QUIC、lnx creare が常時つなぐ窓口）
+└── apps/
+    └── ios/                # iOS アプリ「lnx creare」（SwiftUI + XcodeGen、メイン開発機は iPad）
 ```
 
 
 ## セットアップ
 
 ### システム要件
-- **Rust**: 1.75以降
+- **Rust**: 1.95 以降（club-unison の要求。mise が 1.99 を入れる）
 - **Cargo**: 最新版
 - **OS**: macOS 12+、Windows 10+、Ubuntu 20.04+
 - **メモリ**: 4GB RAM以上（推奨: 8GB以上）
@@ -105,6 +108,30 @@ cargo run --example beatmachine_demo_with_samples
 # シンプルなビートマシンデモ
 cargo run --example beatmachine_demo
 ```
+
+### LNX サーバ
+
+```bash
+mise run server:run          # この Mac で起動（[::]:12730、Bonjour _lnx._udp で名乗る）
+mise run server:test         # 実 QUIC の往復を含むテスト
+```
+
+iPad の lnx creare はここへ常時つなぎ、名乗りと心拍を受け、知っているサーバの一覧から画面を切り替える。
+設計は [docs/design/01-lnx-server-link.md](docs/design/01-lnx-server-link.md)。
+
+### iOS アプリ（lnx creare）
+
+```bash
+cd apps/ios
+xcodegen generate            # LnxCreare.xcodeproj を生成（git 管理外）
+open LnxCreare.xcodeproj     # Xcode で開く
+
+# コマンドラインから
+mise run ios:test            # テスト（既定は iPad シミュレータ）
+mise run ios:run             # シミュレータで起動（server:run と合わせて使う）
+```
+
+詳細は [apps/ios/README.md](apps/ios/README.md)。タスクの実体は `tasks/` 以下の Ruby（`mise tasks ls`）。
 
 ## 使用方法
 
@@ -180,6 +207,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Phase 3: インターフェース
 - [ ] Slint GUIフレームワーク統合（進行中）
+- [x] iOS アプリ（lnx creare）のプロジェクト作成 — SwiftUI + XcodeGen、iPad をメイン開発機に
 - [ ] ビートマシンコントロールUI
 - [ ] MIDI 2.0対応
 - [ ] OSC通信

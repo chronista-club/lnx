@@ -4,10 +4,11 @@ members = [
     "crates/lnx-engine",
     "crates/lnx-cli",
     "crates/lnx-creare",
+    "crates/lnx-server",
 ]
 
 [workspace.package]
-version = "0.1.0-alpha1"
+version = "0.1.0-alpha2"
 authors = ["Mako"]
 edition = "2024"
 license = "MIT OR Apache-2.0"

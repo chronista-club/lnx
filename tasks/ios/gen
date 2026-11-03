@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="iOS アプリの Xcode プロジェクトを生成（XcodeGen。apps/ios/project.yml が正）"
+
+require_relative "../_lib/lnx"
+
+Lnx.run("xcodegen", "generate", chdir: Lnx::IOS_DIR)
