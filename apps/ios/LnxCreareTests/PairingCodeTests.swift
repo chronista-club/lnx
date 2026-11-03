@@ -58,4 +58,13 @@ struct PairingCodeTests {
         #expect(try PairingCode.accept(text, for: nil).serverName == "lnx-mac")
         #expect(throws: PairingCode.ParseError.otherServer("lnx-mac")) { try PairingCode.accept(text, for: "lnx-pi") }
     }
+
+    /// lnx-server（#28）が実際に出した URL（--name 'lnx test (2)'、2026-11-04）。サーバとの契約の見本
+    @Test("lnx-server が出す URL を読める")
+    func readsServerOutput() throws {
+        let url = "lnx://pair?v=1&name=lnx%20test%20%282%29&cert=MIIBdzCCARygAwIBAgIUQrMGHBcYv-b04zIhRooJou38AEgwCgYIKoZIzj0EAwIwITEfMB0GA1UEAwwWcmNnZW4gc2VsZiBzaWduZWQgY2VydDAgFw03NTAxMDEwMDAwMDBaGA80MDk2MDEwMTAwMDAwMFowITEfMB0GA1UEAwwWcmNnZW4gc2VsZiBzaWduZWQgY2VydDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABKbDF_vlWwCOAy5SnV7s_PKDIN71xytTfx_XSbVAimSZWpRzG-_p-4D663Tlr03RicSCmxQq__puMiMv8ixks3qjMDAuMCwGA1UdEQQlMCOCCWxvY2FsaG9zdIcQAAAAAAAAAAAAAAAAAAAAAYcEfwAAATAKBggqhkjOPQQDAgNJADBGAiEAwrL7KdIkc2psrGLfGyIEC9QqVRR9IDeTZ-IeulUNVRsCIQD_o_GA8nXxfBEVJx86tInHU2jdx767kWfg4qed6iPj_A"
+        let code = try PairingCode(parsing: url)
+        #expect(code.serverName == "lnx test (2)")
+        #expect(code.certificate.count == 379)
+    }
 }
