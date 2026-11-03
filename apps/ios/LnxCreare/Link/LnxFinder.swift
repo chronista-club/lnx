@@ -11,10 +11,10 @@ final class LnxFinder {
     private var browser: NWBrowser?
     private var resolving: [NWEndpoint: NWConnection] = [:]
 
-    /// 最初につなぐ先。見つかっていればそれ、シミュレータなら localhost
+    /// 最初につなぐ先。見つかっていればそれ。シミュレータと Mac は同じ機械の localhost も候補
     var preferred: LinkTarget? {
         if let first = found.first { return first }
-        #if targetEnvironment(simulator)
+        #if targetEnvironment(simulator) || os(macOS)
         return .localDaemon(port: LnxDefaults.port)
         #else
         return nil

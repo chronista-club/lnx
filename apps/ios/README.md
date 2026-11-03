@@ -19,6 +19,7 @@ open LnxCreare.xcodeproj     # Xcode で開いて Run
 mise run ios:gen             # 生成だけ
 mise run ios:test            # テスト（Swift Testing + UI テスト、既定は iPad シミュレータ）
 mise run ios:run             # シミュレータで起動
+mise run mac:run             # Mac 版をビルドして開く（同じターゲットの macOS destination）
 ```
 
 メイン開発機は iPad。`ios:test` の既定端末は iPad Pro 11-inch (M5)（`.mise.toml` の `LNX_IOS_SIM`）。
@@ -59,7 +60,7 @@ apps/ios/
 | 表示名 / ターゲット | lnx creare / `LnxCreare` | Bevy 版 `crates/lnx-creare` と同じ看板 |
 | bundle id | `club.chronista.lnx.creare` | 過去の Apple アプリ（LNXX / Sizma）の `club.chronista.` に揃え、`lnx.` 配下で増やせるようにした |
 | Team | `J627YTC8NE` | 過去のアプリと同じ |
-| 対応 OS | iOS 26.0 以上 | 現行の一つ前まで |
+| 対応 OS | iOS 26.0 以上、macOS 26.0 以上 | 一つのターゲットで iOS と macOS（`supportedDestinations`）。Mac は同じ機械の localhost も接続候補 |
 | メイン開発機 | iPad（iPhone も `TARGETED_DEVICE_FAMILY` に残す） | ユーザー指定（2026-11-03）。iPad は 4 方向すべて対応（Stage Manager 前提） |
 | 言語 | Swift 6 言語モード、strict concurrency complete | 新規なので最初から |
 | UI / テスト | SwiftUI / Swift Testing | spec の Native UI 方針、XCTest より軽い |

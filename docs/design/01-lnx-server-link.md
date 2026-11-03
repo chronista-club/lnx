@@ -90,7 +90,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   窓を開けたら心拍・一覧・切断・無音を並行に見張り、どれかが終わったら畳んでつなぎ直す。
   無音の見張りは**最初の心拍が来てから**数え始める（`unison mock` のように心拍を出さない相手を切らない）
 - `BackoffPolicy`: 0.5 秒から倍々、上限 10 秒
-- `LnxFinder`: 実機は Bonjour（`NWBrowser` → UDP の "接続" で host:port に解く）。シミュレータは `[::1]:12730` に直結
+- `LnxFinder`: 実機は Bonjour（`NWBrowser` → UDP の "接続" で host:port に解く）。シミュレータと Mac は `[::1]:12730` も候補（Bonjour で見つかればそちらへ）
 - `ScreenRoute.resolve(state, selection)`: つながるまで `connecting`、つながれば `lnxHome`、選べば `remote(server)`
 - `RemoteServer.endpointLabel`: 画面用の `host:port`。`Text("\(port)")` は桁区切り（7,879）になるので文字列で組む
 
@@ -125,6 +125,8 @@ mise run ios:run         # ビルド → シミュレータへインストール
 - Bonjour 探索は**実機確認待ち**（シミュレータは localhost 直結で検証した）
 
 ## Status log
+
+- 2026-11-04: LnxCreare ターゲットを iOS + macOS の multiplatform に。`mise run mac:run` で Mac 版が開き、同じ Mac のサーバにつながる
 
 - 2026-11-03: Draft。第一区切りの実装と同じブランチ（`wip/lnx-server`）
 - 2026-11-03: Mac の lnx-server と iPad シミュレータで通しを確認。接続・名乗り・心拍・一覧、サーバを落として戻すと再接続、一覧から選んで画面が切り替わり戻る（UI テスト）。Bonjour の広告は `dns-sd -B _lnx._udp` で確認、実機からの探索は未

@@ -143,3 +143,13 @@ apps/ios/build/
 
 # スキル同梱の scripts の node_modules（#17）
 **/node_modules/
+
+# Vantage Point lane workspaces (repo-local lane refactor)
+.vp/
+
+# Mac / 実機向けビルドの置き場（mac:run、署名ビルド）
+apps/ios/build-mac/
+apps/ios/build-device/
+
+# Claude Code のサブエージェント用 worktree
+.claude/worktrees/
