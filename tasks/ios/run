@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="iOS アプリを iPad シミュレータで起動（boot → build → install → launch）"
+#MISE depends=["ios:gen"]
+
+require_relative "../_lib/lnx"
+
+udid = Lnx.simulator_udid
+system("xcrun", "simctl", "boot", udid, err: File::NULL) # 起動済みなら失敗するが構わない
+# 起動を待つ。bootstatus は起動済みでも非ゼロで終わることがあるので exit code は見ない
+system("xcrun", "simctl", "bootstatus", udid, "-b", out: File::NULL)
+# Simulator の窓を出す（あれば。Xcode 27.2 のこの Mac には Simulator.app が無く、起動は simctl だけで足りる）
+unless system("open", "-b", "com.apple.iphonesimulator", "--args", "-CurrentDeviceUDID", udid, err: File::NULL)
+  warn "（Simulator.app が無いので窓は出ない。アプリは simctl で起動する）"
+end
+Lnx.run("xcodebuild", "-project", "LnxCreare.xcodeproj", "-scheme", "LnxCreare",
+        "-destination", "id=#{udid}", "-derivedDataPath", "build", "-quiet", "build", chdir: Lnx::IOS_DIR)
+app = File.join(Lnx::IOS_DIR, "build", "Build", "Products", "Debug-iphonesimulator", "LnxCreare.app")
+Lnx.run("xcrun", "simctl", "install", udid, app)
+Lnx.run("xcrun", "simctl", "launch", udid, Lnx::APP_ID)

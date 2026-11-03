@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="LNX サーバをこの Mac で起動（[::]:12730。一覧は crates/lnx-server/lnx-server.example.toml）"
+
+require_relative "../_lib/lnx"
+
+config = ENV.fetch("LNX_SERVER_CONFIG", Lnx::SERVER_CONFIG)
+Lnx.exec!("cargo", "run", "-q", "-p", "lnx-server", "--", "--config", config)

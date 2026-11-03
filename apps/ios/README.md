@@ -17,8 +17,8 @@ open LnxCreare.xcodeproj     # Xcode で開いて Run
 
 # コマンドラインから（リポジトリのどこからでも）
 mise run ios:gen             # 生成だけ
-mise run ios:build           # シミュレータ向けビルド
-mise run ios:test            # 単体テスト（Swift Testing、既定は iPad シミュレータ）
+mise run ios:test            # テスト（Swift Testing + UI テスト、既定は iPad シミュレータ）
+mise run ios:run             # シミュレータで起動
 ```
 
 メイン開発機は iPad。`ios:test` の既定端末は iPad Pro 11-inch (M5)（`.mise.toml` の `LNX_IOS_SIM`）。

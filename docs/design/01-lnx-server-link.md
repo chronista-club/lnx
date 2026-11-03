@@ -98,11 +98,12 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 
 ```bash
 mise run server:run      # Mac で LNX サーバ（example.toml の一覧つき）
-mise run server:mock     # スキーマだけの偽サーバ（心拍は出ない）
-mise run ios:test        # Swift の単体テスト（iPad シミュレータ）
-mise run ios:run         # ビルド → シミュレータへインストール → 起動
 mise run server:test     # cargo test -p lnx-server（実 QUIC の往復を含む）
+mise run ios:test        # Swift の単体テストと UI テスト（iPad シミュレータ）
+mise run ios:run         # ビルド → シミュレータへインストール → 起動
 ```
+
+タスクの実体は `tasks/` 以下の Ruby（mise の file task）。偽サーバが要るときは `unison mock --schema crates/lnx-server/schemas/lnx.kdl --addr '[::1]:12730'` を直接打つ。
 
 テストは三層。Rust は `tests/link.rs` が実 QUIC で Hello → 心拍 → List を往復する。Swift の単体テストは
 `FakeTransport` で supervisor の状態機械を回す。`LnxCreareUITests` は実サーバ相手に一覧をタップして画面が
