@@ -13,12 +13,8 @@ struct LnxHomeView: View {
         VStack(spacing: 24) {
             header
             #if os(macOS)
-            // Mac 版だけ: iPad に読ませるペアリングの QR を出す（裁定 mem_1CggiZeAYrK7rqz3VNpszU）
             Button("iPad をペアリング") { offeringPairing = true }
                 .accessibilityIdentifier("home.pairIPad")
-                .sheet(isPresented: $offeringPairing) {
-                    PairingOfferView { offeringPairing = false }
-                }
             #endif
             Spacer()
             Pulse(seq: supervisor.heartbeat?.seq ?? 0)
@@ -29,22 +25,57 @@ struct LnxHomeView: View {
             Spacer()
             serverList
             #if !os(macOS)
-            // iPhone / iPad だけ（Mac 版は手元の localhost なのでペアリングが無い。裁定 2026-11-04）。
-            // pin を Keychain から消して切断 → ペアリング画面へ。確認は一段だけ
+            // 右上のメニューと同じもの。ここにも置く（わかりやすい。裁定 2026-11-04）
             if supervisor.canUnpair {
                 Button("ペアリングを解除") { confirmingUnpair = true }
                     .font(.footnote)
                     .tint(.white.opacity(0.5))
                     .accessibilityIdentifier("home.unpair")
-                    .confirmationDialog(unpairQuestion, isPresented: $confirmingUnpair, titleVisibility: .visible) {
-                        Button("解除する", role: .destructive) { supervisor.unpair() }
-                    } message: {
-                        Text("次につなぐときは、Mac 版の「iPad をペアリング」の QR を読み直します")
-                    }
             }
             #endif
         }
         .padding(32)
+        .overlay(alignment: .topTrailing) { menu.padding(20) }
+        #if os(macOS)
+        .sheet(isPresented: $offeringPairing) {
+            PairingOfferView { offeringPairing = false }
+        }
+        #else
+        // 確認は一段だけ
+        .confirmationDialog(unpairQuestion, isPresented: $confirmingUnpair, titleVisibility: .visible) {
+            Button("解除する", role: .destructive) { supervisor.unpair() }
+        } message: {
+            Text("次につなぐときは、Mac 版の「iPad をペアリング」の QR を読み直します")
+        }
+        #endif
+    }
+
+    /// 右上のメニュー（裁定 2026-11-04。下 / 上のボタンと同じものをここにも）。Mac 版は「iPad をペアリング」（QR を出す）、
+    /// iPhone / iPad は「ペアリングを解除」（pin を消して切断 → ペアリング画面）。Mac 版は手元の localhost なので解除は無い
+    @ViewBuilder
+    private var menu: some View {
+        #if os(macOS)
+        Menu {
+            Button("iPad をペアリング") { offeringPairing = true }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityIdentifier("home.menu")
+        #else
+        if supervisor.canUnpair {
+            Menu {
+                Button("ペアリングを解除", systemImage: "link.badge.minus", role: .destructive) { confirmingUnpair = true }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title2)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .accessibilityIdentifier("home.menu")
+        }
+        #endif
     }
 
     private var header: some View {
