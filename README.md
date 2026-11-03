@@ -69,7 +69,8 @@ lnx/
 │   │       ├── beatmachine_demo.rs
 │   │       └── beatmachine_demo_with_samples.rs
 │   ├── lnx-cli/            # CLIインターフェース
-│   └── lnx-creare/         # ビジュアルクリエーター（計画中）
+│   ├── lnx-creare/         # ビジュアルクリエーター（計画中）
+│   └── lnx-server/         # LNX サーバ（Unison / QUIC、lnx creare が常時つなぐ窓口）
 └── apps/
     └── ios/                # iOS アプリ「lnx creare」（SwiftUI + XcodeGen、メイン開発機は iPad）
 ```
@@ -108,6 +109,16 @@ cargo run --example beatmachine_demo_with_samples
 cargo run --example beatmachine_demo
 ```
 
+### LNX サーバ
+
+```bash
+mise run server:run          # この Mac で起動（[::]:12730、Bonjour _lnx._udp で名乗る）
+mise run server:test         # 実 QUIC の往復を含むテスト
+```
+
+iPad の lnx creare はここへ常時つなぎ、名乗りと心拍を受け、知っているサーバの一覧から画面を切り替える。
+設計は [docs/design/01-lnx-server-link.md](docs/design/01-lnx-server-link.md)。
+
 ### iOS アプリ（lnx creare）
 
 ```bash
@@ -118,6 +129,7 @@ open LnxCreare.xcodeproj     # Xcode で開く
 # コマンドラインから
 mise run ios:build           # シミュレータ向けビルド
 mise run ios:test            # 単体テスト（既定は iPad シミュレータ）
+mise run ios:run             # シミュレータで起動（server:run と合わせて使う）
 ```
 
 詳細は [apps/ios/README.md](apps/ios/README.md)。

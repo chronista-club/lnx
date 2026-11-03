@@ -4,6 +4,7 @@ members = [
     "crates/lnx-engine",
     "crates/lnx-cli",
     "crates/lnx-creare",
+    "crates/lnx-server",
 ]
 
 [workspace.package]
