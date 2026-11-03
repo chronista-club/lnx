@@ -1,7 +1,7 @@
 # 01. LNX サーバと lnx creare の常時接続
 
 > **Status**: Draft（Status log 参照）
-> **Related**: `spec/01-core-concept/SPEC.md`（場の同期）、`spec/02-creare/SPEC.md`（統合のハブ）、`mem_1Cgfoo741LiQbchNsvJrY6`（起票・裁定）
+> **Related**: [spec 01](../spec/01-core-concept.md)（場の同期）、[spec 02](../spec/02-creare.md)（統合のハブ）、`mem_1Cgfoo741LiQbchNsvJrY6`（起票・裁定）
 > **対象**: `crates/lnx-server/`, `apps/ios/LnxCreare/Link/`, `apps/ios/LnxCreare/Screens/`
 
 ## Abstract

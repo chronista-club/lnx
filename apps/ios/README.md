@@ -1,6 +1,6 @@
 # lnx creare（iOS）
 
-LNX への入り口となるネイティブアプリ。spec の [02-creare](../../spec/02-creare/SPEC.md) が言う
+LNX への入り口となるネイティブアプリ。[spec 02](../../docs/spec/02-creare.md) が言う
 「Native UI = SwiftUI + Rust」の Apple 側の器で、まず iOS から始める。
 
 ## 前提
