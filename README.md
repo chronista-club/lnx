@@ -127,12 +127,11 @@ xcodegen generate            # LnxCreare.xcodeproj を生成（git 管理外）
 open LnxCreare.xcodeproj     # Xcode で開く
 
 # コマンドラインから
-mise run ios:build           # シミュレータ向けビルド
-mise run ios:test            # 単体テスト（既定は iPad シミュレータ）
+mise run ios:test            # テスト（既定は iPad シミュレータ）
 mise run ios:run             # シミュレータで起動（server:run と合わせて使う）
 ```
 
-詳細は [apps/ios/README.md](apps/ios/README.md)。
+詳細は [apps/ios/README.md](apps/ios/README.md)。タスクの実体は `tasks/` 以下の Ruby（`mise tasks ls`）。
 
 ## 使用方法
 

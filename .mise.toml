@@ -1,227 +1,24 @@
-# lnx Project Configuration
-# https://mise.jdx.dev/
+# lnx — mise の設定
+# タスクは tasks/ 以下の Ruby スクリプト（mise の file task）。一覧は `mise tasks ls`
+
+[task_config]
+includes = ["tasks"]
 
 [env]
-# Project paths
-LNX_ROOT = "{{config_root}}"
-LNX_CRATES_DIR = "{{config_root}}/crates"
-LNX_DOCS_DIR = "{{config_root}}/docs"
-
-# Rust paths
-LNX_ENGINE_DIR = "{{config_root}}/crates/lnx-engine"
-LNX_CLI_DIR = "{{config_root}}/crates/lnx-cli"
-LNX_CREARE_DIR = "{{config_root}}/crates/lnx-creare"
-LNX_TARGET = "{{config_root}}/target"
-
-# Build outputs
-LNX_ENGINE_LIB = "{{config_root}}/target/release/liblnx_engine.rlib"
-LNX_ENGINE_DEBUG_LIB = "{{config_root}}/target/debug/liblnx_engine.rlib"
-
-# Development settings
-RUST_LOG = "debug"
+RUST_LOG = "info"
 RUST_BACKTRACE = "1"
-
-# iOS: 既定のシミュレータ（iPad をメイン開発機とする。別端末は環境変数で上書き）
+# iOS: 既定のシミュレータ（iPad をメイン開発機とする）。同名の端末が runtime ごとにあるので OS も指定する
+# （27.0 の runtime は 2026-11-03 時点で "path not found"）
 LNX_IOS_SIM = "iPad Pro 11-inch (M5)"
-# 同名の端末が runtime ごとにあるので OS も指定する（27.0 の runtime は 2026-11-03 時点で "path not found"）
 LNX_IOS_OS = "26.5"
 
 [tools]
-# Rust toolchain
-rust = "1.91"
-# cargo 製ツールは registry に無いので cargo backend を明示（mise install で cargo install が走る）
-"cargo:cargo-watch" = "latest"
-"cargo:cargo-edit" = "latest"
-"cargo:cargo-expand" = "latest"
+# Rust toolchain（club-unison 2.2 / club-kdl 0.14 が rustc 1.95 以上を要求。2026-11-04 に 1.91 → 1.96）
+rust = "1.96"
+# cargo-watch / cargo-edit / cargo-expand は外した: どのタスクも使わず、mise run のたびに auto_install が走って
+# cargo-edit が rustc 1.97 以上を要求して止まる（2026-11-04）
 xcodegen = "latest"
 
 # General development tools（git は mise の管理外。Xcode / brew のものを使う）
 gh = "latest"
 pre-commit = "latest"
-
-[tasks.build]
-description = "Build all components"
-run = """
-  echo "🔨 Building lnx..."
-  cargo build --release
-  echo "✅ Build complete"
-"""
-
-[tasks.build-engine]
-description = "Build Rust audio engine"
-run = """
-  echo "🔨 Building lnx-engine..."
-  cargo build --release -p lnx-engine
-  echo "✅ Engine build complete"
-"""
-
-[tasks.build-cli]
-description = "Build CLI"
-run = """
-  echo "🔨 Building lnx-cli..."
-  cargo build --release -p lnx-cli
-  echo "✅ CLI build complete"
-"""
-
-[tasks.build-creare]
-description = "Build visual creator"
-run = """
-  echo "🔨 Building lnx-creare..."
-  cargo build --release -p lnx-creare
-  echo "✅ Creare build complete"
-"""
-
-[tasks.test]
-description = "Run all tests"
-run = """
-  echo "🧪 Running tests..."
-  cargo test --all
-  echo "✅ Tests complete"
-"""
-
-[tasks.run-cli]
-description = "Run CLI"
-run = """
-  echo "🚀 Launching lnx CLI..."
-  cargo run --bin lnx -- status
-"""
-
-[tasks.run-creare]
-description = "Run visual creator"
-run = """
-  echo "🎨 Launching lnx creare..."
-  cargo run --bin lnx-creare
-"""
-
-[tasks.clean]
-description = "Clean build artifacts"
-run = """
-  echo "🧹 Cleaning build artifacts..."
-  cargo clean
-  echo "✅ Clean complete"
-"""
-
-[tasks.format]
-description = "Format all code"
-run = """
-  echo "💅 Formatting code..."
-  cargo fmt --all
-  echo "✅ Formatting complete"
-"""
-
-[tasks.lint]
-description = "Lint all code"
-run = """
-  echo "🔍 Linting code..."
-  cargo clippy --all -- -D warnings
-  echo "✅ Linting complete"
-"""
-
-[tasks.setup]
-description = "Initial project setup"
-run = """
-  echo "🔧 Setting up lnx development environment..."
-
-  # Install Rust dependencies
-  cargo fetch
-
-  # Build all components
-  mise run build
-
-  echo "✅ Setup complete! You can now:"
-  echo "  - Run 'mise run build' to build everything"
-  echo "  - Run 'mise run run-cli' to run the CLI"
-  echo "  - Run 'mise run run-creare' to run the visual creator"
-  echo "  - Run 'mise run test' to run tests"
-"""
-
-[tasks.watch]
-description = "Watch and rebuild Rust code"
-run = """
-  cargo watch -x "build --all"
-"""
-
-[tasks.watch-engine]
-description = "Watch and rebuild engine"
-run = """
-  cargo watch -x "build -p lnx-engine"
-"""
-
-[tasks."server:run"]
-description = "LNX サーバを Mac で起動（[::]:12730、一覧は crates/lnx-server/lnx-server.example.toml）"
-run = "cargo run -p lnx-server -- --config {{config_root}}/crates/lnx-server/lnx-server.example.toml"
-
-[tasks."server:mock"]
-description = "unison mock で LNX の偽サーバを立てる（スキーマだけで応答。心拍は出ない）"
-run = "unison mock --schema {{config_root}}/crates/lnx-server/schemas/lnx.kdl --addr '[::1]:12730'"
-
-[tasks."server:test"]
-description = "lnx-server のテスト（実 QUIC の往復を含む）"
-run = "cargo test -p lnx-server"
-
-[tasks."ios:gen"]
-description = "iOS アプリの Xcode プロジェクトを生成（XcodeGen、apps/ios/project.yml が正）"
-dir = "{{config_root}}/apps/ios"
-run = "xcodegen generate"
-
-[tasks."ios:build"]
-description = "iOS アプリをシミュレータ向けにビルド"
-depends = ["ios:gen"]
-dir = "{{config_root}}/apps/ios"
-run = "xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination 'generic/platform=iOS Simulator' -quiet build"
-
-[tasks."ios:test"]
-description = "iOS アプリの単体テストを iPad シミュレータで実行（LNX_IOS_SIM で端末を変更）"
-depends = ["ios:gen"]
-dir = "{{config_root}}/apps/ios"
-run = "xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination \"platform=iOS Simulator,name=$LNX_IOS_SIM,OS=$LNX_IOS_OS\" -quiet test"
-
-[tasks."ios:run"]
-description = "iOS アプリを iPad シミュレータで起動（ビルド → インストール → 起動）"
-depends = ["ios:gen"]
-dir = "{{config_root}}/apps/ios"
-run = """
-set -e
-# 名前 + OS から UDID を引く（同名の端末が runtime ごとにあるため）
-UDID=$(xcrun simctl list devices available -j | /usr/bin/python3 -c 'import json,os,sys
-devices = json.load(sys.stdin)["devices"]
-runtime = "iOS-" + os.environ["LNX_IOS_OS"].replace(".", "-")
-name = os.environ["LNX_IOS_SIM"]
-print(next(d["udid"] for key, ds in devices.items() if key.endswith(runtime) for d in ds if d["name"] == name))')
-xcrun simctl boot "$UDID" 2>/dev/null || true
-xcrun simctl bootstatus "$UDID" -b
-xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination "id=$UDID" -derivedDataPath build -quiet build
-xcrun simctl install "$UDID" build/Build/Products/Debug-iphonesimulator/LnxCreare.app
-xcrun simctl launch "$UDID" club.chronista.lnx.creare
-"""
-
-[tasks.info]
-description = "Show project information"
-run = """
-  echo "═══════════════════════════════════════════"
-  echo "  lnx (リンクス) - Audio/Visual Live Tool"
-  echo "═══════════════════════════════════════════"
-  echo ""
-  echo "📁 Project Structure:"
-  echo "  • Rust Engine: {{config_root}}/crates/lnx-engine"
-  echo "  • CLI:         {{config_root}}/crates/lnx-cli"
-  echo "  • Creare:      {{config_root}}/crates/lnx-creare"
-  echo "  • iOS app:     {{config_root}}/apps/ios"
-  echo "  • Docs:        {{config_root}}/docs"
-  echo ""
-  echo "🛠️  Available Commands:"
-  echo "  • mise run build        - Build all components"
-  echo "  • mise run test         - Run all tests"
-  echo "  • mise run run-cli      - Run CLI"
-  echo "  • mise run run-creare   - Run visual creator"
-  echo "  • mise run ios:build    - Build iOS app (simulator)"
-  echo "  • mise run ios:test     - Test iOS app (iPad simulator)"
-  echo "  • mise run server:run   - Run LNX server on this Mac"
-  echo "  • mise run watch        - Watch & rebuild all"
-  echo "  • mise run format       - Format all code"
-  echo "  • mise run lint         - Lint all code"
-  echo "  • mise run clean        - Clean build artifacts"
-  echo ""
-  echo "📦 Version: 0.1.0-alpha1"
-  echo "🔗 Repository: https://github.com/chronista-club/lnx"
-"""
