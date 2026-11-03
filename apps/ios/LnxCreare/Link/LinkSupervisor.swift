@@ -7,7 +7,9 @@ import Observation
 @MainActor
 @Observable
 final class LinkSupervisor {
-    private(set) var state: LinkState = .idle
+    private(set) var state: LinkState = .idle {
+        didSet { LinkLog.note("state: \(state)") }
+    }
     private(set) var heartbeat: Heartbeat?
     private(set) var servers: [RemoteServer] = []
     private(set) var target: LinkTarget?
@@ -32,6 +34,7 @@ final class LinkSupervisor {
     }
 
     func start(target: LinkTarget) {
+        LinkLog.note("start: \(target.displayName)")
         runner?.cancel()
         self.target = target
         runner = Task { [weak self] in
@@ -68,7 +71,7 @@ final class LinkSupervisor {
             } catch is CancellationError {
                 break
             } catch {
-                // つながらない。間を置いてもう一度
+                LinkLog.note("connect failed: \(target.displayName) \(error)")
             }
             if Task.isCancelled { break }
             let shown = Swift.max(attempt, 1)
