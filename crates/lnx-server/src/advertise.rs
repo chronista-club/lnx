@@ -16,10 +16,7 @@ impl Advertiser {
     pub fn start(instance: &str, port: u16, version: &str) -> anyhow::Result<Self> {
         let daemon = ServiceDaemon::new()?;
         let host = format!("{instance}.local.");
-        let properties: HashMap<String, String> = HashMap::from([
-            ("version".to_string(), version.to_string()),
-            ("protocol".to_string(), "unison".to_string()),
-        ]);
+        let properties = txt_properties(instance, version);
         // ip は空 + addr_auto: 持っているアドレスを mdns-sd が自動で載せる
         let info = ServiceInfo::new(SERVICE_TYPE, instance, &host, "", port, properties)?
             .enable_addr_auto();
@@ -32,6 +29,16 @@ impl Advertiser {
     pub fn fullname(&self) -> &str {
         &self.fullname
     }
+}
+
+/// TXT の中身。`name` は名乗り（= QR の name）。Bonjour のインスタンス名は同じ名前が LAN に二つあると
+/// 「lnx-mac (2)」のように改名されるので、アプリは pin の鍵にこちらを使う
+pub fn txt_properties(name: &str, version: &str) -> HashMap<String, String> {
+    HashMap::from([
+        ("name".to_string(), name.to_string()),
+        ("version".to_string(), version.to_string()),
+        ("protocol".to_string(), "unison".to_string()),
+    ])
 }
 
 impl Drop for Advertiser {
