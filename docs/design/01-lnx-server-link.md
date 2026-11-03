@@ -91,7 +91,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 - `serve_session`: `Hello` で Welcome を返し、心拍タスクを 1 本起こす（多重 Hello では張り直さない）。`recv` が閉じたら心拍を止める
 - `serve_registry`: `List` で `Registry::snapshot()`、`watch` の変化を `RegistryChanged` で押し出す
 - `Registry` は `tokio::sync::watch` の `Sender` を正本に持つ（`send_replace` で購読者ゼロでも更新できる）
-- `Advertiser`（mdns-sd）が `_lnx._udp` を広告。TXT に `version` と `protocol=unison`
+- `Advertiser`（mdns-sd）が `_lnx._udp` を広告。TXT に `name`（名乗り = QR の name）と `version` と `protocol=unison`。Bonjour のインスタンス名は同名が二つあると「lnx-mac (2)」に改名されるので、アプリは pin の鍵に TXT の `name` を使う
 - 待ち受けは `[::]:12730`（UDP / QUIC、dual stack）。cert は `identity::ServerIdentity` が一度だけ作って保存した自己署名（`--state-dir` / `LNX_SERVER_STATE`、既定は `~/Library/Application Support/club.chronista.lnx-server` の `cert.pem` と `key.pem`、鍵は 0600）。起動時にペアリング用の QR と URL（`lnx://pair?v=1&name=<名乗り>&cert=<leaf DER の base64url、padding なし>`）を出す（QR は `--qr` のときだけ。ふだんは Mac 版が窓に出す）。`--no-mdns` / `--name` / `--config` / `LNX_SERVER_ADDR`
 - 試験は実 QUIC で回す（`tests/link.rs`）: `listener("[::1]:0").spawn()` → `ProtocolClient::new(QuicClient::insecure_localhost())`
 
@@ -149,6 +149,8 @@ mise run ios:run         # ビルド → シミュレータへインストール
 - Bonjour 探索は iPhone 16 Pro と iPad（iPad13,16）の実機で確認済み（2026-11-04）。解決は IPv4 を優先し、だめなら IPv6（scope つき）
 
 ## Status log
+
+- 2026-11-04: Bonjour の TXT に `name` を載せた（ios lane の相談、同名の改名で QR の name と合わなくなる対策）
 
 - 2026-11-04: ペアリング QR は Mac 版が出す（裁定「QRコードは、MacAppが担当したいね」「Bで行こう」、mem_1CggiZeAYrK7rqz3VNpszU）。サーバは手元用の listener を `[::1]:12731` にだけ bind し（`--local-addr` / `LNX_SERVER_LOCAL_ADDR`、ループバック以外は起動を断る）、`lnx-local.kdl` の `pairing` channel の `Get` で `PairingInfo{url, name, cert}` を返す。club-unison 2.2 の channel ハンドラは相手のアドレスを取れないので、判定ではなく bind で守る。ターミナルの QR は `--qr` のときだけ
 
