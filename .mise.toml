@@ -29,13 +29,13 @@ LNX_IOS_OS = "26.5"
 [tools]
 # Rust toolchain
 rust = "1.91"
-cargo-watch = "latest"
-cargo-edit = "latest"
-cargo-expand = "latest"
+# cargo 製ツールは registry に無いので cargo backend を明示（mise install で cargo install が走る）
+"cargo:cargo-watch" = "latest"
+"cargo:cargo-edit" = "latest"
+"cargo:cargo-expand" = "latest"
 xcodegen = "latest"
 
-# General development tools
-git = "latest"
+# General development tools（git は mise の管理外。Xcode / brew のものを使う）
 gh = "latest"
 pre-commit = "latest"
 
