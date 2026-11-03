@@ -3,10 +3,19 @@ import SwiftUI
 /// LNX 自身の画面。心拍が脈打ち、知っているサーバが並ぶ
 struct LnxHomeView: View {
     let supervisor: LinkSupervisor
+    #if os(macOS)
+    @State private var offeringPairing = false
+    #else
+    @State private var confirmingUnpair = false
+    #endif
 
     var body: some View {
         VStack(spacing: 24) {
             header
+            #if os(macOS)
+            Button("iPad をペアリング") { offeringPairing = true }
+                .accessibilityIdentifier("home.pairIPad")
+            #endif
             Spacer()
             Pulse(seq: supervisor.heartbeat?.seq ?? 0)
             Text(heartbeatLine)
@@ -15,8 +24,58 @@ struct LnxHomeView: View {
                 .foregroundStyle(.white.opacity(0.5))
             Spacer()
             serverList
+            #if !os(macOS)
+            // 右上のメニューと同じもの。ここにも置く（わかりやすい。裁定 2026-11-04）
+            if supervisor.canUnpair {
+                Button("ペアリングを解除") { confirmingUnpair = true }
+                    .font(.footnote)
+                    .tint(.white.opacity(0.5))
+                    .accessibilityIdentifier("home.unpair")
+            }
+            #endif
         }
         .padding(32)
+        .overlay(alignment: .topTrailing) { menu.padding(20) }
+        #if os(macOS)
+        .sheet(isPresented: $offeringPairing) {
+            PairingOfferView { offeringPairing = false }
+        }
+        #else
+        // 確認は一段だけ
+        .confirmationDialog(unpairQuestion, isPresented: $confirmingUnpair, titleVisibility: .visible) {
+            Button("解除する", role: .destructive) { supervisor.unpair() }
+        } message: {
+            Text("次につなぐときは、Mac 版の「iPad をペアリング」の QR を読み直します")
+        }
+        #endif
+    }
+
+    /// 右上のメニュー（裁定 2026-11-04。下 / 上のボタンと同じものをここにも）。Mac 版は「iPad をペアリング」（QR を出す）、
+    /// iPhone / iPad は「ペアリングを解除」（pin を消して切断 → ペアリング画面）。Mac 版は手元の localhost なので解除は無い
+    @ViewBuilder
+    private var menu: some View {
+        #if os(macOS)
+        Menu {
+            Button("iPad をペアリング") { offeringPairing = true }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityIdentifier("home.menu")
+        #else
+        if supervisor.canUnpair {
+            Menu {
+                Button("ペアリングを解除", systemImage: "link.badge.minus", role: .destructive) { confirmingUnpair = true }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title2)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .accessibilityIdentifier("home.menu")
+        }
+        #endif
     }
 
     private var header: some View {
@@ -30,6 +89,11 @@ struct LnxHomeView: View {
                     .foregroundStyle(.white.opacity(0.7))
             }
         }
+    }
+
+    private var unpairQuestion: String {
+        if case .connected(let welcome) = supervisor.state { return "「\(welcome.serverName)」とのペアリングを解除しますか" }
+        return "ペアリングを解除しますか"
     }
 
     private var heartbeatLine: String {

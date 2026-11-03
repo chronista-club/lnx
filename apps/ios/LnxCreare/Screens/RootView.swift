@@ -2,15 +2,26 @@ import SwiftUI
 
 /// 窓の枠。接続の今と選んだサーバで中身が切り替わる
 struct RootView: View {
-    @State private var supervisor = LinkSupervisor(transport: UnisonLnxTransport())
+    @State private var supervisor = LinkSupervisor(transport: UnisonLnxTransport(), pins: KeychainPinStore())
     @State private var finder = LnxFinder()
+    private let pins = KeychainPinStore()
 
     var body: some View {
         ZStack {
             Backdrop()
             switch ScreenRoute.resolve(state: supervisor.state, selection: supervisor.selection) {
             case .connecting:
-                ConnectingView(state: supervisor.state, target: supervisor.target)
+                ConnectingView(state: supervisor.state, target: supervisor.target) {
+                    supervisor.requestPairing()
+                }
+            case .pairing(let name):
+                PairingView(
+                    serverName: name,
+                    onPaired: { supervisor.paired($0) },
+                    onCancel: supervisor.canCancelPairing ? { supervisor.cancelPairing() } : nil
+                )
+                // 待つサーバが変わったら作り直す（スキャナの覚えている中身やエラー文を持ち越さない）
+                .id(name)
             case .lnxHome:
                 LnxHomeView(supervisor: supervisor)
             case .remote(let server):
@@ -30,7 +41,7 @@ struct RootView: View {
     private func connectWhenFound() async {
         finder.start()
         while !Task.isCancelled {
-            if let target = finder.preferred, supervisor.target != target {
+            if let target = finder.preferred(pins: pins, current: supervisor.target), supervisor.target != target {
                 supervisor.start(target: target)
             }
             try? await Task.sleep(for: .milliseconds(500))

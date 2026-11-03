@@ -46,6 +46,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: lnx creare
         INFOPLIST_KEY_NSMicrophoneUsageDescription: 周囲の音をビジュアルに変えるために、マイクを使います。
+        INFOPLIST_KEY_NSCameraUsageDescription: LNX の画面に出ているペアリングの QR を読むために、カメラを使います。
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent

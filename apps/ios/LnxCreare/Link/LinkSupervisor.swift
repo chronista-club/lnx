@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UnisonClient
 
 /// 常時接続の番人。つなぐ、名乗りと心拍を映す、切れたら間を置いてつなぎ直す。
 /// iOS では背面に回ると接続は切れる — 「常時」の実際の意味は
@@ -17,6 +18,7 @@ final class LinkSupervisor {
     var selection: RemoteServer?
 
     private let transport: any LnxTransport
+    private let pins: any PinStore
     private let backoff: BackoffPolicy
     /// 心拍が最初に届いたあと、この間なにも来なければ死んだとみなす
     private let heartbeatTimeout: Duration
@@ -25,10 +27,12 @@ final class LinkSupervisor {
 
     init(
         transport: any LnxTransport,
+        pins: any PinStore,
         backoff: BackoffPolicy = BackoffPolicy(),
         heartbeatTimeout: Duration = .seconds(5)
     ) {
         self.transport = transport
+        self.pins = pins
         self.backoff = backoff
         self.heartbeatTimeout = heartbeatTimeout
     }
@@ -36,10 +40,64 @@ final class LinkSupervisor {
     func start(target: LinkTarget) {
         LinkLog.note("start: \(target.displayName)")
         runner?.cancel()
+        runner = nil
         self.target = target
-        runner = Task { [weak self] in
-            await self?.loop(target: target)
+        switch LinkTrust.decide(for: target, pins: pins) {
+        case .needsPairing(let name):
+            LinkLog.note("target: \(target.displayName) はペアリングが要る（\(name ?? "名前なし")）")
+            heartbeat = nil
+            state = .needsPairing(serverName: name)
+        case .connect(let trust):
+            LinkLog.note("target: \(target.displayName) へつなぐ（\(trust == .skipVerify ? "skipVerify" : "pinned")）")
+            runner = Task { [weak self] in
+                await self?.loop(target: target, trust: trust)
+            }
         }
+    }
+
+    /// QR を読み終えた。pin を残して、今の先へつなぎ直す
+    func paired(_ code: PairingCode) {
+        LinkLog.note("paired: \(code.serverName)（証明書 \(code.certificate.count) バイト）")
+        pins.save(code.certificate, for: code.serverName)
+        if let target { start(target: target) }
+    }
+
+    /// ペアリングをやめて、今の先へつなぎ直す（pin が残っていればそれで。無ければ needsPairing に戻るだけ）
+    func cancelPairing() {
+        if let target { start(target: target) }
+    }
+
+    /// ペアリング画面から戻れるか（今の先の pin が残っている）
+    var canCancelPairing: Bool {
+        guard case .host(_, _, let name?) = target else { return false }
+        return pins.certificate(for: name) != nil
+    }
+
+    /// ペアリングを解除できるか（今の先が LAN のサーバ）
+    var canUnpair: Bool {
+        if case .host(_, _, _?) = target { return true }
+        return false
+    }
+
+    /// ペアリングを解除する。pin を消して接続を畳み、ペアリング画面へ（LAN の先だけ）
+    func unpair() {
+        guard case .host(_, _, let name?) = target else { return }
+        LinkLog.note("unpair: \(name) の pin を消す")
+        pins.remove(for: name)
+        runner?.cancel()
+        runner = nil
+        heartbeat = nil
+        selection = nil
+        state = .needsPairing(serverName: name)
+    }
+
+    /// ペアリングをやり直す（サーバの証明書が変わって pin が合わないとき）。LAN の先だけ
+    func requestPairing() {
+        guard case .host(_, _, let name) = target else { return }
+        runner?.cancel()
+        runner = nil
+        heartbeat = nil
+        state = .needsPairing(serverName: name)
     }
 
     func stop() {
@@ -49,13 +107,13 @@ final class LinkSupervisor {
         heartbeat = nil
     }
 
-    private func loop(target: LinkTarget) async {
+    private func loop(target: LinkTarget, trust: TrustPolicy) async {
         var attempt = 0
         while !Task.isCancelled {
             attempt += 1
             state = .connecting(attempt: attempt)
             do {
-                let session = try await transport.connect(to: target)
+                let session = try await transport.connect(to: target, trust: trust)
                 let welcome: Welcome
                 do {
                     welcome = try await session.hello(Hello(client: AppInfo.name, clientVersion: AppInfo.version))

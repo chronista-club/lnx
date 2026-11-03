@@ -1,14 +1,16 @@
 import Foundation
 import Testing
+import UnisonClient
 @testable import LnxCreare
 
 /// 常時接続の番人。つなぐ、心拍を映す、切れたら間を置いてつなぎ直す
 @Suite("LinkSupervisor")
 @MainActor
 struct LinkSupervisorTests {
-    private func makeSupervisor(_ transport: FakeTransport) -> LinkSupervisor {
+    private func makeSupervisor(_ transport: FakeTransport, pins: any PinStore = MemoryPinStore()) -> LinkSupervisor {
         LinkSupervisor(
             transport: transport,
+            pins: pins,
             backoff: BackoffPolicy(base: .milliseconds(10), max: .milliseconds(20))
         )
     }
@@ -65,6 +67,194 @@ struct LinkSupervisorTests {
         try await eventually { supervisor.servers == more }
     }
 
+    @Test("同じ機械へは検証を飛ばしてつなぐ")
+    func localDaemonSkipsVerify() async throws {
+        let transport = FakeTransport()
+        let supervisor = makeSupervisor(transport)
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(await transport.trusts == [.skipVerify])
+    }
+
+    @Test("ペアリング済みの LAN サーバへは pin してつなぐ")
+    func pairedHostIsPinned() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        pins.save(Data([9, 9]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(await transport.trusts == [.pinned(Data([9, 9]))])
+    }
+
+    @Test("ペアリングしていない LAN サーバにはつながず、needsPairing で待つ")
+    func unpairedHostWaitsForPairing() async throws {
+        let transport = FakeTransport()
+        let supervisor = makeSupervisor(transport)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+
+        try await eventually { supervisor.state == .needsPairing(serverName: "lnx-mac") }
+        try await Task.sleep(for: .milliseconds(60))
+        #expect(await transport.connectCount == 0)
+    }
+
+    @Test("ペアリングし終えたら、同じ先へつなぎにいく")
+    func connectsAfterPairing() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .needsPairing(serverName: "lnx-mac") }
+
+        supervisor.paired(PairingCode(serverName: "lnx-mac", certificate: Data([7])))
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(pins.certificate(for: "lnx-mac") == Data([7]))
+        #expect(await transport.trusts == [.pinned(Data([7]))])
+    }
+
+    @Test("ペアリングし直すと、LAN の先は needsPairing に戻る")
+    func requestPairingReturnsToPairing() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+
+        supervisor.requestPairing()
+        #expect(supervisor.state == .needsPairing(serverName: "lnx-mac"))
+    }
+
+    @Test("同じ機械の先ではペアリングし直さない")
+    func requestPairingIgnoresLocalDaemon() async throws {
+        let transport = FakeTransport()
+        let supervisor = makeSupervisor(transport)
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+
+        supervisor.requestPairing()
+        #expect(supervisor.state == .connected(FakeSession.welcome))
+    }
+
+    @Test("ペアリングし直すと pin が新しい証明書に替わり、それでつなぐ")
+    func repairingReplacesPin() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+
+        supervisor.requestPairing()
+        supervisor.paired(PairingCode(serverName: "lnx-mac", certificate: Data([2])))
+        try await eventually { await transport.connectCount == 2 }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(pins.certificate(for: "lnx-mac") == Data([2]))
+        #expect(await transport.trusts == [.pinned(Data([1])), .pinned(Data([2]))])
+    }
+
+    @Test("ペアリングをやめると、前の pin でつなぎ直す")
+    func cancelPairingReconnectsWithOldPin() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+
+        supervisor.requestPairing()
+        #expect(supervisor.canCancelPairing)
+        supervisor.cancelPairing()
+        try await eventually { await transport.connectCount == 2 }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(await transport.trusts == [.pinned(Data([1])), .pinned(Data([1]))])
+    }
+
+    @Test("pin が無ければペアリング画面から戻れない")
+    func cannotCancelWithoutPin() async throws {
+        let supervisor = makeSupervisor(FakeTransport())
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        #expect(supervisor.state == .needsPairing(serverName: "lnx-mac"))
+        #expect(!supervisor.canCancelPairing)
+    }
+
+    @Test("つながっている最中に未ペアリングの先へ替えると、前の接続を止めて needsPairing")
+    func switchingToUnpairedHostStopsOldLink() async throws {
+        let transport = FakeTransport()
+        let supervisor = makeSupervisor(transport)
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        let session = await transport.latestSession()
+        await session.emit(Heartbeat(seq: 1, uptimeMs: 1000))
+        try await eventually { supervisor.heartbeat != nil }
+
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-pi"))
+        #expect(supervisor.state == .needsPairing(serverName: "lnx-pi"))
+        #expect(supervisor.heartbeat == nil)
+        try await Task.sleep(for: .milliseconds(60))
+        #expect(supervisor.state == .needsPairing(serverName: "lnx-pi"))
+        #expect(await transport.connectCount == 1)
+    }
+
+    @Test("ペアリングを解除すると pin を消し、接続を畳んで needsPairing")
+    func unpairForgetsPin() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+
+        supervisor.unpair()
+        #expect(pins.certificate(for: "lnx-mac") == nil)
+        #expect(supervisor.state == .needsPairing(serverName: "lnx-mac"))
+        #expect(!supervisor.canCancelPairing)
+        try await Task.sleep(for: .milliseconds(60))
+        #expect(await transport.connectCount == 1)
+    }
+
+    @Test("解除してからペアリングし直すと、新しい pin でつなぎ直す。選んでいたサーバは外れる")
+    func unpairThenPair() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        supervisor.selection = FakeSession.servers[0]
+
+        supervisor.unpair()
+        #expect(supervisor.selection == nil)
+        supervisor.paired(PairingCode(serverName: "lnx-mac", certificate: Data([2])))
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(await transport.trusts == [.pinned(Data([1])), .pinned(Data([2]))])
+    }
+
+    @Test("同じ機械の先ではペアリングを解除できない")
+    func unpairIgnoresLocalDaemon() async throws {
+        let supervisor = makeSupervisor(FakeTransport())
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(!supervisor.canUnpair)
+        supervisor.unpair()
+        #expect(supervisor.state == .connected(FakeSession.welcome))
+    }
+
     @Test("stop で idle に戻り、以後つなぎ直さない")
     func stopGoesIdle() async throws {
         let transport = FakeTransport()
@@ -82,6 +272,8 @@ struct LinkSupervisorTests {
 
 actor FakeTransport: LnxTransport {
     private(set) var connectCount = 0
+    /// connect ごとに渡された信頼方針
+    private(set) var trusts: [TrustPolicy] = []
     private var failuresLeft: Int
     private var sessions: [FakeSession] = []
 
@@ -89,8 +281,9 @@ actor FakeTransport: LnxTransport {
         failuresLeft = failures
     }
 
-    func connect(to target: LinkTarget) async throws -> any LnxSession {
+    func connect(to target: LinkTarget, trust: TrustPolicy) async throws -> any LnxSession {
         connectCount += 1
+        trusts.append(trust)
         if failuresLeft > 0 {
             failuresLeft -= 1
             throw FakeError.unreachable

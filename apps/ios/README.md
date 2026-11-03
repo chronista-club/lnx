@@ -45,8 +45,8 @@ apps/ios/
 ├── project.yml                 # XcodeGen 定義（これが正）
 ├── LnxCreare/                  # アプリ本体
 │   ├── App/LnxCreareApp.swift  # エントリポイント
-│   ├── Link/                   # LNX への常時接続（LinkSupervisor、UnisonLnxTransport、LnxFinder、LnxProtocol）
-│   ├── Screens/                # 画面（RootView、Connecting、LnxHome、RemoteServer、ScreenRoute）
+│   ├── Link/                   # LNX への常時接続（LinkSupervisor、UnisonLnxTransport、LnxFinder、LnxProtocol、ペアリングと pin: PairingCode・PinStore・LinkTrust）
+│   ├── Screens/                # 画面（RootView、Connecting、Pairing、QRScanner、LnxHome、RemoteServer、ScreenRoute）
 │   ├── Model/AppInfo.swift     # 表示名・タグライン・版
 │   └── Resources/Assets.xcassets
 ├── LnxCreareTests/             # 単体テスト（Swift Testing）

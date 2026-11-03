@@ -46,7 +46,7 @@ graph LR
 | サーバの場所 | **Mac** | 「別に今ラズパイいらないね。ここのサーバで良いわ」 |
 | iPad 側の接続 | **club-unison の Swift client**（Rust / UniFFI は使わない） | SDK があり配布実績もある。Rust コアは音の段で |
 | 再接続 | **アプリが持つ**（Unison の client は意図的に auto-reconnect しない） | 倍々の間（0.5 秒 → 上限 10 秒）。心拍が止まったら切れたとみなす |
-| 信頼 | サーバは保存した自己署名、アプリは QR ペアリングで pin（`TrustPolicy.pinned`）| 2026-11-04 に第一区切りの `skipVerify` から移行中（アプリ側は ios lane）|
+| 信頼 | サーバは保存した自己署名（起動ごとに作り直さない）。アプリは同じ機械（localhost）なら `skipVerify`、LAN のサーバは **QR でペアリング**した leaf 証明書に `TrustPolicy.pinned` | TOFU（初回を信頼）は club-unison に証明書を取り出す口が無い。ビルド時の同梱はサーバが増えると破綻する（裁定 2026-11-04、`mem_1Cgghdxbp4bGRPyQccDFDn`） |
 | 音 | この区切りでは出さない | lnx-engine の接続は次 |
 
 ### 「常時接続」の iOS での意味
@@ -64,6 +64,18 @@ Swift 側の写しは `apps/ios/LnxCreare/Link/LnxProtocol.swift`（codegen は�
 |---|---|---|---|
 | `session` | `Hello{client, client_version}` → `Welcome{server_name, server_version, server_time_ms}` | `Heartbeat{seq, uptime_ms}` | 心拍は Hello のあと 1 秒ごと。最初の 1 拍は即座 |
 | `registry` | `List{}` → `ServerList{servers}` | `RegistryChanged{servers}` | event は差分ではなく snapshot 全体 |
+
+### ペアリングの QR（サーバ → アプリ）
+
+```
+lnx://pair?v=1&name=<サーバ名>&cert=<leaf 証明書 DER の base64url、padding なし>
+```
+
+- `name` は Bonjour のインスタンス名（`cfg.name`、例 `lnx-mac`）と同じ。アプリは Keychain（service `club.chronista.lnx.creare.pin`、account = name）に DER を置き、Bonjour で見つけた名前で引く
+- club-unison Swift の `pinned` は leaf DER の**バイト一致だけ**を見る（hostname / SAN は見ない）。だからサーバは証明書を**作り直してはいけない**（作り直すと pin が外れ、アプリは「ペアリングし直す」まで回り続ける）
+- 読み取りは VisionKit の `DataScannerViewController`（実機のみ）。読めない機械（シミュレータ、Mac）は同じ文字列を貼る
+- `cert` は `SecCertificateCreateWithData` で証明書として読めるものだけ受け取る（壊れた QR を pin にすると回り続ける）
+- QR を出すのは **Mac 版**（裁定 `mem_1CggiZeAYrK7rqz3VNpszU`）。ホームの「iPad をペアリング」→ 手元用 `[::1]:12731` に `skipVerify` でつなぎ `pairing.Get` → `PairingCode` で読めるか確かめてから `CIQRCodeGenerator` で出す（`PairingOffer` / `PairingOfferView`）
 
 `servers` の 1 件（`ServerEntry`）: `id`（例 `ladyland.field`）, `name`, `kind`（画面の選択に使う）, `host`, `port`。
 設定ファイル（TOML）の `[[servers]]` がそのまま一覧になる。例は `crates/lnx-server/lnx-server.example.toml`。
@@ -86,12 +98,18 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
 
 - `LnxTransport` / `LnxSession` が接続の抽象。実物は `UnisonLnxTransport`（connect / openChannel / request を**すべて timeout で包む**）、テストは `FakeTransport`
+- `LinkTrust.decide(target, pins)`: localhost は `.connect(.skipVerify)`、ペアリング済みの LAN は `.connect(.pinned(der))`、未ペアリングは `.needsPairing(name)`。`PinStore` の実物は `KeychainPinStore`、テストは `MemoryPinStore`
 - `LinkSupervisor`（`@MainActor @Observable`）: `idle → connecting(attempt) → connected(Welcome) → reconnecting(attempt, delay)`。
+  未ペアリングの LAN の先では `needsPairing(serverName)` で止まり、つながない。`paired(code)` で pin を残してつなぎ直す。
+  `requestPairing()` は再接続中の画面の「ペアリングし直す」から呼ぶ（LAN の先だけ）。前の pin が残っていれば `cancelPairing()` で戻れる。
+  ホームの「ペアリングを解除」（下のボタンと右上のメニューの両方、確認は一段）は `unpair()`（pin を消してペアリング画面へ。iPhone / iPad の LAN の先だけ）。Mac 版の「iPad をペアリング」もボタンと右上のメニューの両方。アプリを消しても Keychain の pin は残るので、やり直しはこちらで
   窓を開けたら心拍・一覧・切断・無音を並行に見張り、どれかが終わったら畳んでつなぎ直す。
   無音の見張りは**最初の心拍が来てから**数え始める（`unison mock` のように心拍を出さない相手を切らない）
 - `BackoffPolicy`: 0.5 秒から倍々、上限 10 秒
-- `LnxFinder`: 実機は Bonjour（`NWBrowser` → UDP の "接続" で host:port に解く）。シミュレータと Mac は `[::1]:12730` も候補（Bonjour で見つかればそちらへ）
-- `ScreenRoute.resolve(state, selection)`: つながるまで `connecting`、つながれば `lnxHome`、選べば `remote(server)`
+- `LnxFinder`: 実機は Bonjour（`NWBrowser` → UDP の "接続" で host:port に解く）。見つけた先は `.host(address, port:, name: インスタンス名)`。
+  実機はペアリング済みの先を優先し（LAN に別の `_lnx._udp` が居ても縛られない）、無ければ先頭（IPv4 が前）。
+  シミュレータと Mac は常に `[::1]:12730`（カメラで QR を読めず、同じ機械のサーバで足りる。Mac から別の LNX へつなぐのは次）
+- `ScreenRoute.resolve(state, selection)`: つながるまで `connecting`、つながれば `lnxHome`、選べば `remote(server)`、ペアリングが要れば `pairing(serverName)`
 - `RemoteServer.endpointLabel`: 画面用の `host:port`。`Text("\(port)")` は桁区切り（7,879）になるので文字列で組む
 
 ### 開発の回し方
@@ -125,7 +143,9 @@ mise run ios:run         # ビルド → シミュレータへインストール
 ## 関連 / 未決
 
 - 経由型（iPad は LNX と 1 本だけ、LNX が中継）は Unison の Hub 層の仕事。LNX で先行実装してよい
-- registry の生きた供給源（VP daemon の `registry.list`、Ladyland の fieldd）、証明書 pin、Pi 配置、音（lnx-engine）は次の区切り
+- registry の生きた供給源（VP daemon の `registry.list`、Ladyland の fieldd）、Pi 配置、音（lnx-engine）は次の区切り
+- Bonjour のインスタンス名が衝突して `lnx-mac (2)` のように改名されると、QR の `name` と合わずペアリングできない
+- QR のカメラ読み取りは iPad（iPad13,16）の実機で確認済み（2026-11-04）。iPhone は未
 - Bonjour 探索は iPhone 16 Pro と iPad（iPad13,16）の実機で確認済み（2026-11-04）。解決は IPv4 を優先し、だめなら IPv6（scope つき）
 
 ## Status log
@@ -133,6 +153,8 @@ mise run ios:run         # ビルド → シミュレータへインストール
 - 2026-11-04: ペアリング QR は Mac 版が出す（裁定「QRコードは、MacAppが担当したいね」「Bで行こう」、mem_1CggiZeAYrK7rqz3VNpszU）。サーバは手元用の listener を `[::1]:12731` にだけ bind し（`--local-addr` / `LNX_SERVER_LOCAL_ADDR`、ループバック以外は起動を断る）、`lnx-local.kdl` の `pairing` channel の `Get` で `PairingInfo{url, name, cert}` を返す。club-unison 2.2 の channel ハンドラは相手のアドレスを取れないので、判定ではなく bind で守る。ターミナルの QR は `--qr` のときだけ
 
 - 2026-11-04: 証明書を保存して使い続けるようにし、起動時にペアリング用 QR / URL を出す（ios lane の QR ペアリングと合意した契約、起票 mem_1Cgghdxbp4bGRPyQccDFDn）。保存した証明書だけを信頼するクライアントでつながる結合テストを追加
+- 2026-11-04: iPad 実機で「ペアリングを解除 → Mac 版の QR をカメラで読む（539 バイト）→ paired（証明書 379 バイト）→ pinned で connected」を通した。サーバを立て直しても pin のままつながる
+- 2026-11-04: 証明書 pin（アプリ側）。QR / 貼り付けでペアリングし、LAN のサーバには pin でつなぐ。シミュレータと Mac 版は localhost 固定
 
 - 2026-11-04: LnxCreare ターゲットを iOS + macOS の multiplatform に。`mise run mac:run` で Mac 版が開き、同じ Mac のサーバにつながる
 - 2026-11-04: iPhone 16 Pro と iPad の実機で Bonjour → 接続を確認（署名チームは ANYCREATIVE, K.K.）。LnxFinder は IPv4 優先で解決し、`[link]` の足跡を stderr に出す

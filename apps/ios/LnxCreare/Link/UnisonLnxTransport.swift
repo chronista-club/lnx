@@ -3,11 +3,8 @@ import UnisonClient
 
 /// 実物 — club-unison の Swift client で QUIC をつなぐ
 struct UnisonLnxTransport: LnxTransport {
-    /// dev は自己署名の dev cert なので検証を飛ばす。pin は次の区切り（design 01）
-    var trust: TrustPolicy = .skipVerify
-
-    func connect(to target: LinkTarget) async throws -> any LnxSession {
-        let trust = self.trust
+    /// trust は LinkTrust が決める（localhost は skipVerify、LAN はペアリングした証明書に pin）
+    func connect(to target: LinkTarget, trust: TrustPolicy) async throws -> any LnxSession {
         // ⚠️ 全部タイムアウトで包む — 応答が消えると await が永遠に固まる（Ladyland の実例）
         let connection = try await withTimeout(seconds: 5) {
             try await UnisonClient.connect(to: target.unisonEndpoint, trust: trust)
@@ -31,7 +28,7 @@ extension LinkTarget {
     var unisonEndpoint: Endpoint {
         switch self {
         case .localDaemon(let port): .localDaemon(port: port)
-        case .host(let host, let port): .host(host, port: port)
+        case .host(let host, let port, _): .host(host, port: port)
         }
     }
 }
