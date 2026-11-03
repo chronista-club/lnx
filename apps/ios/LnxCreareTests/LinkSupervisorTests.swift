@@ -255,6 +255,37 @@ struct LinkSupervisorTests {
         #expect(supervisor.state == .connected(FakeSession.welcome))
     }
 
+    @Test("名乗りの最中に解除しても、遅れて戻った応答で connected に戻らない")
+    func lateHelloDoesNotOverwriteUnpair() async throws {
+        let latch = Latch()
+        let transport = FakeTransport(helloLatch: latch)
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { await transport.connectCount == 1 }
+
+        supervisor.unpair()
+        latch.open(0)
+        try await Task.sleep(for: .milliseconds(80))
+        #expect(supervisor.state == .needsPairing(serverName: "lnx-mac"))
+    }
+
+    @Test("名乗りの最中に stop しても、遅れて戻った応答で connected に戻らない")
+    func lateHelloDoesNotOverwriteStop() async throws {
+        let latch = Latch()
+        let transport = FakeTransport(helloLatch: latch)
+        let supervisor = makeSupervisor(transport)
+        supervisor.start(target: .localDaemon(port: 1))
+        try await eventually { await transport.connectCount == 1 }
+
+        supervisor.stop()
+        latch.open(0)
+        try await Task.sleep(for: .milliseconds(80))
+        #expect(supervisor.state == .idle)
+    }
+
     @Test("stop で idle に戻り、以後つなぎ直さない")
     func stopGoesIdle() async throws {
         let transport = FakeTransport()
@@ -277,8 +308,12 @@ actor FakeTransport: LnxTransport {
     private var failuresLeft: Int
     private var sessions: [FakeSession] = []
 
-    init(failures: Int = 0) {
+    /// 名乗り（hello）の応答を止めておく栓。開けるまで hello は戻らない（cancel にも応じない）
+    private let helloLatch: Latch?
+
+    init(failures: Int = 0, helloLatch: Latch? = nil) {
         failuresLeft = failures
+        self.helloLatch = helloLatch
     }
 
     func connect(to target: LinkTarget, trust: TrustPolicy) async throws -> any LnxSession {
@@ -288,7 +323,7 @@ actor FakeTransport: LnxTransport {
             failuresLeft -= 1
             throw FakeError.unreachable
         }
-        let session = FakeSession()
+        let session = FakeSession(helloLatch: helloLatch)
         sessions.append(session)
         return session
     }
@@ -312,13 +347,19 @@ actor FakeSession: LnxSession {
     private let dropSink: AsyncStream<Void>.Continuation
     private var dropped = false
 
-    init() {
+    private let helloLatch: Latch?
+
+    init(helloLatch: Latch? = nil) {
+        self.helloLatch = helloLatch
         (heartbeatStream, heartbeatSink) = AsyncStream<Heartbeat>.makeStream()
         (registryStream, registrySink) = AsyncStream<[RemoteServer]>.makeStream()
         (dropStream, dropSink) = AsyncStream<Void>.makeStream()
     }
 
-    func hello(_ hello: Hello) async throws -> Welcome { Self.welcome }
+    func hello(_ hello: Hello) async throws -> Welcome {
+        if let helloLatch { _ = await helloLatch.wait() }
+        return Self.welcome
+    }
     func listServers() async throws -> [RemoteServer] { Self.servers }
     func heartbeats() -> AsyncStream<Heartbeat> { heartbeatStream }
     func registryChanges() -> AsyncStream<[RemoteServer]> { registryStream }

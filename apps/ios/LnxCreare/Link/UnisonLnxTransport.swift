@@ -6,7 +6,8 @@ struct UnisonLnxTransport: LnxTransport {
     /// trust は LinkTrust が決める（localhost は skipVerify、LAN はペアリングした証明書に pin）
     func connect(to target: LinkTarget, trust: TrustPolicy) async throws -> any LnxSession {
         // ⚠️ 全部タイムアウトで包む — 応答が消えると await が永遠に固まる（Ladyland の実例）
-        let connection = try await withTimeout(seconds: 5) {
+        // 期限や cancel のあとで遅れてつながったら、その接続は閉じる
+        let connection = try await withTimeout(seconds: 5, onLateSuccess: { await $0.disconnect() }) {
             try await UnisonClient.connect(to: target.unisonEndpoint, trust: trust)
         }
         do {
@@ -80,26 +81,4 @@ final class UnisonLnxSession: LnxSession, @unchecked Sendable {
     func close() async {
         await connection.disconnect()
     }
-}
-
-/// 期限つき await（超えたら LinkTimeout）
-func withTimeout<T: Sendable>(
-    seconds: Double,
-    _ operation: @escaping @Sendable () async throws -> T
-) async throws -> T {
-    try await withThrowingTaskGroup(of: T.self) { group in
-        group.addTask { try await operation() }
-        group.addTask {
-            try await Task.sleep(for: .seconds(seconds))
-            throw LinkTimeout(seconds: seconds)
-        }
-        guard let first = try await group.next() else { throw LinkTimeout(seconds: seconds) }
-        group.cancelAll()
-        return first
-    }
-}
-
-struct LinkTimeout: Error, CustomStringConvertible {
-    let seconds: Double
-    var description: String { "\(seconds) 秒待っても応答がない" }
 }

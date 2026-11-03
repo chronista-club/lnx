@@ -23,6 +23,9 @@ final class LinkSupervisor {
     /// 心拍が最初に届いたあと、この間なにも来なければ死んだとみなす
     private let heartbeatTimeout: Duration
     private var runner: Task<Void, Never>?
+    /// 接続の世代。止める・解除・切り替えのたびに進め、古い世代のタスクには状態を書かせない。
+    /// club-unison の待ちは cancel に応じないので、cancel 後に遅れて戻った応答が connected を書き戻しうる（deep レビュー P3-2）
+    private var epoch = 0
     private var heartbeatCount = 0
 
     init(
@@ -39,8 +42,7 @@ final class LinkSupervisor {
 
     func start(target: LinkTarget) {
         LinkLog.note("start: \(target.displayName)")
-        runner?.cancel()
-        runner = nil
+        halt()
         self.target = target
         switch LinkTrust.decide(for: target, pins: pins) {
         case .needsPairing(let name):
@@ -49,8 +51,9 @@ final class LinkSupervisor {
             state = .needsPairing(serverName: name)
         case .connect(let trust):
             LinkLog.note("target: \(target.displayName) へつなぐ（\(trust == .skipVerify ? "skipVerify" : "pinned")）")
+            let epoch = epoch
             runner = Task { [weak self] in
-                await self?.loop(target: target, trust: trust)
+                await self?.loop(target: target, trust: trust, epoch: epoch)
             }
         }
     }
@@ -84,8 +87,7 @@ final class LinkSupervisor {
         guard case .host(_, _, let name?) = target else { return }
         LinkLog.note("unpair: \(name) の pin を消す")
         pins.remove(for: name)
-        runner?.cancel()
-        runner = nil
+        halt()
         heartbeat = nil
         selection = nil
         state = .needsPairing(serverName: name)
@@ -94,26 +96,39 @@ final class LinkSupervisor {
     /// ペアリングをやり直す（サーバの証明書が変わって pin が合わないとき）。LAN の先だけ
     func requestPairing() {
         guard case .host(_, _, let name) = target else { return }
-        runner?.cancel()
-        runner = nil
+        halt()
         heartbeat = nil
         state = .needsPairing(serverName: name)
     }
 
     func stop() {
-        runner?.cancel()
-        runner = nil
+        halt()
         state = .idle
         heartbeat = nil
     }
 
-    private func loop(target: LinkTarget, trust: TrustPolicy) async {
+    /// 今の世代を終わらせる（走っているタスクは以後、状態を書かない）
+    private func halt() {
+        epoch += 1
+        runner?.cancel()
+        runner = nil
+    }
+
+    private func isCurrent(_ epoch: Int) -> Bool {
+        epoch == self.epoch && !Task.isCancelled
+    }
+
+    private func loop(target: LinkTarget, trust: TrustPolicy, epoch: Int) async {
         var attempt = 0
-        while !Task.isCancelled {
+        while isCurrent(epoch) {
             attempt += 1
             state = .connecting(attempt: attempt)
             do {
                 let session = try await transport.connect(to: target, trust: trust)
+                guard isCurrent(epoch) else {
+                    await session.close()
+                    break
+                }
                 let welcome: Welcome
                 do {
                     welcome = try await session.hello(Hello(client: AppInfo.name, clientVersion: AppInfo.version))
@@ -121,17 +136,21 @@ final class LinkSupervisor {
                     await session.close()
                     throw error
                 }
+                guard isCurrent(epoch) else {
+                    await session.close()
+                    break
+                }
                 attempt = 0
                 heartbeatCount = 0
                 state = .connected(welcome)
-                await run(session)
-                heartbeat = nil
+                await run(session, epoch: epoch)
+                if isCurrent(epoch) { heartbeat = nil }
             } catch is CancellationError {
                 break
             } catch {
                 LinkLog.note("connect failed: \(target.displayName) \(error)")
             }
-            if Task.isCancelled { break }
+            guard isCurrent(epoch) else { break }
             let shown = Swift.max(attempt, 1)
             let delay = backoff.delay(attempt: shown)
             state = .reconnecting(attempt: shown, delay: delay)
@@ -146,21 +165,21 @@ final class LinkSupervisor {
     /// 開いた窓を見張る。心拍・一覧・切断・無音のどれかが終わったら畳む。
     /// 子タスクは nonisolated にして、状態の更新だけ MainActor のメソッドへ渡す
     /// （`@MainActor` 付きの閉包を addTask に渡すと Swift 6 の isolation checker が解けない）
-    private func run(_ session: any LnxSession) async {
+    private func run(_ session: any LnxSession, epoch: Int) async {
         let timeout = heartbeatTimeout
         await withTaskGroup(of: Void.self) { group in
             group.addTask { [weak self] in
                 for await beat in await session.heartbeats() {
                     guard let self else { return }
-                    await self.record(beat)
+                    await self.record(beat, epoch: epoch)
                 }
             }
             group.addTask { [weak self] in
                 if let list = try? await session.listServers() {
-                    await self?.update(servers: list)
+                    await self?.update(servers: list, epoch: epoch)
                 }
                 for await servers in await session.registryChanges() {
-                    await self?.update(servers: servers)
+                    await self?.update(servers: servers, epoch: epoch)
                 }
             }
             group.addTask {
@@ -181,12 +200,14 @@ final class LinkSupervisor {
         await session.close()
     }
 
-    private func record(_ beat: Heartbeat) {
+    private func record(_ beat: Heartbeat, epoch: Int) {
+        guard epoch == self.epoch else { return }
         heartbeat = beat
         heartbeatCount += 1
     }
 
-    private func update(servers: [RemoteServer]) {
+    private func update(servers: [RemoteServer], epoch: Int) {
+        guard epoch == self.epoch else { return }
         self.servers = servers
     }
 }
