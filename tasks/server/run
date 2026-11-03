@@ -1,8 +1,14 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
-#MISE description="LNX サーバをこの Mac で起動（[::]:12730。一覧は crates/lnx-server/lnx-server.example.toml）"
+#MISE description="LNX サーバをこの Mac で起動（[::]:12730。同じポートの古いサーバは止めてから。一覧は crates/lnx-server/lnx-server.example.toml）"
 
 require_relative "../_lib/lnx"
 
 config = ENV.fetch("LNX_SERVER_CONFIG", Lnx::SERVER_CONFIG)
-Lnx.exec!("cargo", "run", "-q", "-p", "lnx-server", "--", "--config", config)
+addr = ENV.fetch("LNX_SERVER_ADDR", "[::]:12730")
+port = Integer(addr[/:(\d+)\z/, 1])
+
+# 先にビルドする（古いサーバが止まっている時間を短くする）
+Lnx.run("cargo", "build", "-q", "-p", "lnx-server")
+Lnx.stop_listeners(port)
+Lnx.exec!(File.join(Lnx::ROOT, "target", "debug", "lnx-server"), "--config", config)

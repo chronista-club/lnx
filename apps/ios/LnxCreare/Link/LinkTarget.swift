@@ -18,5 +18,7 @@ enum LinkTarget: Equatable, Hashable, Sendable {
 /// LNX サーバの既定ポート（crates/lnx-server の DEFAULT_PORT と対）
 enum LnxDefaults {
     static let port: UInt16 = 12730
+    /// 手元用（ループバックだけ）。ペアリング URL を取る（crates/lnx-server の DEFAULT_LOCAL_ADDR と対）
+    static let localPort: UInt16 = 12731
     static let bonjourType = "_lnx._udp"
 }

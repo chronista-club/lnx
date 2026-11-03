@@ -8,10 +8,11 @@ use tracing::{info, warn};
 use unison::network::channel::UnisonChannel;
 use unison::network::{MessageType, NetworkError, ProtocolServer};
 
-use crate::LNX_KDL;
 use crate::config::ServerConfig;
 use crate::heartbeat::{self, Heartbeat};
+use crate::identity::{ServerIdentity, pairing_url};
 use crate::registry::Registry;
+use crate::{LNX_KDL, LNX_LOCAL_KDL};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const NAMESPACE: &str = "club.chronista.lnx";
@@ -170,3 +171,47 @@ async fn serve_registry(
 
 #[allow(dead_code)]
 const _: Duration = heartbeat::PERIOD;
+
+/// 手元用のサーバ（pairing channel だけ）。ループバックにだけ bind して使う（`loopback_only`）
+pub async fn build_local(name: &str, id: &ServerIdentity) -> Result<ProtocolServer, NetworkError> {
+    let server = ProtocolServer::with_identity(name, VERSION, "club.chronista.lnx.local");
+    server.enable_discovery(LNX_LOCAL_KDL).await?;
+    let url = pairing_url(name, id.cert_der());
+    let cert = url.rsplit("cert=").next().unwrap_or_default().to_string();
+    let info = json!({ "url": url, "name": name, "cert": cert });
+    server
+        .register_channel("pairing", move |_ctx, stream| {
+            let info = info.clone();
+            async move {
+                let channel = UnisonChannel::new(stream);
+                loop {
+                    match channel.recv().await {
+                        Ok(msg) if msg.msg_type == MessageType::Request => {
+                            match msg.method.as_str() {
+                                "Get" => channel.send_response(msg.id, &msg.method, &info).await?,
+                                other => warn!("pairing: 未知の request {other}"),
+                            }
+                        }
+                        Ok(_) => continue,
+                        Err(e) if e.is_normal_close() => return Ok(()),
+                        Err(e) => return Err(e),
+                    }
+                }
+            }
+        })
+        .await;
+    Ok(server)
+}
+
+/// 手元用の待ち受けアドレスがループバックかを確かめる（LAN に開いてしまわないように）
+pub fn loopback_only(addr: &str) -> anyhow::Result<std::net::SocketAddr> {
+    let parsed: std::net::SocketAddr = addr
+        .parse()
+        .map_err(|e| anyhow::anyhow!("{addr} を読めない: {e}"))?;
+    if !parsed.ip().is_loopback() {
+        anyhow::bail!(
+            "手元用の待ち受け {addr} はループバックではない（[::1] か 127.0.0.1 にする）"
+        );
+    }
+    Ok(parsed)
+}
