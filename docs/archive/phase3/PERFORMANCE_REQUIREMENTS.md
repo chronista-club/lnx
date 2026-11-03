@@ -1,5 +1,7 @@
 # Performance Requirements for LNX Experience
 
+> **Status**: Deprecated — 2025-08 の Swift 時代の性能要件と測定システム。いまの目標値は [spec 01](../../spec/01-core-concept.md) / [spec 02](../../spec/02-creare.md)、実測の記録は無い（[design 02](../../design/02-architecture.md)）。経緯の参照用に残す
+
 ## 概要
 
 本ドキュメントは、LNX Experienceが達成すべきパフォーマンス要件を定義し、5ms以下のレイテンシー実現のための測定・監視システムの構築方法を提供します。リアルタイム音響/視覚表現システムとして求められる厳格な性能基準と、その検証方法を明確化します。

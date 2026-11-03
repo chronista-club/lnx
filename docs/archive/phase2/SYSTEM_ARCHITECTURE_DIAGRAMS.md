@@ -1,5 +1,7 @@
 # LNX Experience システムアーキテクチャ図
 
+> **Status**: Deprecated — 2025-08 の Swift / SwiftUI（LNXX）時代のシステム図。現在の Rust + SwiftUI 実装とは合わない。構成は [design 02](../../design/02-architecture.md)。経緯の参照用に残す
+
 ## 文書情報
 - **バージョン**: 2.0.0
 - **作成日**: 2025-08-09

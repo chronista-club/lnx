@@ -1,5 +1,7 @@
 # LNX Experience モジュラー設計詳細仕様書
 
+> **Status**: Deprecated — 2025-08 の Swift（Core Audio / Metal）時代のモジュラー設計。現在の構成は [design 02](../design/02-architecture.md)。経緯の参照用に残す
+
 ## 目次
 1. [概要](#概要)
 2. [Audio モジュール詳細設計](#audio-モジュール詳細設計)

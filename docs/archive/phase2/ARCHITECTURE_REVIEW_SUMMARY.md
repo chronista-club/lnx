@@ -1,5 +1,7 @@
 # LNX Experience Phase 2 アーキテクチャ統合レビュー
 
+> **Status**: Deprecated — 2025-08 の Swift / SwiftUI（LNXX）時代、Phase 2 設計のレビュー。現在の Rust + SwiftUI 実装とは合わない。構成は [design 02](../../design/02-architecture.md)。経緯の参照用に残す
+
 ## エグゼクティブサマリー
 
 ### 文書情報

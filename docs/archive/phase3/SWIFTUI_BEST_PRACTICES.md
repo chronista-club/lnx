@@ -1,5 +1,7 @@
 # SwiftUI Best Practices for LNX Experience
 
+> **Status**: Deprecated — 2025-08 の SwiftUI（MVVM / Combine）向けベストプラクティス。現在の `apps/ios` は Swift 6 の `@Observable` と Swift Testing で書いている（[design 01](../../design/01-lnx-server-link.md)）。置き換え先は無く、必要になったら guide として書き直す
+
 ## 概要
 
 本ドキュメントは、LNX Experience (LNXX) のリアルタイム音響/視覚表現に特化したSwiftUIベストプラクティスを定義します。60fps維持とレスポンシブな操作性を実現するための具体的な実装パターンを提供します。

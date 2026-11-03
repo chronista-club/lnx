@@ -1,5 +1,7 @@
 # ドメインについて
 
+> **Status**: Deprecated — 2017 年の AudioKit / Cocoa 時代のドメイン分割メモ（Space / Present / Engine / User / App）。現在の構成は [design 02](../design/02-architecture.md)。歴史として残す
+
 ## ドメインの各役割
 
 ### Specs

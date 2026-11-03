@@ -1,5 +1,7 @@
 # LNX Experience ECS (Entity-Component-System) アーキテクチャ設計
 
+> **Status**: Deprecated — 2025-08 の Swift / SwiftUI（LNXX）時代の ECS 設計。現在の Rust + SwiftUI 実装とは合わない（Bevy の ECS を使う窓は `crates/lnx-creare` の骨格だけ）。構成は [design 02](../../design/02-architecture.md)。経緯の参照用に残す
+
 ## 文書情報
 - **バージョン**: 2.0.0
 - **作成日**: 2025-08-09
