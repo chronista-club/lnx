@@ -5,6 +5,8 @@ struct LnxHomeView: View {
     let supervisor: LinkSupervisor
     #if os(macOS)
     @State private var offeringPairing = false
+    #else
+    @State private var confirmingUnpair = false
     #endif
 
     var body: some View {
@@ -26,13 +28,21 @@ struct LnxHomeView: View {
                 .foregroundStyle(.white.opacity(0.5))
             Spacer()
             serverList
+            #if !os(macOS)
+            // iPhone / iPad だけ（Mac 版は手元の localhost なのでペアリングが無い。裁定 2026-11-04）。
+            // pin を Keychain から消して切断 → ペアリング画面へ。確認は一段だけ
             if supervisor.canUnpair {
-                // 動作確認と、サーバを入れ替えたとき用。pin を消してペアリング画面へ
-                Button("ペアリングを解除") { supervisor.unpair() }
+                Button("ペアリングを解除") { confirmingUnpair = true }
                     .font(.footnote)
                     .tint(.white.opacity(0.5))
                     .accessibilityIdentifier("home.unpair")
+                    .confirmationDialog(unpairQuestion, isPresented: $confirmingUnpair, titleVisibility: .visible) {
+                        Button("解除する", role: .destructive) { supervisor.unpair() }
+                    } message: {
+                        Text("次につなぐときは、Mac 版の「iPad をペアリング」の QR を読み直します")
+                    }
             }
+            #endif
         }
         .padding(32)
     }
@@ -48,6 +58,11 @@ struct LnxHomeView: View {
                     .foregroundStyle(.white.opacity(0.7))
             }
         }
+    }
+
+    private var unpairQuestion: String {
+        if case .connected(let welcome) = supervisor.state { return "「\(welcome.serverName)」とのペアリングを解除しますか" }
+        return "ペアリングを解除しますか"
     }
 
     private var heartbeatLine: String {
