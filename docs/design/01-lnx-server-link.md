@@ -80,7 +80,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 - `serve_registry`: `List` で `Registry::snapshot()`、`watch` の変化を `RegistryChanged` で押し出す
 - `Registry` は `tokio::sync::watch` の `Sender` を正本に持つ（`send_replace` で購読者ゼロでも更新できる）
 - `Advertiser`（mdns-sd）が `_lnx._udp` を広告。TXT に `version` と `protocol=unison`
-- 待ち受けは `[::]:12730`（UDP / QUIC、dual stack）。cert は `identity::ServerIdentity` が一度だけ作って保存した自己署名（`--state-dir` / `LNX_SERVER_STATE`、既定は `~/Library/Application Support/club.chronista.lnx-server` の `cert.pem` と `key.pem`、鍵は 0600）。起動時にペアリング用の QR と URL（`lnx://pair?v=1&name=<名乗り>&cert=<leaf DER の base64url、padding なし>`）を出す（`--no-qr` で QR を省く）。`--no-mdns` / `--name` / `--config` / `LNX_SERVER_ADDR`
+- 待ち受けは `[::]:12730`（UDP / QUIC、dual stack）。cert は `identity::ServerIdentity` が一度だけ作って保存した自己署名（`--state-dir` / `LNX_SERVER_STATE`、既定は `~/Library/Application Support/club.chronista.lnx-server` の `cert.pem` と `key.pem`、鍵は 0600）。起動時にペアリング用の QR と URL（`lnx://pair?v=1&name=<名乗り>&cert=<leaf DER の base64url、padding なし>`）を出す（QR は `--qr` のときだけ。ふだんは Mac 版が窓に出す）。`--no-mdns` / `--name` / `--config` / `LNX_SERVER_ADDR`
 - 試験は実 QUIC で回す（`tests/link.rs`）: `listener("[::1]:0").spawn()` → `ProtocolClient::new(QuicClient::insecure_localhost())`
 
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
@@ -112,6 +112,8 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 ## やってはいけない
 
+- **手元用の listener を `[::]` や LAN のアドレスに bind しない。** ペアリング URL（= pin する証明書）を誰にでも渡すことになる。`serve::loopback_only` が起動時に断る
+
 - **request を timeout なしで await しない。** 応答が消えると永遠に固まり、再接続も起きない（Ladyland の fieldd で踏んだ実例）
 - **`withTaskGroup` の `addTask` に `@MainActor` 付きの閉包を渡さない。** Swift 6.4 の isolation checker が「解けない」と言って止まる。子は nonisolated にし、状態の更新だけ `@MainActor` のメソッドへ渡す
 - **スキーマを変えたら `LnxProtocol.swift` も同じ PR で。** codegen は無く、ズレると Hello の応答が decode できずに timeout になる
@@ -127,6 +129,8 @@ mise run ios:run         # ビルド → シミュレータへインストール
 - Bonjour 探索は iPhone 16 Pro と iPad（iPad13,16）の実機で確認済み（2026-11-04）。解決は IPv4 を優先し、だめなら IPv6（scope つき）
 
 ## Status log
+
+- 2026-11-04: ペアリング QR は Mac 版が出す（裁定「QRコードは、MacAppが担当したいね」「Bで行こう」、mem_1CggiZeAYrK7rqz3VNpszU）。サーバは手元用の listener を `[::1]:12731` にだけ bind し（`--local-addr` / `LNX_SERVER_LOCAL_ADDR`、ループバック以外は起動を断る）、`lnx-local.kdl` の `pairing` channel の `Get` で `PairingInfo{url, name, cert}` を返す。club-unison 2.2 の channel ハンドラは相手のアドレスを取れないので、判定ではなく bind で守る。ターミナルの QR は `--qr` のときだけ
 
 - 2026-11-04: 証明書を保存して使い続けるようにし、起動時にペアリング用 QR / URL を出す（ios lane の QR ペアリングと合意した契約、起票 mem_1Cgghdxbp4bGRPyQccDFDn）。保存した証明書だけを信頼するクライアントでつながる結合テストを追加
 

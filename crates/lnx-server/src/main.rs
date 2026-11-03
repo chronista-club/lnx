@@ -9,7 +9,7 @@ use tracing::{info, warn};
 use lnx_server::advertise::Advertiser;
 use lnx_server::config::ServerConfig;
 use lnx_server::identity::{self, ServerIdentity};
-use lnx_server::{DEFAULT_PORT, serve};
+use lnx_server::{DEFAULT_LOCAL_ADDR, DEFAULT_PORT, serve};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -33,9 +33,12 @@ struct Cli {
     /// 消すと次の起動で作り直し、アプリはペアリングし直しになる
     #[arg(long, env = "LNX_SERVER_STATE")]
     state_dir: Option<PathBuf>,
-    /// 起動時にペアリング用の QR を出さない（URL の一行は出す）
+    /// ターミナルにもペアリング用の QR を出す（ふだんは Mac 版 lnx creare が窓に出す。URL の一行は常に出す）
     #[arg(long)]
-    no_qr: bool,
+    qr: bool,
+    /// 手元用の待ち受け（ループバックだけ）。Mac 版 lnx creare がここでペアリング URL を取る
+    #[arg(long, env = "LNX_SERVER_LOCAL_ADDR", default_value = DEFAULT_LOCAL_ADDR)]
+    local_addr: String,
 }
 
 #[tokio::main]
@@ -89,13 +92,23 @@ async fn main() -> Result<()> {
     let id = ServerIdentity::load_or_create(&state_dir)?;
     info!("証明書: {}", id.cert_path().display());
     let url = identity::pairing_url(&cfg.name, id.cert_der());
-    if !cli.no_qr {
+    if cli.qr {
         println!(
             "\nlnx creare でこの QR を読むとペアリングする:\n{}",
             identity::render_qr(&url)?
         );
     }
     println!("ペアリング URL: {url}\n");
+
+    // 手元用: ループバックにだけ bind し、ペアリング URL を返す（Mac 版が QR を出す）
+    serve::loopback_only(&cli.local_addr)?;
+    let local = serve::build_local(&cfg.name, &id).await?;
+    let _local = Arc::new(local)
+        .listener(&cli.local_addr)
+        .cert(id.cert_source())
+        .spawn()
+        .await?;
+    info!("手元用（ペアリング）: {}", cli.local_addr);
 
     let server = serve::build(cfg).await?;
     info!("{} で待ち受け", cli.addr);

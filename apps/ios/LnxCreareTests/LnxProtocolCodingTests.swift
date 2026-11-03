@@ -47,6 +47,16 @@ struct LnxProtocolCodingTests {
         #expect(server.endpointLabel == "localhost:7879")
     }
 
+    @Test("PairingInfo は url / name / cert（lnx-local.kdl）")
+    func pairingInfo() throws {
+        let json = #"{"url":"lnx://pair?v=1&name=lnx-mac&cert=AA","name":"lnx-mac","cert":"AA"}"#
+        let info = try JSONDecoder().decode(PairingInfo.self, from: Data(json.utf8))
+        #expect(info == PairingInfo(url: "lnx://pair?v=1&name=lnx-mac&cert=AA", name: "lnx-mac", cert: "AA"))
+        #expect(GetPairing.method == "Get")
+        #expect(PairingChannel.name == "pairing")
+        #expect(LnxDefaults.localPort == 12731)
+    }
+
     @Test("channel 名は schema と同じ")
     func channelNames() {
         #expect(SessionChannel.name == "session")
