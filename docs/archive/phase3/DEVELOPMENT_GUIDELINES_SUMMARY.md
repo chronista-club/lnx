@@ -1,5 +1,7 @@
 # LNX Experience Development Guidelines Summary - Phase 3
 
+> **Status**: Deprecated — 2025-08 の Phase 3 ガイドライン 4 本のまとめ。現在の開発の回し方は [guide 01](../../guide/01-development.md)。経緯の参照用に残す
+
 ## 概要
 
 Phase 3では、LNX Experienceのプロフェッショナルグレードリアルタイム音響/視覚表現を実現するための包括的な開発ガイドラインを作成しました。本サマリーは、作成された4つの主要ガイドラインの統合と、実装者が即座に活用できる実践的な指針を提供します。

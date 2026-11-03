@@ -1,6 +1,6 @@
 # lnx creare（iOS）
 
-LNX への入り口となるネイティブアプリ。spec の [02-creare](../../spec/02-creare/SPEC.md) が言う
+LNX への入り口となるネイティブアプリ。[spec 02](../../docs/spec/02-creare.md) が言う
 「Native UI = SwiftUI + Rust」の Apple 側の器で、まず iOS から始める。
 
 ## 前提
@@ -35,7 +35,7 @@ mise run server:run          # 別ターミナルで LNX サーバ（Mac、[::]:
 mise run ios:run             # シミュレータで起動 → localhost の LNX につながり、心拍が脈打つ
 ```
 
-シミュレータは同じ Mac の `[::1]:12730` に直結する。実機は Bonjour（`_lnx._udp`）で探す（実機確認待ち）。
+シミュレータは同じ Mac の `[::1]:12730` に直結する。実機は Bonjour（`_lnx._udp`）で探す（iPhone / iPad で確認済み 2026-11-04）。
 接続の設計は [docs/design/01-lnx-server-link.md](../../docs/design/01-lnx-server-link.md)。
 
 ## 構成

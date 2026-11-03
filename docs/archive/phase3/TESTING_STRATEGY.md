@@ -1,5 +1,7 @@
 # Testing Strategy for LNX Experience
 
+> **Status**: Deprecated — 2025-08 の Swift 時代のテスト戦略。現在のテストの三層（Rust の実 QUIC、Swift の単体、実サーバ相手の UI テスト）は [design 01](../../design/01-lnx-server-link.md)。経緯の参照用に残す
+
 ## 概要
 
 本ドキュメントは、LNX Experienceのリアルタイム音響/視覚処理システムに対する包括的なテスト戦略を定義します。Swift Testing frameworkとXCTestの使い分け指針、パフォーマンステストの自動化、リアルタイム処理のテスト手法を提供します。

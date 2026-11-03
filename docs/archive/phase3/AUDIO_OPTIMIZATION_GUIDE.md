@@ -1,5 +1,7 @@
 # Audio Processing Optimization Guide for LNX Experience
 
+> **Status**: Deprecated — 2025-08 の Swift（Core Audio / AVAudioEngine）向け最適化ガイド。オーディオは Rust の `crates/lnx-engine`（CPAL）に移った。置き換え先は無く、必要になったら guide として書き直す
+
 ## 概要
 
 本ガイドは、LNX Experienceにおいて5ms以下のレイテンシーを実現するためのCore Audio統合とオーディオ処理最適化の具体的手法を提供します。304MBの大容量WAVファイルを効率的に処理しながら、プロフェッショナルグレードの音質を維持する実装パターンを定義します。

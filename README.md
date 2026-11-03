@@ -75,6 +75,7 @@ lnx/
     └── ios/                # iOS アプリ「lnx creare」（SwiftUI + XcodeGen、メイン開発機は iPad）
 ```
 
+文書の索引は [docs/README.md](docs/README.md)（spec / design / guide / archive）。
 
 ## セットアップ
 

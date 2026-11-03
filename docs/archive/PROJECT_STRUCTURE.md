@@ -1,5 +1,7 @@
 # LNX プロジェクト構成ドキュメント
 
+> **Status**: Deprecated — 2025-08 の Swift / SwiftUI（LNXX、macOS アプリ）時代の構成文書。現在の構成は [design 02](../design/02-architecture.md)、開発の回し方は [guide 01](../guide/01-development.md)。経緯の参照用に残す
+
 ## 概要
 
 LNX プロジェクトの包括的な構成文書です。現在の実装状況、ディレクトリ構造、モジュール設計、開発ロードマップ、および将来の拡張計画を詳細に記述します。
@@ -669,9 +671,9 @@ xcodebuild archive -project LNXX/LNXX.xcodeproj -scheme LNXX
 
 ## 関連ドキュメント
 
-- [README.md](/README.md) - プロジェクト概要
-- [TECHNICAL_ARCHITECTURE.md](/docs/TECHNICAL_ARCHITECTURE.md) - 技術アーキテクチャ詳細
-- [CLAUDE.md](/CLAUDE.md) - Claude Code開発ガイドライン
+- [README.md](../../README.md) - プロジェクト概要
+- [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) - 技術アーキテクチャ詳細
+- [CLAUDE.md](../../.claude/CLAUDE.md) - Claude Code開発ガイドライン
 - [Linear Issues](https://linear.app/chronista/team/lnx/active) - 課題管理
 
 ---

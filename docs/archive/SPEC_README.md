@@ -1,5 +1,7 @@
 # LNX Specification
 
+> **Status**: Deprecated — 2025-11 の `spec/` ディレクトリの思想と体系案（01〜06、99-meta）、frontmatter 形式、commit 規約。spec は `docs/spec` へ移り、書き方は SDG（[docs/README.md](../README.md)）に統一した。「3 つの柱」と「Vision Creative Tool」は [spec 01](../spec/01-core-concept.md) にある。体系案の記録として残す
+
 **実装を超えた、コンセプトと哲学の生きたドキュメント**
 
 ## 目的

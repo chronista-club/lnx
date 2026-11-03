@@ -1,5 +1,7 @@
 # lnx Architecture Design Document
 
+> **Status**: Deprecated — 2025-09 の Unison エコシステム前提の構想。実装（v0.1.0-alpha2）に合わせて [design 02](../design/02-architecture.md) に書き直した。実在しない API のコード例や分散処理・自動スケーリングの節を含むので、経緯の参照用にだけ残す
+
 ## 概要
 
 lnxプロジェクトは、**Unisonエコシステム**を基盤とした分散型リアルタイムオーディオ/ビジュアル処理システムです。低遅延・高品質・人間中心設計を実現するため、Rust言語で統一実装されています。

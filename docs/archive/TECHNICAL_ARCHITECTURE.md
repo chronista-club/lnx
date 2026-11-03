@@ -1,5 +1,7 @@
 # LNX Experience 技術アーキテクチャドキュメント
 
+> **Status**: Deprecated — 2025-08 の Swift / SwiftUI（LNXX）時代の技術アーキテクチャ。現在の Rust + SwiftUI の構成は [design 02](../design/02-architecture.md)。経緯の参照用に残す
+
 ## 概要
 
 LNX Experience (LNXX) は、リアルタイムオーディオ/ビジュアルパフォーマンスのためのmacOSアプリケーションです。本ドキュメントは、現在の実装状況と将来のアーキテクチャ設計を包括的に記述し、Phase 2以降の開発指針を提供します。
