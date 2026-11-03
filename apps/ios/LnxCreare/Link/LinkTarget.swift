@@ -4,13 +4,13 @@ import Foundation
 enum LinkTarget: Equatable, Hashable, Sendable {
     /// 同じ機械の loopback（開発中の Mac、シミュレータ）
     case localDaemon(port: UInt16)
-    /// LAN 上の LNX サーバ（Bonjour で見つけた、または手で入れた）
-    case host(String, port: UInt16)
+    /// LAN 上の LNX サーバ（Bonjour で見つけた、または手で入れた）。name は Bonjour のインスタンス名で、pin を引くキー
+    case host(String, port: UInt16, name: String? = nil)
 
     var displayName: String {
         switch self {
         case .localDaemon(let port): "localhost:\(port)"
-        case .host(let host, let port): "\(host):\(port)"
+        case .host(let host, let port, _): "\(host):\(port)"
         }
     }
 }

@@ -46,7 +46,7 @@ graph LR
 | サーバの場所 | **Mac** | 「別に今ラズパイいらないね。ここのサーバで良いわ」 |
 | iPad 側の接続 | **club-unison の Swift client**（Rust / UniFFI は使わない） | SDK があり配布実績もある。Rust コアは音の段で |
 | 再接続 | **アプリが持つ**（Unison の client は意図的に auto-reconnect しない） | 倍々の間（0.5 秒 → 上限 10 秒）。心拍が止まったら切れたとみなす |
-| 信頼 | dev は `skipVerify`、サーバは `dev_localhost` の自己署名 | pin（`TrustPolicy.pinned`）は次の区切り |
+| 信頼 | 同じ機械（localhost）は `skipVerify`。LAN のサーバは **QR でペアリング**した leaf 証明書に `TrustPolicy.pinned` | TOFU（初回を信頼）は club-unison に証明書を取り出す口が無い。ビルド時の同梱はサーバが増えると破綻する（裁定 2026-11-04、`mem_1Cgghdxbp4bGRPyQccDFDn`） |
 | 音 | この区切りでは出さない | lnx-engine の接続は次 |
 
 ### 「常時接続」の iOS での意味
@@ -64,6 +64,16 @@ Swift 側の写しは `apps/ios/LnxCreare/Link/LnxProtocol.swift`（codegen は�
 |---|---|---|---|
 | `session` | `Hello{client, client_version}` → `Welcome{server_name, server_version, server_time_ms}` | `Heartbeat{seq, uptime_ms}` | 心拍は Hello のあと 1 秒ごと。最初の 1 拍は即座 |
 | `registry` | `List{}` → `ServerList{servers}` | `RegistryChanged{servers}` | event は差分ではなく snapshot 全体 |
+
+### ペアリングの QR（サーバ → アプリ）
+
+```
+lnx://pair?v=1&name=<サーバ名>&cert=<leaf 証明書 DER の base64url、padding なし>
+```
+
+- `name` は Bonjour のインスタンス名（`cfg.name`、例 `lnx-mac`）と同じ。アプリは Keychain（service `club.chronista.lnx.creare.pin`、account = name）に DER を置き、Bonjour で見つけた名前で引く
+- club-unison Swift の `pinned` は leaf DER の**バイト一致だけ**を見る（hostname / SAN は見ない）。だからサーバは証明書を**作り直してはいけない**（作り直すと pin が外れ、アプリは「ペアリングし直す」まで回り続ける）
+- 読み取りは VisionKit の `DataScannerViewController`（実機のみ）。読めない機械（シミュレータ、Mac）は同じ文字列を貼る
 
 `servers` の 1 件（`ServerEntry`）: `id`（例 `ladyland.field`）, `name`, `kind`（画面の選択に使う）, `host`, `port`。
 設定ファイル（TOML）の `[[servers]]` がそのまま一覧になる。例は `crates/lnx-server/lnx-server.example.toml`。
@@ -86,12 +96,16 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
 
 - `LnxTransport` / `LnxSession` が接続の抽象。実物は `UnisonLnxTransport`（connect / openChannel / request を**すべて timeout で包む**）、テストは `FakeTransport`
+- `LinkTrust.decide(target, pins)`: localhost は `.connect(.skipVerify)`、ペアリング済みの LAN は `.connect(.pinned(der))`、未ペアリングは `.needsPairing(name)`。`PinStore` の実物は `KeychainPinStore`、テストは `MemoryPinStore`
 - `LinkSupervisor`（`@MainActor @Observable`）: `idle → connecting(attempt) → connected(Welcome) → reconnecting(attempt, delay)`。
+  未ペアリングの LAN の先では `needsPairing(serverName)` で止まり、つながない。`paired(code)` で pin を残してつなぎ直す。
+  `requestPairing()` は再接続中の画面の「ペアリングし直す」から呼ぶ（LAN の先だけ）。
   窓を開けたら心拍・一覧・切断・無音を並行に見張り、どれかが終わったら畳んでつなぎ直す。
   無音の見張りは**最初の心拍が来てから**数え始める（`unison mock` のように心拍を出さない相手を切らない）
 - `BackoffPolicy`: 0.5 秒から倍々、上限 10 秒
-- `LnxFinder`: 実機は Bonjour（`NWBrowser` → UDP の "接続" で host:port に解く）。シミュレータと Mac は `[::1]:12730` も候補（Bonjour で見つかればそちらへ）
-- `ScreenRoute.resolve(state, selection)`: つながるまで `connecting`、つながれば `lnxHome`、選べば `remote(server)`
+- `LnxFinder`: 実機は Bonjour（`NWBrowser` → UDP の "接続" で host:port に解く）。見つけた先は `.host(address, port:, name: インスタンス名)`。
+  シミュレータは常に `[::1]:12730`（LAN の先はペアリングが要るので使わない）。Mac は Bonjour で見つかればそちら（＝ペアリングが要る）、無ければ `[::1]:12730`
+- `ScreenRoute.resolve(state, selection)`: つながるまで `connecting`、つながれば `lnxHome`、選べば `remote(server)`、ペアリングが要れば `pairing(serverName)`
 - `RemoteServer.endpointLabel`: 画面用の `host:port`。`Text("\(port)")` は桁区切り（7,879）になるので文字列で組む
 
 ### 開発の回し方
@@ -123,10 +137,15 @@ mise run ios:run         # ビルド → シミュレータへインストール
 ## 関連 / 未決
 
 - 経由型（iPad は LNX と 1 本だけ、LNX が中継）は Unison の Hub 層の仕事。LNX で先行実装してよい
-- registry の生きた供給源（VP daemon の `registry.list`、Ladyland の fieldd）、証明書 pin、Pi 配置、音（lnx-engine）は次の区切り
+- registry の生きた供給源（VP daemon の `registry.list`、Ladyland の fieldd）、Pi 配置、音（lnx-engine）は次の区切り
+- 証明書 pin のサーバ側（証明書を保存して作り直さない、起動時に QR を出す）は lead に相談中。それまでは実機でペアリングできない
+- Bonjour のインスタンス名が衝突して `lnx-mac (2)` のように改名されると、QR の `name` と合わずペアリングできない
+- QR のカメラ読み取りは**実機確認待ち**
 - Bonjour 探索は iPhone 16 Pro と iPad（iPad13,16）の実機で確認済み（2026-11-04）。解決は IPv4 を優先し、だめなら IPv6（scope つき）
 
 ## Status log
+
+- 2026-11-04: 証明書 pin（アプリ側）。QR / 貼り付けでペアリングし、LAN のサーバには pin でつなぐ。シミュレータは localhost 固定、Mac 版は Bonjour の先にペアリングが要る
 
 - 2026-11-04: LnxCreare ターゲットを iOS + macOS の multiplatform に。`mise run mac:run` で Mac 版が開き、同じ Mac のサーバにつながる
 - 2026-11-04: iPhone 16 Pro と iPad の実機で Bonjour → 接続を確認（署名チームは ANYCREATIVE, K.K.）。LnxFinder は IPv4 優先で解決し、`[link]` の足跡を stderr に出す

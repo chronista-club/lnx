@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 窓の枠。接続の今と選んだサーバで中身が切り替わる
 struct RootView: View {
-    @State private var supervisor = LinkSupervisor(transport: UnisonLnxTransport())
+    @State private var supervisor = LinkSupervisor(transport: UnisonLnxTransport(), pins: KeychainPinStore())
     @State private var finder = LnxFinder()
 
     var body: some View {
@@ -10,7 +10,11 @@ struct RootView: View {
             Backdrop()
             switch ScreenRoute.resolve(state: supervisor.state, selection: supervisor.selection) {
             case .connecting:
-                ConnectingView(state: supervisor.state, target: supervisor.target)
+                ConnectingView(state: supervisor.state, target: supervisor.target) {
+                    supervisor.requestPairing()
+                }
+            case .pairing(let name):
+                PairingView(serverName: name) { supervisor.paired($0) }
             case .lnxHome:
                 LnxHomeView(supervisor: supervisor)
             case .remote(let server):

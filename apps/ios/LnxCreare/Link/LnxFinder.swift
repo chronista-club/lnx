@@ -11,13 +11,18 @@ final class LnxFinder {
     private var browser: NWBrowser?
     private var resolving: [NWEndpoint: NWConnection] = [:]
 
-    /// 最初につなぐ先。見つかっていればそれ。シミュレータと Mac は同じ機械の localhost も候補
+    /// 最初につなぐ先。シミュレータは常に同じ Mac の localhost（LAN の先はペアリングが要るので使わない）。
+    /// Mac は見つかった先、無ければ同じ機械の localhost
     var preferred: LinkTarget? {
+        #if targetEnvironment(simulator)
+        return .localDaemon(port: LnxDefaults.port)
+        #else
         if let first = found.first { return first }
-        #if targetEnvironment(simulator) || os(macOS)
+        #if os(macOS)
         return .localDaemon(port: LnxDefaults.port)
         #else
         return nil
+        #endif
         #endif
     }
 
@@ -64,9 +69,10 @@ final class LnxFinder {
             switch state {
             case .ready:
                 if case .hostPort(let host, let port)? = connection.currentPath?.remoteEndpoint {
-                    let name = Self.hostString(host)
-                    LinkLog.note("resolved: \(endpoint) → \(name):\(port.rawValue) (ipv4Only=\(ipv4Only))")
-                    Task { @MainActor in self?.add(.host(name, port: port.rawValue)) }
+                    let address = Self.hostString(host)
+                    let name = Self.serviceName(endpoint)
+                    LinkLog.note("resolved: \(endpoint) → \(address):\(port.rawValue) (ipv4Only=\(ipv4Only))")
+                    Task { @MainActor in self?.add(.host(address, port: port.rawValue, name: name)) }
                 } else {
                     LinkLog.note("resolved: \(endpoint) → remoteEndpoint 無し (ipv4Only=\(ipv4Only))")
                 }
@@ -89,8 +95,14 @@ final class LnxFinder {
     private func add(_ target: LinkTarget) {
         guard !found.contains(target) else { return }
         // IPv4 を前に（preferred は先頭を使う）
-        if case .host(let h, _) = target, !h.contains(":") { found.insert(target, at: 0) } else { found.append(target) }
+        if case .host(let h, _, _) = target, !h.contains(":") { found.insert(target, at: 0) } else { found.append(target) }
         LinkLog.note("found: \(found.map(\.displayName))")
+    }
+
+    /// Bonjour のインスタンス名（例 lnx-mac）。pin を引くキー
+    nonisolated static func serviceName(_ endpoint: NWEndpoint) -> String? {
+        if case .service(let name, _, _, _) = endpoint { return name }
+        return nil
     }
 
     /// IPv6 は角括弧なしの literal（link-local の "%en0" は残す。scope が無いと届かない）
