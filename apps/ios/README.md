@@ -59,7 +59,7 @@ apps/ios/
 |---|---|---|
 | 表示名 / ターゲット | lnx creare / `LnxCreare` | Bevy 版 `crates/lnx-creare` と同じ看板 |
 | bundle id | `club.chronista.lnx.creare` | 過去の Apple アプリ（LNXX / Sizma）の `club.chronista.` に揃え、`lnx.` 配下で増やせるようにした |
-| Team | `3EQKG4B352`（ANYCREATIVE, K.K.） | 実機へ入れるチーム。iPad に先に入っていたビルドと揃えた（2026-11-04） |
+| Team | `3EQKG4B352`（ANYCREATIVE, K.K.） | 有償チーム。`J627YTC8NE` は Personal Team（無料）で、プロファイルが 7 日で切れ、実機で「信頼されていないデベロッパ」になって起動できない（2026-11-04） |
 | 対応 OS | iOS 26.0 以上、macOS 26.0 以上 | 一つのターゲットで iOS と macOS（`supportedDestinations`）。Mac は同じ機械の localhost も接続候補 |
 | メイン開発機 | iPad（iPhone も `TARGETED_DEVICE_FAMILY` に残す） | ユーザー指定（2026-11-03）。iPad は 4 方向すべて対応（Stage Manager 前提） |
 | 言語 | Swift 6 言語モード、strict concurrency complete | 新規なので最初から |
