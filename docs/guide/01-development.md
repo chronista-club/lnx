@@ -25,7 +25,7 @@ Rust の workspace（`crates/`）と Apple のアプリ（`apps/ios`）を、**m
 - **Rust**: `rust-toolchain.toml` が 1.99.1（rustfmt / clippy 込み）を指す。rustup が入っていれば `cargo` を打つだけで揃う。
   **mise には rust を書かない**（design 02「分岐の答え」）
 - **mise**: `.mise.toml` が `xcodegen` / `gh` / `pre-commit` を入れる（`mise install`）。`RUST_LOG=info`、`RUST_BACKTRACE=1` も mise の env
-- **Xcode 27 以上**（iOS 26 SDK）。シミュレータの既定は `iPad Pro 11-inch (M5)` / iOS 26.5（`LNX_IOS_SIM` / `LNX_IOS_OS`）。
+- **Xcode 27 以上**（iOS 27 SDK）。シミュレータの既定は `iPad Pro 11-inch (M5)` / iOS 27.2（`LNX_IOS_SIM` / `LNX_IOS_OS`）。
   同名の端末が runtime ごとにあるので OS も指定する。Simulator.app が無い Mac でも `simctl` だけで動く
 - **club-unison**: Rust は crates.io の `club-unison` 2.2、Swift は Swift Package（`exactVersion: 2.2.0`）。どちらも初回ビルドで取れる
 - 低遅延のオーディオ I/F は推奨だが、サーバと lnx creare の接続には要らない（音はまだ出ない）
@@ -117,7 +117,7 @@ UDID は `xcrun devicectl list devices` で見る。「LNX を探しています
 | 症状 | 原因と対処 |
 |---|---|
 | `mise run` のたびにツールの auto_install が走り、`cargo-edit` が rustc の版で止まる | `.mise.toml` の `[tools]` に cargo 系を書かない（2026-11-04 に外した）。Rust は rustup に任せる |
-| 「iOS 26.5 のシミュレータ runtime が無い」 | `xcrun simctl list runtimes` で入っている OS を見て `LNX_IOS_OS` を合わせる（27.0 の runtime は 2026-11-03 時点で "path not found" だった） |
+| 「iOS 27.2 のシミュレータ runtime が無い」 | `xcrun simctl list runtimes` で入っている OS を見て `LNX_IOS_OS` を合わせる（27.0 の runtime は "path not found" で起動できない。`xcodebuild -downloadPlatform iOS` で Xcode に合う runtime を入れる） |
 | 端末名が合っているのに見つからない | 同名の端末が runtime ごとにある。`LNX_IOS_SIM` と `LNX_IOS_OS` の両方を指定する |
 | UI テストが skip される | LNX サーバが居ない。`mise run server:run` を立ててから `mise run ios:test` |
 | Hello の応答が decode できず timeout | `lnx.kdl` と `LnxProtocol.swift` がズレている。codegen は無いので手で揃える（design 01） |
