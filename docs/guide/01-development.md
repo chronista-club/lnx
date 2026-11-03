@@ -63,6 +63,7 @@ cargo run -p lnx-server -- --addr '[::]:12730' --name lnx-mac --no-mdns
 ```
 
 `mise run server:run` は、同じポート（`LNX_SERVER_ADDR`、既定 12730）で待ち受けている古い lnx-server を止めてから起動する。lnx-server 以外のプロセスがポートを握っていたら止めずに終わる。
+サーバは手元用（ペアリング）の待ち受けも `[::1]:12731` に立てる。Mac 版 lnx creare がここからペアリング URL を取って QR を出す。ターミナルに QR を出したいときは `--qr`。
 `--addr` / `--config` は環境変数 `LNX_SERVER_ADDR` / `LNX_SERVER_CONFIG` でも渡せる。名乗りの確認は `dns-sd -B _lnx._udp`。
 偽サーバが要るときは club-unison の `unison` CLI で `unison mock --schema crates/lnx-server/schemas/lnx.kdl --addr '[::1]:12730'`（心拍は出さない）。
 

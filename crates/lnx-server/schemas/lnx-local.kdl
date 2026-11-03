@@ -1,0 +1,20 @@
+// LNX サーバの「手元用」プロトコル（docs/design/01-lnx-server-link.md）。
+// ループバック（[::1]）にだけ bind する別の listener で提供する。同じ Mac のアプリ（Mac 版 lnx creare）が
+// ペアリング用の URL を取り、窓に QR を出す。LAN の他の端末からは届かない（OS が受け付けない）。
+
+protocol "lnx-local" version="0.1.0" {
+    namespace "club.chronista.lnx.local"
+
+    channel "pairing" from="client" lifetime="persistent" {
+        // ペアリング用の URL と、その中身
+        request "Get" description="Pairing URL for this server (loopback only)." {
+            returns "PairingInfo" {
+                // lnx://pair?v=1&name=<name>&cert=<leaf DER base64url no-pad>
+                field "url" type="string" required=#true
+                field "name" type="string" required=#true
+                // leaf 証明書 DER の base64url（padding なし）
+                field "cert" type="string" required=#true
+            }
+        }
+    }
+}
