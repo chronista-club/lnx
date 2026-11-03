@@ -10,6 +10,12 @@ final class LnxFinder {
     private(set) var found: [LinkTarget] = []
     private var browser: NWBrowser?
     private var resolving: [NWEndpoint: NWConnection] = [:]
+    /// 今 Bonjour に出ている service（解決の試し直しはここに居るものだけ）
+    private var advertised: Set<NWEndpoint> = []
+    /// 解決を待つ上限と、試し直すまでの間。落ちたサーバの広告（幽霊）は SRV が返らず、いつまでも ready にならない。
+    /// 同じ名前で本物が立ち上がっても browse の変化は来ないので、試し直さないと永遠に見つからない
+    static let resolveTimeout: Duration = .seconds(5)
+    static let resolveRetry: Duration = .seconds(3)
 
     /// 最初につなぐ先。シミュレータと Mac は同じ機械の localhost（LAN の先はペアリングが要り、
     /// シミュレータと Mac はカメラで QR を読めない）。実機は見つかった先から選ぶ
@@ -57,6 +63,7 @@ final class LnxFinder {
     /// service endpoint を host:port に解く（UDP の "接続" は path 解決だけで ready になる）。
     /// まず IPv4 で解く（link-local の IPv6 は scope が要り、端末によって扱いが違う）。だめなら IPv6 も許す
     private func resolve(_ results: Set<NWBrowser.Result>) {
+        advertised = Set(results.map(\.endpoint))
         for result in results where resolving[result.endpoint] == nil {
             resolve(result.endpoint, ipv4Only: true)
         }
@@ -69,6 +76,11 @@ final class LnxFinder {
         }
         let connection = NWConnection(to: endpoint, using: parameters)
         resolving[endpoint] = connection
+        LinkLog.note("resolving: \(endpoint) (ipv4Only=\(ipv4Only))")
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.resolveTimeout)
+            self?.giveUpIfStuck(endpoint, connection)
+        }
         connection.stateUpdateHandler = { [weak self, weak connection] state in
             guard let connection else { return }
             switch state {
@@ -95,6 +107,19 @@ final class LnxFinder {
             }
         }
         connection.start(queue: .main)
+    }
+
+    /// 期限までに解けなかった。畳んで、まだ広告されていれば間を置いて試し直す
+    private func giveUpIfStuck(_ endpoint: NWEndpoint, _ connection: NWConnection) {
+        guard resolving[endpoint] === connection, connection.state != .cancelled else { return }
+        LinkLog.note("resolve timeout: \(endpoint)（\(Self.resolveTimeout) で解けない。試し直す）")
+        connection.cancel()
+        resolving[endpoint] = nil
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.resolveRetry)
+            guard let self, self.browser != nil, self.advertised.contains(endpoint), self.resolving[endpoint] == nil else { return }
+            self.resolve(endpoint, ipv4Only: true)
+        }
     }
 
     private func add(_ target: LinkTarget) {

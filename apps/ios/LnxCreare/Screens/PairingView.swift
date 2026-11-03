@@ -63,11 +63,14 @@ struct PairingView: View {
     }
 
     private func accept(_ scanned: String) {
+        LinkLog.note("pairing: 受け取った（\(scanned.utf8.count) バイト、待っているのは \(serverName ?? "誰でも")）")
         do {
             onPaired(try PairingCode.accept(scanned, for: serverName))
         } catch .otherServer(let other) {
+            LinkLog.note("pairing: 別のサーバの QR（\(other)）")
             problem = "別のサーバ（\(other)）の QR です"
         } catch {
+            LinkLog.note("pairing: 読めない（\(error)）")
             problem = "ペアリングの QR ではありません"
         }
     }

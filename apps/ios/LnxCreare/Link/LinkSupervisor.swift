@@ -44,9 +44,11 @@ final class LinkSupervisor {
         self.target = target
         switch LinkTrust.decide(for: target, pins: pins) {
         case .needsPairing(let name):
+            LinkLog.note("target: \(target.displayName) はペアリングが要る（\(name ?? "名前なし")）")
             heartbeat = nil
             state = .needsPairing(serverName: name)
         case .connect(let trust):
+            LinkLog.note("target: \(target.displayName) へつなぐ（\(trust == .skipVerify ? "skipVerify" : "pinned")）")
             runner = Task { [weak self] in
                 await self?.loop(target: target, trust: trust)
             }
@@ -55,6 +57,7 @@ final class LinkSupervisor {
 
     /// QR を読み終えた。pin を残して、今の先へつなぎ直す
     func paired(_ code: PairingCode) {
+        LinkLog.note("paired: \(code.serverName)（証明書 \(code.certificate.count) バイト）")
         pins.save(code.certificate, for: code.serverName)
         if let target { start(target: target) }
     }
