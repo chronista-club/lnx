@@ -19,6 +19,8 @@ struct QRScannerView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ scanner: DataScannerViewController, context: Context) {
+        // 待つサーバが変わると onFound も変わる。coordinator は作り直されないので差し替える
+        context.coordinator.onFound = onFound
         // 画面に載ってから始める（載る前の startScanning は失敗する）。初回はここでカメラの許可を求められる
         if !scanner.isScanning {
             do { try scanner.startScanning() } catch { LinkLog.note("QR の読み取りを始められない: \(error)") }
@@ -33,7 +35,7 @@ struct QRScannerView: UIViewControllerRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, DataScannerViewControllerDelegate {
-        let onFound: @MainActor (String) -> Void
+        var onFound: @MainActor (String) -> Void
 
         init(onFound: @escaping @MainActor (String) -> Void) {
             self.onFound = onFound

@@ -5,6 +5,8 @@ struct PairingView: View {
     /// 待っているサーバ（Bonjour のインスタンス名）。nil なら誰でもよい
     let serverName: String?
     let onPaired: (PairingCode) -> Void
+    /// ペアリングをやめて戻る（前の pin が残っているときだけ渡す）
+    var onCancel: (() -> Void)?
 
     @State private var text = ""
     @State private var problem: String?
@@ -42,6 +44,12 @@ struct PairingView: View {
                     .font(.footnote)
                     .foregroundStyle(.orange)
             }
+            if let onCancel {
+                Button("戻る", action: onCancel)
+                    .font(.footnote)
+                    .tint(.white.opacity(0.7))
+                    .accessibilityIdentifier("pairing.cancel")
+            }
         }
         .padding()
     }
@@ -68,7 +76,7 @@ struct PairingView: View {
 #Preview {
     ZStack {
         Backdrop()
-        PairingView(serverName: "lnx-mac") { _ in }
+        PairingView(serverName: "lnx-mac", onPaired: { _ in })
     }
     .preferredColorScheme(.dark)
 }

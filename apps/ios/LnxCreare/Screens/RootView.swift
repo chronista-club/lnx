@@ -4,6 +4,7 @@ import SwiftUI
 struct RootView: View {
     @State private var supervisor = LinkSupervisor(transport: UnisonLnxTransport(), pins: KeychainPinStore())
     @State private var finder = LnxFinder()
+    private let pins = KeychainPinStore()
 
     var body: some View {
         ZStack {
@@ -14,7 +15,11 @@ struct RootView: View {
                     supervisor.requestPairing()
                 }
             case .pairing(let name):
-                PairingView(serverName: name) { supervisor.paired($0) }
+                PairingView(
+                    serverName: name,
+                    onPaired: { supervisor.paired($0) },
+                    onCancel: supervisor.canCancelPairing ? { supervisor.cancelPairing() } : nil
+                )
             case .lnxHome:
                 LnxHomeView(supervisor: supervisor)
             case .remote(let server):
@@ -34,7 +39,7 @@ struct RootView: View {
     private func connectWhenFound() async {
         finder.start()
         while !Task.isCancelled {
-            if let target = finder.preferred, supervisor.target != target {
+            if let target = finder.preferred(pins: pins), supervisor.target != target {
                 supervisor.start(target: target)
             }
             try? await Task.sleep(for: .milliseconds(500))

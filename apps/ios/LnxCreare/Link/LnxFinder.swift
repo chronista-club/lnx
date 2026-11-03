@@ -11,19 +11,24 @@ final class LnxFinder {
     private var browser: NWBrowser?
     private var resolving: [NWEndpoint: NWConnection] = [:]
 
-    /// 最初につなぐ先。シミュレータは常に同じ Mac の localhost（LAN の先はペアリングが要るので使わない）。
-    /// Mac は見つかった先、無ければ同じ機械の localhost
-    var preferred: LinkTarget? {
-        #if targetEnvironment(simulator)
+    /// 最初につなぐ先。シミュレータと Mac は同じ機械の localhost（LAN の先はペアリングが要り、
+    /// シミュレータと Mac はカメラで QR を読めない）。実機は見つかった先から選ぶ
+    func preferred(pins: any PinStore) -> LinkTarget? {
+        #if targetEnvironment(simulator) || os(macOS)
         return .localDaemon(port: LnxDefaults.port)
         #else
-        if let first = found.first { return first }
-        #if os(macOS)
-        return .localDaemon(port: LnxDefaults.port)
-        #else
-        return nil
+        return Self.choose(from: found, pins: pins)
         #endif
-        #endif
+    }
+
+    /// ペアリング済みの先を優先する（LAN に別の `_lnx._udp` が居ても、そのペアリング画面に縛られない）。
+    /// 無ければ先頭（IPv4 が前）
+    nonisolated static func choose(from found: [LinkTarget], pins: any PinStore) -> LinkTarget? {
+        let paired = found.first { target in
+            guard case .host(_, _, let name?) = target else { return false }
+            return pins.certificate(for: name) != nil
+        }
+        return paired ?? found.first
     }
 
     func start() {

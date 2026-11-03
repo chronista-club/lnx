@@ -59,6 +59,17 @@ final class LinkSupervisor {
         if let target { start(target: target) }
     }
 
+    /// ペアリングをやめて、今の先へつなぎ直す（pin が残っていればそれで。無ければ needsPairing に戻るだけ）
+    func cancelPairing() {
+        if let target { start(target: target) }
+    }
+
+    /// ペアリング画面から戻れるか（今の先の pin が残っている）
+    var canCancelPairing: Bool {
+        guard case .host(_, _, let name?) = target else { return false }
+        return pins.certificate(for: name) != nil
+    }
+
     /// ペアリングをやり直す（サーバの証明書が変わって pin が合わないとき）。LAN の先だけ
     func requestPairing() {
         guard case .host(_, _, let name) = target else { return }

@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 /// ペアリングの QR の中身。LNX サーバが起動時に出し、アプリが読んで pin する（design 01）。
 /// 形: `lnx://pair?v=1&name=<サーバ名>&cert=<leaf 証明書 DER の base64url、padding なし>`。
@@ -29,7 +30,10 @@ struct PairingCode: Equatable, Sendable {
         func value(_ name: String) -> String? { items.first { $0.name == name }?.value }
         guard value("v") == "1" else { throw .unsupportedVersion }
         guard let name = value("name"), !name.isEmpty else { throw .missingName }
-        guard let cert = value("cert").flatMap(Self.decodeBase64URL), !cert.isEmpty else { throw .invalidCertificate }
+        // 証明書として読めないもの（壊れた / 切れた QR）は pin にしない。pin が合わず回り続けるので
+        guard let cert = value("cert").flatMap(Self.decodeBase64URL),
+              SecCertificateCreateWithData(nil, cert as CFData) != nil
+        else { throw .invalidCertificate }
         self.init(serverName: name, certificate: cert)
     }
 

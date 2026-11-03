@@ -74,6 +74,7 @@ lnx://pair?v=1&name=<サーバ名>&cert=<leaf 証明書 DER の base64url、padd
 - `name` は Bonjour のインスタンス名（`cfg.name`、例 `lnx-mac`）と同じ。アプリは Keychain（service `club.chronista.lnx.creare.pin`、account = name）に DER を置き、Bonjour で見つけた名前で引く
 - club-unison Swift の `pinned` は leaf DER の**バイト一致だけ**を見る（hostname / SAN は見ない）。だからサーバは証明書を**作り直してはいけない**（作り直すと pin が外れ、アプリは「ペアリングし直す」まで回り続ける）
 - 読み取りは VisionKit の `DataScannerViewController`（実機のみ）。読めない機械（シミュレータ、Mac）は同じ文字列を貼る
+- `cert` は `SecCertificateCreateWithData` で証明書として読めるものだけ受け取る（壊れた QR を pin にすると回り続ける）
 
 `servers` の 1 件（`ServerEntry`）: `id`（例 `ladyland.field`）, `name`, `kind`（画面の選択に使う）, `host`, `port`。
 設定ファイル（TOML）の `[[servers]]` がそのまま一覧になる。例は `crates/lnx-server/lnx-server.example.toml`。
@@ -99,12 +100,13 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 - `LinkTrust.decide(target, pins)`: localhost は `.connect(.skipVerify)`、ペアリング済みの LAN は `.connect(.pinned(der))`、未ペアリングは `.needsPairing(name)`。`PinStore` の実物は `KeychainPinStore`、テストは `MemoryPinStore`
 - `LinkSupervisor`（`@MainActor @Observable`）: `idle → connecting(attempt) → connected(Welcome) → reconnecting(attempt, delay)`。
   未ペアリングの LAN の先では `needsPairing(serverName)` で止まり、つながない。`paired(code)` で pin を残してつなぎ直す。
-  `requestPairing()` は再接続中の画面の「ペアリングし直す」から呼ぶ（LAN の先だけ）。
+  `requestPairing()` は再接続中の画面の「ペアリングし直す」から呼ぶ（LAN の先だけ）。前の pin が残っていれば `cancelPairing()` で戻れる。
   窓を開けたら心拍・一覧・切断・無音を並行に見張り、どれかが終わったら畳んでつなぎ直す。
   無音の見張りは**最初の心拍が来てから**数え始める（`unison mock` のように心拍を出さない相手を切らない）
 - `BackoffPolicy`: 0.5 秒から倍々、上限 10 秒
 - `LnxFinder`: 実機は Bonjour（`NWBrowser` → UDP の "接続" で host:port に解く）。見つけた先は `.host(address, port:, name: インスタンス名)`。
-  シミュレータは常に `[::1]:12730`（LAN の先はペアリングが要るので使わない）。Mac は Bonjour で見つかればそちら（＝ペアリングが要る）、無ければ `[::1]:12730`
+  実機はペアリング済みの先を優先し（LAN に別の `_lnx._udp` が居ても縛られない）、無ければ先頭（IPv4 が前）。
+  シミュレータと Mac は常に `[::1]:12730`（カメラで QR を読めず、同じ機械のサーバで足りる。Mac から別の LNX へつなぐのは次）
 - `ScreenRoute.resolve(state, selection)`: つながるまで `connecting`、つながれば `lnxHome`、選べば `remote(server)`、ペアリングが要れば `pairing(serverName)`
 - `RemoteServer.endpointLabel`: 画面用の `host:port`。`Text("\(port)")` は桁区切り（7,879）になるので文字列で組む
 
@@ -145,7 +147,7 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 ## Status log
 
-- 2026-11-04: 証明書 pin（アプリ側）。QR / 貼り付けでペアリングし、LAN のサーバには pin でつなぐ。シミュレータは localhost 固定、Mac 版は Bonjour の先にペアリングが要る
+- 2026-11-04: 証明書 pin（アプリ側）。QR / 貼り付けでペアリングし、LAN のサーバには pin でつなぐ。シミュレータと Mac 版は localhost 固定
 
 - 2026-11-04: LnxCreare ターゲットを iOS + macOS の multiplatform に。`mise run mac:run` で Mac 版が開き、同じ Mac のサーバにつながる
 - 2026-11-04: iPhone 16 Pro と iPad の実機で Bonjour → 接続を確認（署名チームは ANYCREATIVE, K.K.）。LnxFinder は IPv4 優先で解決し、`[link]` の足跡を stderr に出す
