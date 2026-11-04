@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="常駐をやめる（launchctl bootout → plist を消す。実行ファイルとログは残す）"
+
+require_relative "../_lib/lnx"
+require_relative "../_lib/agent"
+
+s = Lnx::Agent::Settings.from_env
+unless Lnx::Agent.installed?(s) || Lnx::Agent.loaded?(s)
+  puts "LaunchAgent（#{s.label}）は入っていない"
+  exit
+end
+
+# 設定の場所は、消す前の plist から読む（install のときの env で決まっている）
+config = Lnx::Agent.arg_value(Lnx::Agent.installed_args(s), "--config") || s.config_path
+Lnx::Agent.bootout(s)
+FileUtils.rm_f(s.plist_path)
+puts "降ろした: #{s.label}（plist #{s.plist_path} を消した）"
+puts "残したもの: 実行ファイル #{s.bin_path}、ログ #{s.log_path}、設定 #{config}"

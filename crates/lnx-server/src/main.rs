@@ -1,9 +1,11 @@
 //! lnx-server — 起動して待ち受ける（常駐プロセスの本体）
+use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
+use tokio::signal::unix::{SignalKind, signal};
 use tracing::{info, warn};
 
 use lnx_server::advertise::Advertiser;
@@ -48,7 +50,13 @@ async fn main() -> Result<()> {
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .with_target(false)
+        // 常駐（launchd）のログはファイルに出る。端末でなければ色の制御文字を入れない
+        .with_ansi(std::io::stdout().is_terminal())
         .init();
+
+    // 止める合図は最初に受け口を作る（待ち受けの前に届いても、落ちずに畳む）
+    let mut sigterm = signal(SignalKind::terminate())?;
+    let mut sigint = signal(SignalKind::interrupt())?;
 
     let cli = Cli::parse();
     let mut cfg = match &cli.config {
@@ -112,11 +120,17 @@ async fn main() -> Result<()> {
 
     let server = serve::build(cfg).await?;
     info!("{} で待ち受け", cli.addr);
-    // ここで待つ（常駐の本体）。保存した自己署名証明書で LAN に開く
-    Arc::new(server)
+    // ここで待つ（常駐の本体）。保存した自己署名証明書で LAN に開く。
+    // launchd（bootout / kickstart -k）は SIGTERM、端末の Ctrl-C は SIGINT で止める。
+    // どちらも畳んで抜け、Advertiser の drop で Bonjour の goodbye を出す（落ちると幽霊が残る）
+    let listen = Arc::new(server)
         .listener(&cli.addr)
         .cert(id.cert_source())
-        .run()
-        .await?;
+        .run();
+    tokio::select! {
+        result = listen => result?,
+        _ = sigterm.recv() => info!("SIGTERM を受けたので止める"),
+        _ = sigint.recv() => info!("SIGINT を受けたので止める"),
+    }
     Ok(())
 }

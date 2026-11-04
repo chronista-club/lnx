@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="常駐している LNX サーバを作り直して立て直す（build → 実行ファイルを写す → kickstart -k）。plist を変えるなら server:install"
+
+require_relative "../_lib/lnx"
+require_relative "../_lib/agent"
+
+s = Lnx::Agent::Settings.from_env
+Lnx::Agent.installed?(s) or abort "LaunchAgent（#{s.label}）が入っていない。先に mise run server:install"
+
+Lnx.run("cargo", "build", "-q", "-p", "lnx-server")
+Lnx::Agent.install_binary(Lnx::SERVER_BIN, s)
+
+previous = Lnx::Agent.state(s)&.dig(:pid)
+if Lnx::Agent.loaded?(s)
+  Lnx.run("launchctl", "kickstart", "-k", s.service)
+else
+  Lnx.run("launchctl", "bootstrap", "gui/#{Process.uid}", s.plist_path)
+end
+Lnx::Agent.confirm_running(s, previous_pid: previous)
