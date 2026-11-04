@@ -1,4 +1,3 @@
-import PhosphorSwift
 import SwiftUI
 
 /// LNX 自身の画面。心拍が脈打ち、知っているサーバが並ぶ
@@ -61,7 +60,7 @@ struct LnxHomeView: View {
                 Label { Text("iPad をペアリング") } icon: { Icon.menuImage(.qrCode) }
             }
         } label: {
-            Icon.view(.dotsThreeCircle, size: 20)
+            Icon.view(.dotsThreeCircle, size: 20, label: "メニュー")
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -74,7 +73,7 @@ struct LnxHomeView: View {
                     Label { Text("ペアリングを解除") } icon: { Icon.menuImage(.linkBreak) }
                 }
             } label: {
-                Icon.view(.dotsThreeCircle, size: 28)
+                Icon.view(.dotsThreeCircle, size: 28, label: "メニュー")
                     .foregroundStyle(.white.opacity(0.7))
                     .contentShape(Rectangle())
             }
