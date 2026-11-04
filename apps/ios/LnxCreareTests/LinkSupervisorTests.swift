@@ -255,6 +255,109 @@ struct LinkSupervisorTests {
         #expect(supervisor.state == .connected(FakeSession.welcome))
     }
 
+    @Test("名乗りの最中に解除しても、遅れて戻った応答で connected に戻らない")
+    func lateHelloDoesNotOverwriteUnpair() async throws {
+        let latch = Latch()
+        let transport = FakeTransport(helloLatch: latch)
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { await transport.connectCount == 1 }
+
+        supervisor.unpair()
+        latch.open(0)
+        try await Task.sleep(for: .milliseconds(80))
+        #expect(supervisor.state == .needsPairing(serverName: "lnx-mac"))
+    }
+
+    @Test("名乗りの最中に stop しても、遅れて戻った応答で connected に戻らない")
+    func lateHelloDoesNotOverwriteStop() async throws {
+        let latch = Latch()
+        let transport = FakeTransport(helloLatch: latch)
+        let supervisor = makeSupervisor(transport)
+        supervisor.start(target: .localDaemon(port: 1))
+        try await eventually { await transport.connectCount == 1 }
+
+        supervisor.stop()
+        latch.open(0)
+        try await Task.sleep(for: .milliseconds(80))
+        #expect(supervisor.state == .idle)
+    }
+
+    @Test("今の先と名前が違う QR は受け取らず、pin も残さない")
+    func pairedRejectsOtherServer() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+
+        #expect(!supervisor.paired(PairingCode(serverName: "lnx-pi", certificate: Data([7]))))
+        #expect(pins.certificate(for: "lnx-pi") == nil)
+        #expect(supervisor.state == .needsPairing(serverName: "lnx-mac"))
+        #expect(await transport.connectCount == 0)
+    }
+
+    @Test("名前の分からない先には QR を受け取らない（受け取っても pin を引けず固まる）")
+    func pairedRejectsNamelessTarget() async throws {
+        let pins = MemoryPinStore()
+        let supervisor = makeSupervisor(FakeTransport(), pins: pins)
+        supervisor.start(target: .host("192.168.0.2", port: 12730))
+        defer { supervisor.stop() }
+
+        #expect(!supervisor.paired(PairingCode(serverName: "lnx-mac", certificate: Data([7]))))
+        #expect(pins.certificate(for: "lnx-mac") == nil)
+    }
+
+    @Test("つなぎ直しを待っている間に reconnectNow すると、待たずにつなぎにいく（前面に戻ったとき）")
+    func reconnectNowSkipsBackoff() async throws {
+        let transport = FakeTransport(failures: 1)
+        let supervisor = LinkSupervisor(
+            transport: transport,
+            pins: MemoryPinStore(),
+            backoff: BackoffPolicy(base: .seconds(30), max: .seconds(30))
+        )
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+        try await eventually {
+            if case .reconnecting = supervisor.state { return true }
+            return false
+        }
+
+        supervisor.reconnectNow()
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(await transport.connectCount == 2)
+    }
+
+    @Test("つながっている・ペアリング待ちのときの reconnectNow は何もしない")
+    func reconnectNowIgnoredWhenNotWaiting() async throws {
+        let transport = FakeTransport()
+        let supervisor = makeSupervisor(transport)
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+
+        supervisor.reconnectNow()
+        try await Task.sleep(for: .milliseconds(60))
+        #expect(await transport.connectCount == 1)
+    }
+
+    @Test("先を切り替えたら、前のサーバの心拍は残さない")
+    func switchingTargetClearsHeartbeat() async throws {
+        let transport = FakeTransport()
+        let supervisor = makeSupervisor(transport)
+        supervisor.start(target: .localDaemon(port: 1))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        await transport.latestSession().emit(Heartbeat(seq: 9, uptimeMs: 9000))
+        try await eventually { supervisor.heartbeat != nil }
+
+        supervisor.start(target: .localDaemon(port: 2))
+        #expect(supervisor.heartbeat == nil)
+    }
+
     @Test("stop で idle に戻り、以後つなぎ直さない")
     func stopGoesIdle() async throws {
         let transport = FakeTransport()
@@ -277,8 +380,12 @@ actor FakeTransport: LnxTransport {
     private var failuresLeft: Int
     private var sessions: [FakeSession] = []
 
-    init(failures: Int = 0) {
+    /// 名乗り（hello）の応答を止めておく栓。開けるまで hello は戻らない（cancel にも応じない）
+    private let helloLatch: Latch?
+
+    init(failures: Int = 0, helloLatch: Latch? = nil) {
         failuresLeft = failures
+        self.helloLatch = helloLatch
     }
 
     func connect(to target: LinkTarget, trust: TrustPolicy) async throws -> any LnxSession {
@@ -288,7 +395,7 @@ actor FakeTransport: LnxTransport {
             failuresLeft -= 1
             throw FakeError.unreachable
         }
-        let session = FakeSession()
+        let session = FakeSession(helloLatch: helloLatch)
         sessions.append(session)
         return session
     }
@@ -312,13 +419,19 @@ actor FakeSession: LnxSession {
     private let dropSink: AsyncStream<Void>.Continuation
     private var dropped = false
 
-    init() {
+    private let helloLatch: Latch?
+
+    init(helloLatch: Latch? = nil) {
+        self.helloLatch = helloLatch
         (heartbeatStream, heartbeatSink) = AsyncStream<Heartbeat>.makeStream()
         (registryStream, registrySink) = AsyncStream<[RemoteServer]>.makeStream()
         (dropStream, dropSink) = AsyncStream<Void>.makeStream()
     }
 
-    func hello(_ hello: Hello) async throws -> Welcome { Self.welcome }
+    func hello(_ hello: Hello) async throws -> Welcome {
+        if let helloLatch { _ = await helloLatch.wait() }
+        return Self.welcome
+    }
     func listServers() async throws -> [RemoteServer] { Self.servers }
     func heartbeats() -> AsyncStream<Heartbeat> { heartbeatStream }
     func registryChanges() -> AsyncStream<[RemoteServer]> { registryStream }

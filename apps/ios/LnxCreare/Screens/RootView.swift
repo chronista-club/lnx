@@ -2,9 +2,15 @@ import SwiftUI
 
 /// 窓の枠。接続の今と選んだサーバで中身が切り替わる
 struct RootView: View {
-    @State private var supervisor = LinkSupervisor(transport: UnisonLnxTransport(), pins: KeychainPinStore())
+    @State private var supervisor: LinkSupervisor
     @State private var finder = LnxFinder()
-    private let pins = KeychainPinStore()
+    @Environment(\.scenePhase) private var scenePhase
+    /// pin の置き場はアプリ全体で 1 つ（窓が複数あっても cache を共有する）
+    private let pins: any PinStore = CachedPinStore.shared
+
+    init() {
+        _supervisor = State(initialValue: LinkSupervisor(transport: UnisonLnxTransport(), pins: CachedPinStore.shared))
+    }
 
     var body: some View {
         ZStack {
@@ -31,6 +37,10 @@ struct RootView: View {
         .preferredColorScheme(.dark)
         .animation(.easeInOut(duration: 0.35), value: ScreenRoute.resolve(state: supervisor.state, selection: supervisor.selection))
         .task { await connectWhenFound() }
+        // 前面に戻ったら、つなぎ直しの待ちを飛ばして今すぐ（design 01「戻ったら即つなぎ直す」）
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { supervisor.reconnectNow() }
+        }
         .onDisappear {
             supervisor.stop()
             finder.stop()
@@ -41,8 +51,13 @@ struct RootView: View {
     private func connectWhenFound() async {
         finder.start()
         while !Task.isCancelled {
-            if let target = finder.preferred(pins: pins, current: supervisor.target), supervisor.target != target {
-                supervisor.start(target: target)
+            if let target = finder.preferred(pins: pins, current: supervisor.target) {
+                if supervisor.target != target {
+                    supervisor.start(target: target)
+                } else if supervisor.state == .idle {
+                    // 窓が消えて戻った（onDisappear で stop 済み）。先は同じでも、つなぎ直す
+                    supervisor.reconnectNow()
+                }
             }
             try? await Task.sleep(for: .milliseconds(500))
         }

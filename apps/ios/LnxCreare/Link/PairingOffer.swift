@@ -36,7 +36,7 @@ struct LocalPairingSource: PairingSource {
     var port: UInt16 = LnxDefaults.localPort
 
     func fetch() async throws -> PairingInfo {
-        let connection = try await withTimeout(seconds: 5) { [port] in
+        let connection = try await withTimeout(seconds: 5, onLateSuccess: { await $0.disconnect() }) { [port] in
             try await UnisonClient.connect(to: .localDaemon(port: port), trust: .skipVerify)
         }
         do {

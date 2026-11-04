@@ -71,7 +71,7 @@ Swift 側の写しは `apps/ios/LnxCreare/Link/LnxProtocol.swift`（codegen は�
 lnx://pair?v=1&name=<サーバ名>&cert=<leaf 証明書 DER の base64url、padding なし>
 ```
 
-- `name` は Bonjour のインスタンス名（`cfg.name`、例 `lnx-mac`）と同じ。アプリは Keychain（service `club.chronista.lnx.creare.pin`、account = name）に DER を置き、Bonjour で見つけた名前で引く
+- `name` はサーバの名乗り（`cfg.name`、例 `lnx-mac`）で、Bonjour の TXT の `name` と同じ値。アプリは Keychain（service `club.chronista.lnx.creare.pin`、account = name）に DER を置き、Bonjour で見つけた先の TXT の `name` で引く（TXT に無い古いサーバはインスタンス名）
 - club-unison Swift の `pinned` は leaf DER の**バイト一致だけ**を見る（hostname / SAN は見ない）。だからサーバは証明書を**作り直してはいけない**（作り直すと pin が外れ、アプリは「ペアリングし直す」まで回り続ける）
 - 読み取りは VisionKit の `DataScannerViewController`（実機のみ）。読めない機械（シミュレータ、Mac）は同じ文字列を貼る
 - `cert` は `SecCertificateCreateWithData` で証明書として読めるものだけ受け取る（壊れた QR を pin にすると回り続ける）
@@ -98,15 +98,20 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
 
 - `LnxTransport` / `LnxSession` が接続の抽象。実物は `UnisonLnxTransport`（connect / openChannel / request を**すべて timeout で包む**）、テストは `FakeTransport`
-- `LinkTrust.decide(target, pins)`: localhost は `.connect(.skipVerify)`、ペアリング済みの LAN は `.connect(.pinned(der))`、未ペアリングは `.needsPairing(name)`。`PinStore` の実物は `KeychainPinStore`、テストは `MemoryPinStore`
+- `withTimeout`（`Link/Timeout.swift`）: club-unison の待ちは cancel に応じないので、処理と期限を構造化しない Task で競わせ、先に終わった方で一度だけ戻る（`withThrowingTaskGroup` だと子が終わるまで戻れない）。外からの cancel でもすぐ戻る。遅れて成功した値は `onLateSuccess` へ（connect は接続を閉じる）
+- `LinkTrust.decide(target, pins)`: localhost は `.connect(.skipVerify)`、ペアリング済みの LAN は `.connect(.pinned(der))`、未ペアリングは `.needsPairing(name)`。`PinStore` の実物は `CachedPinStore.shared`（Keychain の上の cache をアプリ全体で 1 つ。画面が 0.5 秒ごとに pin の有無を見るので、Keychain は名前ごとに一度だけ読む。窓ごとに作ると解除・ペアリングが他の窓に届かない）、テストは `MemoryPinStore`
 - `LinkSupervisor`（`@MainActor @Observable`）: `idle → connecting(attempt) → connected(Welcome) → reconnecting(attempt, delay)`。
   未ペアリングの LAN の先では `needsPairing(serverName)` で止まり、つながない。`paired(code)` で pin を残してつなぎ直す。
   `requestPairing()` は再接続中の画面の「ペアリングし直す」から呼ぶ（LAN の先だけ）。前の pin が残っていれば `cancelPairing()` で戻れる。
   ホームの「ペアリングを解除」（下のボタンと右上のメニューの両方、確認は一段）は `unpair()`（pin を消してペアリング画面へ。iPhone / iPad の LAN の先だけ）。Mac 版の「iPad をペアリング」もボタンと右上のメニューの両方。アプリを消しても Keychain の pin は残るので、やり直しはこちらで
+  `paired(code)` は今の先と名前が同じ QR だけ受け取る（違う・今の先の名前が分からないときは false）。
+  接続の世代（epoch）を持ち、止める・解除・切り替えのたびに進める。古い世代のタスクは状態を書かない（cancel 後に遅れて戻った応答が connected を書き戻さない）。
+  `reconnectNow()` はつなぎ直しの待ちを飛ばす。前面に戻ったとき（`scenePhase == .active`）と、窓が戻って idle のときに `RootView` が呼ぶ。
   窓を開けたら心拍・一覧・切断・無音を並行に見張り、どれかが終わったら畳んでつなぎ直す。
   無音の見張りは**最初の心拍が来てから**数え始める（`unison mock` のように心拍を出さない相手を切らない）
 - `BackoffPolicy`: 0.5 秒から倍々、上限 10 秒
-- `LnxFinder`: 実機は Bonjour（`NWBrowser` → UDP の "接続" で host:port に解く）。見つけた先は `.host(address, port:, name: インスタンス名)`。
+- `LnxFinder`: 実機は Bonjour（`NWBrowser` の `.bonjourWithTXTRecord` → UDP の "接続" で host:port に解く）。見つけた先は `.host(address, port:, name: TXT の name、無ければインスタンス名)`。
+  解けた先は service ごとの帳簿（`FoundTargets`）に載せ、Bonjour から消えた service の先は忘れる。解決が 5 秒で決まらない・失敗したら、広告が残っている間は IPv4 / IPv6 を交互に試し直す。browser が失敗したら作り直す。
   実機はペアリング済みの先を優先し（LAN に別の `_lnx._udp` が居ても縛られない）、無ければ先頭（IPv4 が前）。
   シミュレータと Mac は常に `[::1]:12730`（カメラで QR を読めず、同じ機械のサーバで足りる。Mac から別の LNX へつなぐのは次）
 - `ScreenRoute.resolve(state, selection)`: つながるまで `connecting`、つながれば `lnxHome`、選べば `remote(server)`、ペアリングが要れば `pairing(serverName)`
@@ -138,17 +143,21 @@ mise run ios:run         # ビルド → シミュレータへインストール
 - **mdns-sd の TXT はタプルの slice で渡さない。** `IntoTxtProperties` は `HashMap<String, String>` と `Vec<TxtProperty>` だけ
 - **Swift の 1 channel に複数の event 型を置かない。** `Event` は 1 つ。種類が要るなら payload に `kind` を持たせるか channel を分ける
 - **実機で「LNX を探しています」のまま動かないときは、まず「ローカルネットワーク」の許可を疑う。** 許可しないと Bonjour は何も返さない。アプリを消して入れ直すと聞き直す（iPad の実例 2026-11-04）
-- **実機の足跡は stderr に出す。** stdout はパイプ先でバッファされ、`devicectl … --console` に届かない。`--console` の devicectl を殺すとアプリも終わる
+- **実機の足跡は stderr に出す。** stdout はパイプ先でバッファされ、`devicectl … --console` に届かない。`--console` の devicectl を殺すとアプリも終わる。行の頭に時刻（その機械の時刻、ミリ秒）を付けている。**ログは起動ごとに別のファイルへ取る**（同じファイルに `>` で取り直すと、前の起動の区間が消える。サーバ側の出来事と突き合わせられなくなった実例 2026-11-04）
 
 ## 関連 / 未決
 
 - 経由型（iPad は LNX と 1 本だけ、LNX が中継）は Unison の Hub 層の仕事。LNX で先行実装してよい
 - registry の生きた供給源（VP daemon の `registry.list`、Ladyland の fieldd）、Pi 配置、音（lnx-engine）は次の区切り
-- Bonjour のインスタンス名が衝突して `lnx-mac (2)` のように改名されると、QR の `name` と合わずペアリングできない
+- サーバが同じ service のまま IP だけ変えた（browse の変化が来ない）ときは、解き直さない。つなぎ直しが続くときに解き直す道は次
+- 切断の検出は心拍の流れが終わること（と無音の見張り）。club-unison の `connectionEvents` は相手からの切断で `.disconnected` を出さないので、`waitUntilDisconnected` は実物では自分で閉じたときにしか戻らない（`FakeSession` はそれより親切）
+- club-unison の待ち（connect / openChannel / request）が cancel に応じれば `withTimeout` の工夫は要らなくなる（上流へ相談）
 - QR のカメラ読み取りは iPad（iPad13,16）の実機で確認済み（2026-11-04）。iPhone は未
 - Bonjour 探索は iPhone 16 Pro と iPad（iPad13,16）の実機で確認済み（2026-11-04）。解決は IPv4 を優先し、だめなら IPv6（scope つき）
 
 ## Status log
+
+- 2026-11-04: team-b の deep レビューを受けて接続を固めた: `withTimeout` が期限で必ず戻る、古い世代が状態を書かない、TXT の `name` で pin を引く、消えた service を忘れる、`paired` が名前を確かめる、前面に戻ったら即つなぎ直す、pin の読み出しを cache
 
 - 2026-11-04: Bonjour の TXT に `name` を載せた（ios lane の相談、同名の改名で QR の name と合わなくなる対策）
 
