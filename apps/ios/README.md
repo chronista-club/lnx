@@ -19,7 +19,8 @@ open LnxCreare.xcodeproj     # Xcode で開いて Run
 mise run ios:gen             # 生成だけ
 mise run ios:test            # テスト（Swift Testing + UI テスト、既定は iPad シミュレータ）
 mise run ios:run             # シミュレータで起動
-mise run mac:run             # Mac 版をビルドして開く（同じターゲットの macOS destination）
+mise run mac:run             # Mac 版をビルドして開く（同じターゲットの macOS destination。lnx-server を同梱）
+mise run mac:test            # Mac 版の単体テスト（LnxCreareMacTests。共有の LnxCreareTests も Mac で回す）
 ```
 
 メイン開発機は iPad。`ios:test` の既定端末は iPad Pro 11-inch (M5)（`.mise.toml` の `LNX_IOS_SIM`）。
@@ -47,9 +48,13 @@ apps/ios/
 │   ├── App/LnxCreareApp.swift  # エントリポイント
 │   ├── Link/                   # LNX への常時接続（LinkSupervisor、UnisonLnxTransport、LnxFinder、LnxProtocol、ペアリングと pin: PairingCode・PinStore・LinkTrust）
 │   ├── Screens/                # 画面（RootView、Connecting、Pairing、QRScanner、LnxHome、RemoteServer、ScreenRoute）
+│   ├── Mac/                    # Mac 版だけ: メニューバーの LNX と、同梱 lnx-server の常駐（SMAppService）
 │   ├── Model/AppInfo.swift     # 表示名・タグライン・版
 │   └── Resources/Assets.xcassets
 ├── LnxCreareTests/             # 単体テスト（Swift Testing）
+├── LnxCreareMacTests/          # Mac 版だけの単体テスト（host は Mac 版。LnxCreareTests も一緒に回す）
+├── LaunchAgents/               # Mac 版に同梱する LaunchAgent の plist
+├── scripts/embed-lnx-server.sh # Mac 版のビルドで lnx-server を .app に入れて署名する（project.yml の postBuildScripts）
 └── LnxCreareUITests/           # 画面切り替えの UI テスト（実サーバが居るときだけ。無ければ skip）
 ```
 

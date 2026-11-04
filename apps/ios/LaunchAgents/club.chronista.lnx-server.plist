@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Mac 版 lnx creare に同梱する LaunchAgent（scripts/embed-lnx-server.sh が Contents/Library/LaunchAgents に置く）。
+         メニューバーの「開始」で SMAppService.agent(plistName:) が登録する。BundleProgram は .app 相対。
+         ラベルは server:install（tasks/_lib/agent.rb）と同じ。launchd は同じラベルを二つ載せないので、二重に立たない -->
+    <key>Label</key>
+    <string>club.chronista.lnx-server</string>
+    <key>BundleProgram</key>
+    <string>Contents/MacOS/lnx-server</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>RUST_LOG</key>
+        <string>info</string>
+        <key>RUST_BACKTRACE</key>
+        <string>1</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- crash だけ立ち上がり直す。SIGTERM で畳んで exit 0 したときは起こし直さない -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <!-- 「ログイン項目」に lnx creare の名前で出す -->
+    <key>AssociatedBundleIdentifiers</key>
+    <array>
+        <string>club.chronista.lnx.creare</string>
+    </array>
+</dict>
+</plist>

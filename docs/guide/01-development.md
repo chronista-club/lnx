@@ -21,9 +21,10 @@ Rust の workspace（`crates/`）と Apple のアプリ（`apps/ios`）を、**m
 | `mise run ios:gen` | `apps/ios/project.yml` から `LnxCreare.xcodeproj` を生成（XcodeGen） |
 | `mise run ios:test` | Swift Testing の単体テスト + UI テスト（既定は iPad シミュレータ） |
 | `mise run ios:run` | シミュレータを起こし、ビルド → インストール → 起動 |
-| `mise run mac:run` | Mac 版をビルドして開く（同じターゲットの macOS destination） |
+| `mise run mac:run` | Mac 版をビルドして開く（同じターゲットの macOS destination。lnx-server を同梱する） |
+| `mise run mac:test` | Mac 版の単体テスト（`LnxCreareMacTests`: メニューバー、同梱の lnx-server、共有の `LnxCreareTests` も Mac で） |
 
-`ios:test` / `ios:run` / `mac:run` は `ios:gen` に依存するので、プロジェクトの生成は自動で走る。
+`ios:test` / `ios:run` / `mac:run` / `mac:test` は `ios:gen` に依存するので、プロジェクトの生成は自動で走る。
 
 ## Prerequisites
 
@@ -111,6 +112,36 @@ mise run server:uninstall   # 常駐をやめる
   初めての起動では、判定がつくまでの数秒、Wi-Fi（en0）からの問い合わせに答えない（lo0 と iPad の USB 共有 bridge100 は答える。2026-11-04 実測）。
   そのあとも LAN から見つからなければ「システム設定 → プライバシーとセキュリティ → ローカルネットワーク」で lnx-server を許可する
 
+### Mac 版のメニューバーから常駐させる（SMAppService）
+
+Mac 版 lnx creare は lnx-server を `.app` に同梱し、メニューバーの LNX（波形のアイコン）から常駐させる（todo `mem_1CgiUS2HyVdxMAGfnfE3QX`、
+前例は midistage `mem_1Cfuxqjxy6HUi7p7ByQRY4`）。`server:install` の素の LaunchAgent を置き換える形で、ラベルは同じ `club.chronista.lnx-server`。
+
+| メニュー | すること |
+|---|---|
+| 1 行目 | サーバの今（動いている pid / 止まっている / 常駐していない / ログイン項目の許可待ち）。アイコンも動いているかで変わる（`waveform` / `waveform-slash`） |
+| 開始 | `SMAppService.agent(plistName:).register()`。すぐ立ち上がり、ログイン時にも立ち上がる。「システム設定 › 一般 › ログイン項目」に lnx creare の名前で載る |
+| 停止 | `unregister()`。launchd が SIGTERM を送り、サーバは goodbye を出して畳む。ログイン時にも立ち上がらない |
+| 再起動 | 解除 → 前のプロセスが launchd から消えるのを待つ（最大 5 秒）→ 登録。同梱の lnx-server を作り直したあとはこれで入れ替える（SMAppService は実行ファイルが変わったら登録し直しを求める） |
+| ログを開く | `~/Library/Logs/lnx-server.log`（lnx-server が `--log-file` で自分で書く。`server:logs` と同じ場所） |
+| iPad をペアリング… | 今の QR の画面を別の窓で。サーバが動いているときだけ |
+| lnx creare の窓を開く | 主の窓（Mac は 1 つだけ）を前に出す |
+
+```bash
+mise run server:uninstall   # server:install の常駐が入っていれば先に外す（入っているとメニューは「開始」を出さずに案内する）
+mise run mac:run            # ビルドして開く → メニューバーの LNX → 開始
+mise run mac:test           # メニューの組み立てと、同梱の中身（plist の鍵、lnx-server が走るか）を試す
+```
+
+- 同梱は `apps/ios/scripts/embed-lnx-server.sh`（`project.yml` の postBuildScripts。macOS のビルドだけ）。repo の root で `cargo build -p lnx-server`
+  （Debug は dev、Release は `--release`）→ `Contents/MacOS/lnx-server` に写して、アプリと同じ identity で署名（hardened runtime）→
+  `apps/ios/LaunchAgents/club.chronista.lnx-server.plist` を `Contents/Library/LaunchAgents/` へ。
+  cargo は Xcode の env を剥がして呼ぶ（`MACOSX_DEPLOYMENT_TARGET` などが端末と違うと rustc が全部作り直す）。PATH は rustup の cargo と brew の `protoc`（club-unison の build が使う）だけ
+- plist は `BundleProgram` + `KeepAlive = { SuccessfulExit = false }`（落ちたときだけ立ち上がり直す。SIGTERM で畳んだ exit 0 では起こさない）。
+  launchd は plist の `~` を展開しないので、設定・証明書・名乗りはサーバの既定の置き場（`~/Library/Application Support/club.chronista.lnx-server/`）、ログは `--log-file` がサーバ側で `~` を展開する
+- 登録・解除はメニューの操作でだけ行う（起動しただけでは登録しない）。状態は 2 秒おきに `launchctl print gui/<uid>/club.chronista.lnx-server` を読む
+- 窓を閉じてもアプリはメニューバーに残る。終わるときはメニューの「lnx creare を終了」（サーバは常駐したまま）
+
 ### lnx creare（iOS / macOS）
 
 ```bash
@@ -172,10 +203,15 @@ UDID は `xcrun devicectl list devices` で見る。「LNX を探しています
 | 常駐させたのに iPad が Wi-Fi で見つけない | lnx-server 自身のローカルネットワークの許可を確かめる（上の「常駐させる」）。`server:logs` に `bonjour: … を広告` が出ているかも見る |
 | `server:*` が「Mac 版 lnx creare（メニューバー）が SMAppService で常駐させている」と言って止まる | 同じラベルを Mac 版が載せている（`launchctl print` の `managed_by` が ServiceManagement）。開始・停止・再起動はメニューから。端末で回したいときはメニューで止めてから |
 | 常駐が立ち上がらない（`server:install` が「立ち上がらない」で止まる） | 出てきたログの最後を見る。ポートを別のプロセスが握っていれば `KeepAlive` が 10 秒おきに立て直し続けるので、`server:status` の待ち受けで握っている pid を探す |
+| メニューバーが「server:install の常駐が入っています」と言って「開始」を出さない | `~/Library/LaunchAgents/club.chronista.lnx-server.plist` がある。`mise run server:uninstall` で外してから「開始」 |
+| Mac 版のビルドが「failed to run protoc」で止まる | 同梱の script は brew の `protoc` を `/opt/homebrew/bin` か `/usr/local/bin` に探す。`brew install protobuf` |
+| Mac 版を作り直したのに、常駐しているサーバが古いまま | メニューの「再起動」で入れ替える（登録し直さないと前の実行ファイルのまま、または立ち上がらない） |
 | 音が出ない | `lnx audio list` は固定値を返すだけ（TODO）。`cargo run -p lnx-engine --example audio_debug_test` と `raw_audio_test` で出力デバイスを確かめる |
 
 ## Status log
 
+- 2026-11-05: Mac 版のメニューバーから lnx-server を常駐させる（SMAppService）。`mac:test` を足した。
+  同梱の中身と署名（`codesign --verify --deep --strict`）、メニューの項目と読み上げ名（System Events）を確認。この Mac での登録の通しは server lane の `--log-file` などが入ってから
 - 2026-11-04: Mac 版のメニューバーに同梱する準備。サーバに `--log-file`（`~/` を自分で展開）と、`--config` 無しのときの
   state dir の設定（無ければ名乗り `lnx-<LocalHostName>` で作る）を足した。`server:*` は Mac 版が載せたジョブを降ろさない
 - 2026-11-04: LNX サーバの常駐（launchd）を足した。`server:install` / `restart` / `logs` / `status` / `uninstall`、`server:run` は常駐中なら止まる。

@@ -12,11 +12,19 @@ typealias PlatformImage = UIImage
 /// 足すときは同じ版の `Sources/PhosphorSwift/Resources/Assets.xcassets/SVG/<name>.imageset/<name>.svg` を
 /// 同じ形の imageset（template、ベクタを保つ）で置き、ここに case を足す
 enum Phosphor: String, CaseIterable, Sendable {
+    case appWindow = "app-window"
+    case arrowClockwise = "arrow-clockwise"
     case caretLeft = "caret-left"
     case caretRight = "caret-right"
     case dotsThreeCircle = "dots-three-circle"
+    case fileText = "file-text"
     case linkBreak = "link-break"
+    case play
     case qrCode = "qr-code"
+    case stop
+    /// Mac のメニューバー: LNX サーバが動いている / 止まっている
+    case waveform
+    case waveformSlash = "waveform-slash"
 
     /// 素材は template なので foregroundStyle で染まる
     var image: Image { Image(rawValue).resizable() }

@@ -111,6 +111,11 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   launchd は同じラベルを二つ載せないので、`server:install` の LaunchAgent とは二重に立たない。`server:*` のタスクは
   launchd の持ち主が `managed_by = com.apple.xpc.ServiceManagement`（`launchctl print`）のものをアプリのジョブとみなし、降ろさずに止まってメニューを案内する
   （plist の有無では決めない。#38 の plist が残っていても消えていても取り違えない）
+- Mac 版の常駐（SMAppService）: Mac 版 lnx creare が lnx-server を `.app` に同梱し（`Contents/MacOS/lnx-server`、アプリと同じ identity で署名）、
+  `Contents/Library/LaunchAgents/club.chronista.lnx-server.plist` をメニューバーの「開始」で `SMAppService.agent` に登録する（前例 midistage `mem_1Cfuxqjxy6HUi7p7ByQRY4`）。
+  ラベルは `server:install` と同じなので、launchd が二つ載せない。`server:install` の plist が残っていれば、アプリは登録せずに `server:uninstall` を案内する。
+  `KeepAlive = { SuccessfulExit = false }`（SIGTERM で畳んだ exit 0 は起こし直さない）。plist は `~` を書けないので、設定・名乗り・証明書はサーバの既定の置き場、ログは `--log-file`。
+  停止 = 登録の解除、再起動 = 解除 → 前のプロセスが消えるのを待つ → 登録（SMAppService の unregister は reap を待たない）。アプリ側は `apps/ios/LnxCreare/Mac/`、手順は guide 01
 - 試験は実 QUIC で回す（`tests/link.rs`）: `listener("[::1]:0").spawn()` → `ProtocolClient::new(QuicClient::insecure_localhost())`
 
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
@@ -189,6 +194,8 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 ## Status log
 
+- 2026-11-05: Mac 版のメニューバーから lnx-server を常駐させる（裁定「midistageみたいに、LNXのメニューがあって」→ GO、`mem_1CgiUS2HyVdxMAGfnfE3QX`）。
+  `.app` に同梱して SMAppService で登録し、`server:install` の素の LaunchAgent を置き換える。設定・ログの置き場は server lane が持つ
 - 2026-11-05: Bonjour の広告を、手元用と本体の待ち受けを bind できてから始める（D、mako の GO）。今までは名乗ってから bind していたので、
   port を握られた起動（KeepAlive の 10 秒おきを含む）が、落ちるときの goodbye で本物の記録を消していた。本体も `spawn` で bind し、
   待ち受けが自分で終わっていないかを 1 秒おきに見て、終わっていたら非 0 で抜ける（club-unison はそのとき Ok を返すが、
