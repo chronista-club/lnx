@@ -35,6 +35,8 @@ struct LnxHomeView: View {
             #endif
         }
         .padding(32)
+        // 画面いっぱいに広げてから重ねる（VStack は中身の幅に縮むので、そのままだと見出しの右上に乗る）
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .topTrailing) { menu.padding(20) }
         #if os(macOS)
         .sheet(isPresented: $offeringPairing) {
@@ -56,22 +58,30 @@ struct LnxHomeView: View {
     private var menu: some View {
         #if os(macOS)
         Menu {
-            Button("iPad をペアリング") { offeringPairing = true }
+            Button { offeringPairing = true } label: {
+                Label { Text("iPad をペアリング") } icon: { Icon.menuImage(.qrCode) }
+            }
         } label: {
-            Image(systemName: "ellipsis.circle")
+            // macOS の Menu は label を AppKit のボタンに移すとき frame を落とし、素の大きさ（256）で出す。
+            // メニュー項目と同じく、小さく描き直した画像を渡す（2026-11-04、Mac の実画面で確認）
+            Icon.menuImage(.dotsThreeCircle, size: 20)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
+        // label の中の修飾は AppKit へ移すときに落ちうるので、読み上げの名前は Menu 本体に付ける
+        .accessibilityLabel("メニュー")
         .accessibilityIdentifier("home.menu")
         #else
         if supervisor.canUnpair {
             Menu {
-                Button("ペアリングを解除", systemImage: "link.badge.minus", role: .destructive) { confirmingUnpair = true }
+                Button(role: .destructive) { confirmingUnpair = true } label: {
+                    Label { Text("ペアリングを解除") } icon: { Icon.menuImage(.linkBreak) }
+                }
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.title2)
+                Icon.view(.dotsThreeCircle, size: 28, label: "メニュー")
                     .foregroundStyle(.white.opacity(0.7))
+                    .contentShape(Rectangle())
             }
             .accessibilityIdentifier("home.menu")
         }
@@ -125,7 +135,7 @@ struct LnxHomeView: View {
                                     .foregroundStyle(.white.opacity(0.5))
                             }
                             Spacer()
-                            Image(systemName: "chevron.right")
+                            Icon.view(.caretRight, size: 16)
                                 .foregroundStyle(.white.opacity(0.5))
                         }
                         .padding(14)

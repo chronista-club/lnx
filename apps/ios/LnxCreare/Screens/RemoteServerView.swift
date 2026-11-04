@@ -9,7 +9,7 @@ struct RemoteServerView: View {
         VStack(spacing: 16) {
             HStack {
                 Button(action: onBack) {
-                    Label("LNX", systemImage: "chevron.left")
+                    Label { Text("LNX") } icon: { Icon.view(.caretLeft, size: 16) }
                         .foregroundStyle(.white.opacity(0.7))
                 }
                 .buttonStyle(.plain)

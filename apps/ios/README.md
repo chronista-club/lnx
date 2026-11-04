@@ -63,6 +63,7 @@ apps/ios/
 | 対応 OS | iOS 27.0 以上、macOS 27.0 以上 | 最新の OS に揃える（mako の裁定 2026-11-04。手元の iPhone / iPad / Mac はすべて 27）。一つのターゲットで iOS と macOS（`supportedDestinations`）。Mac は同じ機械の localhost も接続候補 |
 | メイン開発機 | iPad（iPhone も `TARGETED_DEVICE_FAMILY` に残す） | ユーザー指定（2026-11-03）。iPad は 4 方向すべて対応（Stage Manager 前提） |
 | 言語 | Swift 6 言語モード、strict concurrency complete | 新規なので最初から |
+| アイコン | [Phosphor Icons](https://github.com/phosphor-icons/swift)（2.1.0 の regular から、使う SVG だけを `Assets.xcassets/Phosphor/` に取り込む。MIT、`Resources/Phosphor-LICENSE.txt`） | mako の裁定（2026-11-04、`mem_1Cggjxznnx1u4qGDwjftB6`）。パッケージは素材が約 9,000 個で、Release でも iOS 64MB / Mac 95MB になった（取り込みで 9.8MB / 10MB）。SF Symbols は使わない。呼ぶのは `Icon.view` / メニュー項目は `Icon.menuImage`。足す手順は `Screens/Icon.swift` の頭 |
 | UI / テスト | SwiftUI / Swift Testing | spec の Native UI 方針、XCTest より軽い |
 | プロジェクト管理 | XcodeGen | `.pbxproj` を手で触らない。差分がレビューできる |
 
