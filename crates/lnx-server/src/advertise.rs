@@ -1,5 +1,6 @@
 //! Bonjour 広告 — `_lnx._udp` で名乗り、iPad が LAN 上で LNX を見つけられるようにする
 use std::collections::HashMap;
+use std::time::Duration;
 
 use mdns_sd::{ServiceDaemon, ServiceInfo};
 use tracing::info;
@@ -43,7 +44,22 @@ pub fn txt_properties(name: &str, version: &str) -> HashMap<String, String> {
 
 impl Drop for Advertiser {
     fn drop(&mut self) {
-        let _ = self.daemon.unregister(&self.fullname);
-        let _ = self.daemon.shutdown();
+        // goodbye（TTL 0）を出し終えるまで待つ。待たずにプロセスが抜けると送られず、幽霊が残る。
+        // mdns-sd 0.21 は goodbye を一度出し、+120ms に再送を予約してから OK を返す。shutdown は予約を捨てるので、
+        // 再送が出るまで置いてから止める（Wi-Fi の multicast は落ちることがある）
+        if let Ok(done) = self.daemon.unregister(&self.fullname)
+            && done.recv_timeout(STOP_WAIT).is_ok()
+        {
+            std::thread::sleep(GOODBYE_RESEND_WAIT);
+        }
+        if let Ok(done) = self.daemon.shutdown() {
+            let _ = done.recv_timeout(STOP_WAIT);
+        }
     }
 }
+
+/// 取り下げと停止のそれぞれを待つ上限（mdns-sd の daemon は別スレッドで、ふつうは数 ms で返る）
+const STOP_WAIT: Duration = Duration::from_secs(1);
+
+/// goodbye の再送（mdns-sd が +120ms に予約する）が出るまで置く間
+const GOODBYE_RESEND_WAIT: Duration = Duration::from_millis(200);

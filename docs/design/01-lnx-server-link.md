@@ -93,6 +93,14 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 - `Registry` は `tokio::sync::watch` の `Sender` を正本に持つ（`send_replace` で購読者ゼロでも更新できる）
 - `Advertiser`（mdns-sd）が `_lnx._udp` を広告。TXT に `name`（名乗り = QR の name）と `version` と `protocol=unison`。Bonjour のインスタンス名は同名が二つあると「lnx-mac (2)」に改名されるので、アプリは pin の鍵に TXT の `name` を使う
 - 待ち受けは `[::]:12730`（UDP / QUIC、dual stack）。cert は `identity::ServerIdentity` が一度だけ作って保存した自己署名（`--state-dir` / `LNX_SERVER_STATE`、既定は `~/Library/Application Support/club.chronista.lnx-server` の `cert.pem` と `key.pem`、鍵は 0600）。起動時にペアリング用の QR と URL（`lnx://pair?v=1&name=<名乗り>&cert=<leaf DER の base64url、padding なし>`）を出す（QR は `--qr` のときだけ。ふだんは Mac 版が窓に出す）。`--no-mdns` / `--name` / `--config` / `LNX_SERVER_ADDR`
+- 止め方: SIGTERM（launchd の `bootout` / `kickstart -k`）と SIGINT（Ctrl-C）を main の最初で受け、待ち受けを畳んで抜ける。
+  `Advertiser` の drop は goodbye（TTL 0）の取り下げを最大 1 秒待ち、mdns-sd が +120ms に予約する再送が出るまで 200ms 置いてから、
+  daemon の停止をまた最大 1 秒待つ（待たずにプロセスが抜けると送られず、幽霊が残る。shutdown は再送の予約を捨てる）。
+  ログは端末でなければ色の制御文字を入れない（常駐のログはファイル）。試験は `tests/shutdown.rs`（実プロセスにシグナルを送る）
+- 常駐: この Mac では launchd のユーザー LaunchAgent（`club.chronista.lnx-server`、`RunAtLoad` + `KeepAlive`）。
+  `tasks/_lib/agent.rb` が plist を組み、`server:install` / `restart` / `logs` / `status` / `uninstall` が出し入れする（guide 01）。
+  証明書は `server:run` と同じ既定の置き場を使う（pin を外さない）。実行ファイルは `~/.local/share/lnx-server/bin` へ写したものを指し、
+  設定は `~/Library/Application Support/club.chronista.lnx-server/lnx-server.toml`（無ければ example から写す）
 - 試験は実 QUIC で回す（`tests/link.rs`）: `listener("[::1]:0").spawn()` → `ProtocolClient::new(QuicClient::insecure_localhost())`
 
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
@@ -120,8 +128,9 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 ### 開発の回し方
 
 ```bash
-mise run server:run      # Mac で LNX サーバ（example.toml の一覧つき）
-mise run server:test     # cargo test -p lnx-server（実 QUIC の往復を含む）
+mise run server:install  # Mac で LNX サーバを常駐させる（launchd。ふだんはこれ）
+mise run server:run      # 端末で LNX サーバ（example.toml の一覧つき。常駐中は止まって案内する）
+mise run server:test     # cargo test -p lnx-server（実 QUIC の往復を含む）と常駐タスクのテスト
 mise run ios:test        # Swift の単体テストと UI テスト（iPad シミュレータ）
 mise run ios:run         # ビルド → シミュレータへインストール → 起動
 ```
@@ -144,6 +153,10 @@ mise run ios:run         # ビルド → シミュレータへインストール
 - **Swift の 1 channel に複数の event 型を置かない。** `Event` は 1 つ。種類が要るなら payload に `kind` を持たせるか channel を分ける
 - **実機で「LNX を探しています」のまま動かないときは、まず「ローカルネットワーク」の許可を疑う。** 許可しないと Bonjour は何も返さない。アプリを消して入れ直すと聞き直す（iPad の実例 2026-11-04）
 - **実機の足跡は stderr に出す。** stdout はパイプ先でバッファされ、`devicectl … --console` に届かない。`--console` の devicectl を殺すとアプリも終わる。行の頭に時刻（その機械の時刻、ミリ秒）を付けている。**ログは起動ごとに別のファイルへ取る**（同じファイルに `>` で取り直すと、前の起動の区間が消える。サーバ側の出来事と突き合わせられなくなった実例 2026-11-04）
+- **同じ Mac で、本番と同じ名前の lnx-server をもう一つ立てない。** 試験は別の `--name` か `--no-mdns`。
+  起動に失敗して 1 秒足らずで落ちるものでも、Bonjour を始めていれば goodbye を出し、動いている本物の記録（SRV / TXT / A）を LAN 中のキャッシュから消す。
+  改名（`lnx-mac (2)`）してから落ちても、共有しているホスト名 `lnx-mac.local` の A / AAAA を消す（2026-11-04 に同じ mdns-sd で再現）
+- **常駐中に `server:run` で二つ目を立てない。** 古いサーバを止めても `KeepAlive` で立ち上がり直して取り合う（`server:run` は止まって案内する）
 
 ## 関連 / 未決
 
@@ -154,9 +167,20 @@ mise run ios:run         # ビルド → シミュレータへインストール
 - club-unison の待ち（connect / openChannel / request）が cancel に応じれば `withTimeout` の工夫は要らなくなる（上流へ相談）
 - QR のカメラ読み取りは iPad（iPad13,16）の実機で確認済み（2026-11-04）。iPhone は未
 - Bonjour 探索は iPhone 16 Pro と iPad（iPad13,16）の実機で確認済み（2026-11-04）。解決は IPv4 を優先し、だめなら IPv6（scope つき）
+- macOS のローカルネットワークの許可は、端末から立てたサーバでは端末のアプリ（VP など）に、常駐（LaunchAgent）では lnx-server 自身に掛かる。
+  常駐の初めての起動では、判定がつくまでの数秒、en0 の問い合わせに答えない（lo0 と bridge100 は答える。2026-11-04 実測）。
+  ad-hoc 署名のまま作り直した実行ファイルでも、restart の 3 秒後には en0 で答えた（2026-11-04、一度の観測）
+- 2026-11-04 07:08〜07:20 に、端末から立てたサーバ（pid 72720）が LAN 側（en0 / bridge100）で SRV / A に答えなくなり、iPad が解決できなかった。
+  原因は未確定（サーバのログと iPad の 07:00〜07:19 のログが残っていない）。候補は二つ。
+  (a) 07:08 に VP と Claude のセッションが立ち上がり直し、サーバの許可の持ち主（親のアプリ）が消えた。常駐ならこの筋は起きない。
+  (b) mdns-sd が消えたアドレスで multicast から抜け、XNU が別の NIC の membership を外す（カーネルの挙動は実験で確認済み）。
+  次に起きたら、常駐のログ（`server:logs`）と時刻で突き合わせる
 
 ## Status log
 
+- 2026-11-04: サーバを launchd で常駐させる（裁定「常駐させようか」）。SIGTERM / SIGINT で畳んで goodbye を出して抜け、ログに色の制御文字を入れない。
+  試験用ラベル（12740 / 12741）で install → kill -9 から立ち上がり直す → restart（SIGTERM で畳む）→ uninstall（en0 に goodbye が出る）まで通した。
+  あわせて、同じ名前の二つ目の lnx-server が goodbye で本物の記録を消すことを「やってはいけない」に足した
 - 2026-11-04: team-b の deep レビューを受けて接続を固めた: `withTimeout` が期限で必ず戻る、古い世代が状態を書かない、TXT の `name` で pin を引く、消えた service を忘れる、`paired` が名前を確かめる、前面に戻ったら即つなぎ直す、pin の読み出しを cache
 
 - 2026-11-04: Bonjour の TXT に `name` を載せた（ios lane の相談、同名の改名で QR の name と合わなくなる対策）
