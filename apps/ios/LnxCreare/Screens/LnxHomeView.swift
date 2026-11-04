@@ -35,6 +35,8 @@ struct LnxHomeView: View {
             #endif
         }
         .padding(32)
+        // 画面いっぱいに広げてから重ねる（VStack は中身の幅に縮むので、そのままだと見出しの右上に乗る）
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .topTrailing) { menu.padding(20) }
         #if os(macOS)
         .sheet(isPresented: $offeringPairing) {
@@ -60,7 +62,10 @@ struct LnxHomeView: View {
                 Label { Text("iPad をペアリング") } icon: { Icon.menuImage(.qrCode) }
             }
         } label: {
-            Icon.view(.dotsThreeCircle, size: 20, label: "メニュー")
+            // macOS の Menu は label を AppKit のボタンに移すとき frame を落とし、素の大きさ（256）で出す。
+            // メニュー項目と同じく、小さく描き直した画像を渡す（2026-11-04、Mac の実画面で確認）
+            Icon.menuImage(.dotsThreeCircle, size: 20)
+                .accessibilityLabel("メニュー")
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
