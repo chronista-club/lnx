@@ -2,7 +2,9 @@ import SwiftUI
 import Testing
 @testable import LnxCreare
 
-/// Phosphor Icons（使う SVG だけを取り込んだもの）。メニュー項目には小さく描き直したテンプレート画像を渡す
+/// Phosphor Icons（使う SVG だけを取り込んだもの）。メニュー項目には小さく描き直したテンプレート画像を渡す。
+/// テストターゲットは iOS だけ（project.yml）なので、`#if os(macOS)` の側は今は走らない。
+/// Mac は 2026-11-04 に実画面のスクリーンショットで確かめた（右上のメニューアイコンの大きさと位置）
 @Suite("Icon")
 @MainActor
 struct IconTests {

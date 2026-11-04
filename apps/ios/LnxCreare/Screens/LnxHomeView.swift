@@ -65,11 +65,12 @@ struct LnxHomeView: View {
             // macOS の Menu は label を AppKit のボタンに移すとき frame を落とし、素の大きさ（256）で出す。
             // メニュー項目と同じく、小さく描き直した画像を渡す（2026-11-04、Mac の実画面で確認）
             Icon.menuImage(.dotsThreeCircle, size: 20)
-                .accessibilityLabel("メニュー")
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
+        // label の中の修飾は AppKit へ移すときに落ちうるので、読み上げの名前は Menu 本体に付ける
+        .accessibilityLabel("メニュー")
         .accessibilityIdentifier("home.menu")
         #else
         if supervisor.canUnpair {
