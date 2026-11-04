@@ -8,6 +8,7 @@ pub mod advertise;
 pub mod config;
 pub mod heartbeat;
 pub mod identity;
+pub mod log_file;
 pub mod registry;
 pub mod serve;
 

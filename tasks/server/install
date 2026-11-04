@@ -10,6 +10,8 @@ problems = Lnx::Agent.isolation_problems(s)
 unless problems.empty?
   abort "試験用ラベル（#{s.label}）が本番に触れる:\n#{problems.map { |p| "  - #{p}" }.join("\n")}"
 end
+# アプリが載せたジョブを bootout で降ろさない
+abort Lnx::Agent.app_managed_message(s) if Lnx::Agent.app_managed?(s)
 Lnx.run("cargo", "build", "-q", "-p", "lnx-server")
 
 # 入れ直しなら一度降ろす。server:run で立てたサーバが同じ port を握っていれば止める

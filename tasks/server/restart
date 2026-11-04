@@ -6,6 +6,7 @@ require_relative "../_lib/lnx"
 require_relative "../_lib/agent"
 
 s = Lnx::Agent::Settings.from_env
+abort Lnx::Agent.app_managed_message(s) if Lnx::Agent.app_managed?(s)
 Lnx::Agent.installed?(s) or abort "LaunchAgent（#{s.label}）が入っていない。先に mise run server:install"
 
 Lnx.run("cargo", "build", "-q", "-p", "lnx-server")

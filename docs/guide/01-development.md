@@ -70,6 +70,9 @@ cargo run -p lnx-server -- --addr '[::]:12730' --name lnx-mac --no-mdns
 `mise run server:run` は、同じポート（`LNX_SERVER_ADDR`、既定 12730）で待ち受けている古い lnx-server を止めてから起動する。lnx-server 以外のプロセスがポートを握っていたら止めずに終わる。
 サーバは手元用（ペアリング）の待ち受けも `[::1]:12731` に立てる。Mac 版 lnx creare がここからペアリング URL を取って QR を出す。ターミナルに QR を出したいときは `--qr`。
 `--addr` / `--config` は環境変数 `LNX_SERVER_ADDR` / `LNX_SERVER_CONFIG` でも渡せる。名乗りの確認は `dns-sd -B _lnx._udp`。
+`--config` を渡さなければ、証明書と同じ置き場の `lnx-server.toml` を読む（無ければ名乗り `--name` か `lnx-<LocalHostName>` で作って保存する。名乗りは iPad の pin の鍵なので、この Mac で `--config` も `--name` も無しに一度立てると、以後の常駐の名乗りがそれで決まる）。
+この Mac を Mac 版の常駐へ移すとき、名乗りを今の `lnx-mac`（iPad の pin の鍵）のまま残すなら、先に `~/Library/Application Support/club.chronista.lnx-server/lnx-server.toml` に `name = "lnx-mac"` を置く（`crates/lnx-server/lnx-server.example.toml` を写せばよい）。置かずに立つと `lnx-<LocalHostName>` で作り、iPad は QR でペアリングし直しになる。
+`--log-file <path>`（`LNX_SERVER_LOG`）で stdout / stderr をファイルへ向けられる。先頭の `~/` は自分で展開する（launchd の plist は展開しない）。
 偽サーバが要るときは club-unison の `unison` CLI で `unison mock --schema crates/lnx-server/schemas/lnx.kdl --addr '[::1]:12730'`（心拍は出さない）。
 サーバは SIGTERM / SIGINT（Ctrl-C）で畳んで抜け、Bonjour の goodbye を出す（幽霊を残さない）。
 
@@ -90,7 +93,7 @@ mise run server:uninstall   # 常駐をやめる
 |---|---|
 | `~/Library/LaunchAgents/club.chronista.lnx-server.plist` | LaunchAgent（`RunAtLoad` + `KeepAlive`）。引数は install のときの env で決まる |
 | `~/.local/share/lnx-server/bin/lnx-server` | 常駐が指す実行ファイル。`target/` はビルドのたびに変わり、mbx では symlink の先なので、写したものを指す。差し替えは rename（走っているプロセスを壊さない） |
-| `~/Library/Application Support/club.chronista.lnx-server/lnx-server.toml` | 設定（既知サーバの一覧）。無ければ install が example から写す。あれば触らない（手で直した一覧を消さない） |
+| `~/Library/Application Support/club.chronista.lnx-server/lnx-server.toml` | 設定（名乗りと既知サーバの一覧）。無ければ install が example から写す。あれば触らない（手で直した一覧を消さない）。`--config` 無しで立ったサーバもここを読み、無ければ名乗り `lnx-<LocalHostName>` で作る（名乗りは iPad の pin の鍵なので変えない） |
 | `~/Library/Application Support/club.chronista.lnx-server/{cert,key}.pem` | 証明書。`server:run` と同じ既定の置き場なので、ペアリング済みの pin はそのまま |
 | `~/Library/Logs/lnx-server.log` | stdout / stderr（色の制御文字は入れない） |
 
@@ -167,11 +170,14 @@ UDID は `xcrun devicectl list devices` で見る。「LNX を探しています
 | 同じ Mac の `dns-sd -L` / `-G` で、lo0 など一部の NIC にしか出ない | 同じ Mac の mDNSResponder は、どれか 1 つの NIC の答えが新しいうちは他の NIC で問い直さないので、キャッシュの見え方だけで欠けることがある。名乗っているかは別の端末（iPad など）か、en0 から直接問って確かめる |
 | `server:run` が「LaunchAgent で常駐している」と言って止まる | 常駐中（`server:status`）。作り直すなら `server:restart`、端末で回すなら先に `server:uninstall` |
 | 常駐させたのに iPad が Wi-Fi で見つけない | lnx-server 自身のローカルネットワークの許可を確かめる（上の「常駐させる」）。`server:logs` に `bonjour: … を広告` が出ているかも見る |
+| `server:*` が「Mac 版 lnx creare（メニューバー）が SMAppService で常駐させている」と言って止まる | 同じラベルを Mac 版が載せている（`launchctl print` の `managed_by` が ServiceManagement）。開始・停止・再起動はメニューから。端末で回したいときはメニューで止めてから |
 | 常駐が立ち上がらない（`server:install` が「立ち上がらない」で止まる） | 出てきたログの最後を見る。ポートを別のプロセスが握っていれば `KeepAlive` が 10 秒おきに立て直し続けるので、`server:status` の待ち受けで握っている pid を探す |
 | 音が出ない | `lnx audio list` は固定値を返すだけ（TODO）。`cargo run -p lnx-engine --example audio_debug_test` と `raw_audio_test` で出力デバイスを確かめる |
 
 ## Status log
 
+- 2026-11-04: Mac 版のメニューバーに同梱する準備。サーバに `--log-file`（`~/` を自分で展開）と、`--config` 無しのときの
+  state dir の設定（無ければ名乗り `lnx-<LocalHostName>` で作る）を足した。`server:*` は Mac 版が載せたジョブを降ろさない
 - 2026-11-04: LNX サーバの常駐（launchd）を足した。`server:install` / `restart` / `logs` / `status` / `uninstall`、`server:run` は常駐中なら止まる。
   試験用ラベル（12740 / 12741）で install → kill -9 から立ち上がり直す → restart → uninstall（goodbye を確認）まで通した。本番の install はまだ
 - 2026-11-04: Draft。`README.md`、`apps/ios/README.md`、`tasks/`、`.mise.toml`、`rust-toolchain.toml` から事実を集めて起こした。

@@ -178,6 +178,20 @@ module Lnx
       system("launchctl", "print", settings.service, out: File::NULL, err: File::NULL)
     end
 
+    # SMAppService が載せたジョブを launchctl print で見たときの持ち主
+    SERVICE_MANAGEMENT = "com.apple.xpc.ServiceManagement"
+
+    # Mac 版 lnx creare（メニューバー）が SMAppService で載せたジョブ。このタスクたちは降ろしも差し替えもしない。
+    # 持ち主は launchd に聞く（plist の有無では決めない。#38 の plist が残っていても、消えていても取り違えない）
+    def app_managed?(settings, state: state(settings))
+      !state.nil? && state[:managed_by] == SERVICE_MANAGEMENT
+    end
+
+    def app_managed_message(settings)
+      "LNX サーバは Mac 版 lnx creare（メニューバー）が SMAppService で常駐させている（#{settings.label}）。" \
+        "開始・停止・再起動はメニューから。このタスクでは触らない"
+    end
+
     # launchctl print の要るところだけ（state / pid / 起動回数 / 前の終わり方）
     def state(settings)
       out = `launchctl print #{settings.service.shellescape} 2>/dev/null`
@@ -187,13 +201,16 @@ module Lnx
     end
 
     # 見るのは一段目（タブ 1 つ）の行だけ。endpoints などの入れ子にも state がある。
-    # 前の終わり方は、exit なら "last exit code"、シグナルなら "last terminating signal" に出る
+    # 前の終わり方は、exit なら "last exit code"、シグナルなら "last terminating signal" に出る。
+    # SMAppService が載せたジョブには managed_by と parent bundle identifier（載せたアプリ）が出る
     def parse_state(out)
       {
         state: out[/^\tstate = (.+)$/, 1],
         pid: out[/^\tpid = (\d+)$/, 1]&.to_i,
         runs: out[/^\truns = (\d+)$/, 1]&.to_i,
-        last_exit: out[/^\tlast terminating signal = (.+)$/, 1] || out[/^\tlast exit code = (.+)$/, 1]
+        last_exit: out[/^\tlast terminating signal = (.+)$/, 1] || out[/^\tlast exit code = (.+)$/, 1],
+        managed_by: out[/^\tmanaged_by = (.+)$/, 1],
+        parent_bundle: out[/^\tparent bundle identifier = (.+)$/, 1]
       }
     end
 
