@@ -15,6 +15,8 @@ struct BundledServerTests {
         let plist = try #require(try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
         #expect(plist["Label"] as? String == "club.chronista.lnx-server")
         #expect(plist["BundleProgram"] as? String == "Contents/MacOS/lnx-server")
+        // launchd は ~ を展開しないので、ログの置き場はサーバが --log-file で展開する
+        #expect(plist["ProgramArguments"] as? [String] == ["lnx-server", "--log-file", "~/Library/Logs/lnx-server.log"])
         #expect(plist["RunAtLoad"] as? Bool == true)
         // crash だけ立ち上がり直す。SIGTERM で畳んだ（exit 0）ときは起こし直さない
         let keepAlive = try #require(plist["KeepAlive"] as? [String: Any])
@@ -37,5 +39,7 @@ struct BundledServerTests {
         process.waitUntilExit()
         #expect(process.terminationStatus == 0)
         #expect(out.contains("--local-addr"))
+        // plist が渡す --log-file を受ける版が入っている（無い版だと clap が断り、KeepAlive で立て直し続ける）
+        #expect(out.contains("--log-file"))
     }
 }
