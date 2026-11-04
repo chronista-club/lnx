@@ -117,7 +117,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   `KeepAlive = { SuccessfulExit = false }`（SIGTERM で畳んだ exit 0 は起こし直さない）。plist は `~` を書けないので、設定・名乗り・証明書はサーバの既定の置き場、ログは `--log-file`。
   停止 = 登録の解除、再起動 = 解除 → 前のプロセスが消えるのを待つ → 登録（SMAppService の unregister は reap を待たない）。
   常駐の実体は登録した .app の中の実行ファイルなので、登録は `mac:install` で `~/Applications` に入れた .app から（`build-mac` の .app は作り直しのたびに変わる）。
-  入れ直したら「再起動」で登録し直す（SDK のヘッダが実行ファイルを変えたら登録し直すよう求めている。しない場合に次の起動がどうなるかは未測定）。アプリ側は `apps/ios/LnxCreare/Mac/`、手順は guide 01
+  入れ直したら「再起動」で登録し直す（SDK のヘッダが実行ファイルを変えたら登録し直すよう求めている。2026-11-05 に一度だけ測った: 実行ファイルを入れ替えて（同じチーム署名、中身は別）登録し直さずに kill -9 すると、launchd は 1 秒以内に新しい実行ファイルで立て直した。ログイン時は未測定）。アプリ側は `apps/ios/LnxCreare/Mac/`、手順は guide 01
 - 試験は実 QUIC で回す（`tests/link.rs`）: `listener("[::1]:0").spawn()` → `ProtocolClient::new(QuicClient::insecure_localhost())`
 
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
@@ -197,6 +197,11 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 ## Status log
 
+- 2026-11-05: この Mac で通しを確認（`~/Applications/LnxCreare.app` から登録、名乗り lnx-mac）。開始 → 12730 / 12731 で待ち受け、ログは `~/Library/Logs/lnx-server.log`、
+  en0 から lnx-mac が答える、Mac 版と iPad（USB の bridge100）が hello、QR が出る。停止 → SIGTERM で畳んで launchd から消え、立ち上がり直さず en0 も答えなくなる。
+  再起動 → 0.3 秒で新しい pid、port の取り合い無し。kill -9 → 1 秒で立ち上がり直す（en0 で答えるまで約 13 秒）。`server:install` / `restart` / `uninstall` / `run` はアプリのジョブを見て止まる。
+  主の窓を閉じてもメニューバーに残り、メニューから開き直すとつなぎ直す。入れ替えた実行ファイルは、登録し直さなくても kill -9 のあと新しい版で立った（一度の観測）。
+  ログイン時の自動起動と、iPad / iPhone の Wi-Fi 越しは mako の実機確認。途中、ポートが握られている間に「開始」されて 42 分落ち続けた（「やってはいけない」）
 - 2026-11-05: Mac 版のメニューバーから lnx-server を常駐させる（裁定「midistageみたいに、LNXのメニューがあって」→ GO、`mem_1CgiUS2HyVdxMAGfnfE3QX`）。
   `.app` に同梱して SMAppService で登録し、`server:install` の素の LaunchAgent を置き換える。設定・ログの置き場は server lane が持つ
 - 2026-11-05: Bonjour の広告を、手元用と本体の待ち受けを bind できてから始める（D、mako の GO）。今までは名乗ってから bind していたので、

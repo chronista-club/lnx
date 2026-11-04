@@ -142,7 +142,7 @@ mise run mac:test           # メニューの組み立てと、同梱の中身�
   launchd は plist の `~` を展開しないので、設定・証明書・名乗りはサーバの既定の置き場（`~/Library/Application Support/club.chronista.lnx-server/`）、ログは `--log-file` がサーバ側で `~` を展開する
 - **常駐の実体は、登録した .app の中の lnx-server。** だから登録は `mac:install` で入れた `~/Applications/LnxCreare.app` から行う。
   `mac:run` の `build-mac` の .app は作り直すたびに中身が変わり、worktree を消すと行き先も無くなる（#38 が実行ファイルを `~/.local/share` へ写すのと同じ理由）。
-  中身が変わったあとの次の起動（落ちたとき・ログイン時）が新しい版で立つのか、登録し直すまで立たないのかは、まだ測っていない（SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある））。
+  中身が変わったあとの次の起動は、2026-11-05 に一度だけ測った: 実行ファイルを入れ替えて（同じチーム署名、中身は別）登録し直さずに kill -9 すると、launchd は 1 秒以内に新しい実行ファイルで立て直した（ログイン時は未測定）。SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある）ので、入れ直したら「再起動」する。
   開発用のビルドから開くと、メニューに「開発用のビルドです」と出る。そこからは登録しない
 - `mac:install` は、入っている .app が開いていれば終わらせてから入れ替えて開く（ほかの置き場の lnx creare と常駐のサーバには触らない）。常駐中なら、そのあとメニューの「再起動」で新しい lnx-server に入れ替わる。置き場は `LNX_MAC_APPS` で変えられる（試験用）
 - 登録・解除はメニューの操作でだけ行う（起動しただけでは登録しない）。状態は 2 秒おきに `launchctl print gui/<uid>/club.chronista.lnx-server` を読む
@@ -217,7 +217,7 @@ UDID は `xcrun devicectl list devices` で見る。「LNX を探しています
 ## Status log
 
 - 2026-11-05: Mac 版のメニューバーから lnx-server を常駐させる（SMAppService）。`mac:install` と `mac:test` を足した。
-  同梱の中身と署名（`codesign --verify --deep --strict`）、メニューの項目と読み上げ名（System Events）を確認。この Mac での登録の通しは server lane の `--log-file` などが入ってから
+  同梱の中身と署名（`codesign --verify --deep --strict`）、メニューの項目と読み上げ名（System Events）を確認。この Mac での登録の通し（開始・停止・再起動・kill -9・`server:*` の守り）は design 01 の Status log
 - 2026-11-04: Mac 版のメニューバーに同梱する準備。サーバに `--log-file`（`~/` を自分で展開）と、`--config` 無しのときの
   state dir の設定（無ければ名乗り `lnx-<LocalHostName>` で作る）を足した。`server:*` は Mac 版が載せたジョブを降ろさない
 - 2026-11-04: LNX サーバの常駐（launchd）を足した。`server:install` / `restart` / `logs` / `status` / `uninstall`、`server:run` は常駐中なら止まる。
