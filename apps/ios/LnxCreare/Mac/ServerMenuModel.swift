@@ -93,7 +93,7 @@ final class ServerMenuModel {
         if residency.legacyInstalled() { throw ServerMenuError.legacyInstalled }
     }
 
-    /// 実行ファイルを作り直したときも、これで新しい同梱版に入れ替わる（SMAppService は登録し直しを求める）
+    /// 実行ファイルを入れ直したときも、これで新しい同梱版に入れ替える（SDK のヘッダは、実行ファイルを変えたら解除してから登録し直すよう求めている）
     private func reRegister() async throws {
         // 未登録なら解除は失敗する（kSMErrorJobNotFound）。登録へ進む
         try? await residency.unregister()

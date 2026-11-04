@@ -80,6 +80,7 @@ struct InstalledLocationTests {
     func installed() {
         #expect(BundledServer.isInstalled(URL(filePath: "/Users/mako/Applications/LnxCreare.app")))
         #expect(BundledServer.isInstalled(URL(filePath: "/Applications/LnxCreare.app")))
+        #expect(BundledServer.isInstalled(URL(filePath: "/Applications/LNX/LnxCreare.app")))
     }
 
     @Test("ビルドの置き場や DerivedData は開発用")

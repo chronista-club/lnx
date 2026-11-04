@@ -3,7 +3,7 @@
 #MISE description="Mac 版を Release でビルドして ~/Applications に入れ、開く（LNX サーバの常駐はこの .app のメニューから登録する）"
 #MISE depends=["ios:gen"]
 
-# 常駐（SMAppService）は、登録した .app の中の lnx-server を次の起動（落ちたとき・ログイン時）で使う。
+# 常駐（SMAppService）の実体は、登録した .app の中の lnx-server。
 # build-mac の .app は mac:run のたびに中身が変わり、worktree を消すと行き先も無くなるので、ここへ写したものから登録する
 # （#38 の server:install が実行ファイルを ~/.local/share へ写すのと同じ考え）。置き場は LNX_MAC_APPS で変えられる（試験用）
 require "fileutils"
@@ -31,6 +31,10 @@ unless pids.empty?
   pids.each { |pid| Process.kill("TERM", pid) }
   deadline = Time.now + 5
   sleep 0.1 while Time.now < deadline && pids.any? { |pid| Lnx.alive?(pid) }
+  pids.select { |pid| Lnx.alive?(pid) }.each do |pid|
+    puts "終わらないので KILL（pid #{pid}）"
+    Process.kill("KILL", pid)
+  end
 end
 
 # 隣に写してから入れ替える（途中で止まっても、入っている .app を半端にしない）

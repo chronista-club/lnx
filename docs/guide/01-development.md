@@ -123,7 +123,7 @@ Mac 版 lnx creare は lnx-server を `.app` に同梱し、メニューバー�
 | 1 行目 | サーバの今（動いている pid / 止まっている / 常駐していない / ログイン項目の許可待ち）。アイコンも動いているかで変わる（`waveform` / `waveform-slash`） |
 | 開始 | `SMAppService.agent(plistName:).register()`。すぐ立ち上がり、ログイン時にも立ち上がる。「システム設定 › 一般 › ログイン項目」に lnx creare の名前で載る |
 | 停止 | `unregister()`。launchd が SIGTERM を送り、サーバは goodbye を出して畳む。ログイン時にも立ち上がらない |
-| 再起動 | 解除 → 前のプロセスが launchd から消えるのを待つ（最大 5 秒）→ 登録。同梱の lnx-server を作り直したあとはこれで入れ替える（SMAppService は実行ファイルが変わったら登録し直しを求める） |
+| 再起動 | 解除 → 前のプロセスが launchd から消えるのを待つ（最大 5 秒）→ 登録。同梱の lnx-server を作り直したあとはこれで入れ替える（SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある）） |
 | ログを開く | `~/Library/Logs/lnx-server.log`（lnx-server が `--log-file` で自分で書く。`server:logs` と同じ場所） |
 | iPad をペアリング… | 今の QR の画面を別の窓で。サーバが動いているときだけ |
 | lnx creare の窓を開く | 主の窓（Mac は 1 つだけ）を前に出す |
@@ -140,9 +140,10 @@ mise run mac:test           # メニューの組み立てと、同梱の中身�
   cargo は Xcode の env を剥がして呼ぶ（`MACOSX_DEPLOYMENT_TARGET` などが端末と違うと rustc が全部作り直す）。PATH は rustup の cargo と brew の `protoc`（club-unison の build が使う）だけ
 - plist は `BundleProgram` + `KeepAlive = { SuccessfulExit = false }`（落ちたときだけ立ち上がり直す。SIGTERM で畳んだ exit 0 では起こさない）。
   launchd は plist の `~` を展開しないので、設定・証明書・名乗りはサーバの既定の置き場（`~/Library/Application Support/club.chronista.lnx-server/`）、ログは `--log-file` がサーバ側で `~` を展開する
-- **常駐は、登録した .app の中の lnx-server を次の起動（落ちたとき・ログイン時）で使う。** だから登録は `mac:install` で入れた `~/Applications/LnxCreare.app` から行う。
+- **常駐の実体は、登録した .app の中の lnx-server。** だから登録は `mac:install` で入れた `~/Applications/LnxCreare.app` から行う。
   `mac:run` の `build-mac` の .app は作り直すたびに中身が変わり、worktree を消すと行き先も無くなる（#38 が実行ファイルを `~/.local/share` へ写すのと同じ理由）。
-  開発用のビルドから開くと、メニューに「開発用のビルドです」と出る。そこで「開始」/「再起動」を押すと、登録先がその .app に移る
+  中身が変わったあとの次の起動（落ちたとき・ログイン時）が新しい版で立つのか、登録し直すまで立たないのかは、まだ測っていない（SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある））。
+  開発用のビルドから開くと、メニューに「開発用のビルドです」と出る。そこからは登録しない
 - `mac:install` は、入っている .app が開いていれば終わらせてから入れ替えて開く（ほかの置き場の lnx creare と常駐のサーバには触らない）。常駐中なら、そのあとメニューの「再起動」で新しい lnx-server に入れ替わる。置き場は `LNX_MAC_APPS` で変えられる（試験用）
 - 登録・解除はメニューの操作でだけ行う（起動しただけでは登録しない）。状態は 2 秒おきに `launchctl print gui/<uid>/club.chronista.lnx-server` を読む
 - 窓を閉じてもアプリはメニューバーに残る。終わるときはメニューの「lnx creare を終了」（サーバは常駐したまま）
@@ -210,7 +211,7 @@ UDID は `xcrun devicectl list devices` で見る。「LNX を探しています
 | 常駐が立ち上がらない（`server:install` が「立ち上がらない」で止まる） | 出てきたログの最後を見る。ポートを別のプロセスが握っていれば `KeepAlive` が 10 秒おきに立て直し続けるので、`server:status` の待ち受けで握っている pid を探す |
 | メニューバーが「server:install の常駐で動いています」/「…が入っています」と言って「開始」を出さない | `~/Library/LaunchAgents/club.chronista.lnx-server.plist` がある。`mise run server:uninstall` で外してから「開始」 |
 | Mac 版のビルドが「failed to run protoc」で止まる | 同梱の script は brew の `protoc` を `/opt/homebrew/bin` か `/usr/local/bin` に探す。`brew install protobuf` |
-| `mac:install` し直したのに、常駐しているサーバが古いまま | 走っているプロセスは前の実行ファイルのまま。メニューの「再起動」で入れ替える（SMAppService は実行ファイルが変わったら登録し直しを求める） |
+| `mac:install` し直したのに、常駐しているサーバが古いまま | 走っているプロセスは前の実行ファイルのまま。メニューの「再起動」で入れ替える（SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある）） |
 | 音が出ない | `lnx audio list` は固定値を返すだけ（TODO）。`cargo run -p lnx-engine --example audio_debug_test` と `raw_audio_test` で出力デバイスを確かめる |
 
 ## Status log

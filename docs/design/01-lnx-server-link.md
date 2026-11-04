@@ -116,7 +116,8 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   ラベルは `server:install` と同じなので、launchd が二つ載せない。`server:install` の plist が残っていれば、アプリは登録せずに `server:uninstall` を案内する。
   `KeepAlive = { SuccessfulExit = false }`（SIGTERM で畳んだ exit 0 は起こし直さない）。plist は `~` を書けないので、設定・名乗り・証明書はサーバの既定の置き場、ログは `--log-file`。
   停止 = 登録の解除、再起動 = 解除 → 前のプロセスが消えるのを待つ → 登録（SMAppService の unregister は reap を待たない）。
-  常駐は登録した .app の中の実行ファイルを次の起動で使うので、登録は `mac:install` で `~/Applications` に入れた .app から（`build-mac` の .app は作り直しのたびに変わる）。アプリ側は `apps/ios/LnxCreare/Mac/`、手順は guide 01
+  常駐の実体は登録した .app の中の実行ファイルなので、登録は `mac:install` で `~/Applications` に入れた .app から（`build-mac` の .app は作り直しのたびに変わる）。
+  入れ直したら「再起動」で登録し直す（SDK のヘッダが実行ファイルを変えたら登録し直すよう求めている。しない場合に次の起動がどうなるかは未測定）。アプリ側は `apps/ios/LnxCreare/Mac/`、手順は guide 01
 - 試験は実 QUIC で回す（`tests/link.rs`）: `listener("[::1]:0").spawn()` → `ProtocolClient::new(QuicClient::insecure_localhost())`
 
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
