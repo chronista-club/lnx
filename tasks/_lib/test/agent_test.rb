@@ -152,11 +152,51 @@ class AgentStateTest < Minitest::Test
   EXITED = "gui/501/x = {\n\tstate = not running\n\truns = 1\n\tlast exit code = 1\n}\n"
 
   def test_走っていてシグナルで落ちたことがある
-    assert_equal({ state: "running", pid: 36821, runs: 3, last_exit: "Killed: 9" }, Lnx::Agent.parse_state(KILLED))
+    assert_equal({ state: "running", pid: 36821, runs: 3, last_exit: "Killed: 9", managed_by: nil, parent_bundle: nil },
+                 Lnx::Agent.parse_state(KILLED))
   end
 
   def test_止まっていて_exit_で抜けた
-    assert_equal({ state: "not running", pid: nil, runs: 1, last_exit: "1" }, Lnx::Agent.parse_state(EXITED))
+    assert_equal({ state: "not running", pid: nil, runs: 1, last_exit: "1", managed_by: nil, parent_bundle: nil },
+                 Lnx::Agent.parse_state(EXITED))
+  end
+end
+
+class AgentAppManagedTest < Minitest::Test
+  # launchctl print の抜粋（2026-11-05 にこの Mac で読み取り。SMAppService の midistaged と、#38 の plist から載せたもの）
+  SMAPP = "gui/501/club.chronista.lnx-server = {\n\tactive count = 1\n\tpath = (submitted by smd.353)\n" \
+          "\tmanaged_by = com.apple.xpc.ServiceManagement\n\tstate = running\n\n" \
+          "\tparent bundle identifier = club.chronista.lnx.creare\n\truns = 1\n\tpid = 69784\n}\n"
+  PLIST = "gui/501/club.chronista.lnx-server = {\n\tactive count = 1\n" \
+          "\tpath = /Users/someone/Library/LaunchAgents/club.chronista.lnx-server.plist\n" \
+          "\tstate = running\n\truns = 1\n\tpid = 100\n}\n"
+
+  def test_parse_state_は持ち主を読む
+    st = Lnx::Agent.parse_state(SMAPP)
+    assert_equal "com.apple.xpc.ServiceManagement", st[:managed_by]
+    assert_equal "club.chronista.lnx.creare", st[:parent_bundle]
+    assert_nil Lnx::Agent.parse_state(PLIST)[:managed_by]
+  end
+
+  # 持ち主は launchd に聞く。plist の有無では決めない（#38 の plist が残っていても、消えていても取り違えない）
+  def test_launchd_の持ち主が_ServiceManagement_ならアプリのジョブ
+    Dir.mktmpdir do |home|
+      s = Lnx::Agent::Settings.from_env({}, home: home)
+      assert Lnx::Agent.app_managed?(s, state: Lnx::Agent.parse_state(SMAPP))
+      refute Lnx::Agent.app_managed?(s, state: Lnx::Agent.parse_state(PLIST)), "plist が無くても #38 のもの"
+      refute Lnx::Agent.app_managed?(s, state: nil)
+
+      FileUtils.mkdir_p(File.dirname(s.plist_path))
+      File.write(s.plist_path, Lnx::Agent.plist(s))
+      assert Lnx::Agent.app_managed?(s, state: Lnx::Agent.parse_state(SMAPP)), "plist が残っていてもアプリのもの"
+    end
+  end
+
+  def test_案内はメニューを指す
+    s = Lnx::Agent::Settings.from_env({}, home: "/Users/someone")
+    message = Lnx::Agent.app_managed_message(s)
+    assert_includes message, "club.chronista.lnx-server"
+    assert_includes message, "メニュー"
   end
 end
 

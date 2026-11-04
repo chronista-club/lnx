@@ -92,7 +92,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 - `serve_registry`: `List` で `Registry::snapshot()`、`watch` の変化を `RegistryChanged` で押し出す
 - `Registry` は `tokio::sync::watch` の `Sender` を正本に持つ（`send_replace` で購読者ゼロでも更新できる）
 - `Advertiser`（mdns-sd）が `_lnx._udp` を広告。TXT に `name`（名乗り = QR の name）と `version` と `protocol=unison`。Bonjour のインスタンス名は同名が二つあると「lnx-mac (2)」に改名されるので、アプリは pin の鍵に TXT の `name` を使う
-- 待ち受けは `[::]:12730`（UDP / QUIC、dual stack）。cert は `identity::ServerIdentity` が一度だけ作って保存した自己署名（`--state-dir` / `LNX_SERVER_STATE`、既定は `~/Library/Application Support/club.chronista.lnx-server` の `cert.pem` と `key.pem`、鍵は 0600）。起動時にペアリング用の QR と URL（`lnx://pair?v=1&name=<名乗り>&cert=<leaf DER の base64url、padding なし>`）を出す（QR は `--qr` のときだけ。ふだんは Mac 版が窓に出す）。`--no-mdns` / `--name` / `--config` / `LNX_SERVER_ADDR`
+- 待ち受けは `[::]:12730`（UDP / QUIC、dual stack）。cert は `identity::ServerIdentity` が一度だけ作って保存した自己署名（`--state-dir` / `LNX_SERVER_STATE`、既定は `~/Library/Application Support/club.chronista.lnx-server` の `cert.pem` と `key.pem`、鍵は 0600）。起動時にペアリング用の QR と URL（`lnx://pair?v=1&name=<名乗り>&cert=<leaf DER の base64url、padding なし>`）を出す（QR は `--qr` のときだけ。ふだんは Mac 版が窓に出す）。`--no-mdns` / `--name` / `--config` / `--log-file` / `LNX_SERVER_ADDR`
 - 止め方: SIGTERM（launchd の `bootout` / `kickstart -k`）と SIGINT（Ctrl-C）を main の最初で受け、待ち受けを畳んで抜ける。
   `Advertiser` の drop は goodbye（TTL 0）の取り下げを最大 1 秒待ち、mdns-sd が +120ms に予約する再送が出るまで 200ms 置いてから、
   daemon の停止をまた最大 1 秒待つ（待たずにプロセスが抜けると送られず、幽霊が残る。shutdown は再送の予約を捨てる）。
@@ -101,6 +101,16 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   `tasks/_lib/agent.rb` が plist を組み、`server:install` / `restart` / `logs` / `status` / `uninstall` が出し入れする（guide 01）。
   証明書は `server:run` と同じ既定の置き場を使う（pin を外さない）。実行ファイルは `~/.local/share/lnx-server/bin` へ写したものを指し、
   設定は `~/Library/Application Support/club.chronista.lnx-server/lnx-server.toml`（無ければ example から写す）
+- 設定と名乗り: `--config` が無ければ、証明書と同じ置き場の `lnx-server.toml` を読む。それも無ければ、最初の起動で
+  名乗り（`--name` があればそれ、無ければ `lnx-<LocalHostName を小文字に>`）・既知サーバ無しで作って保存する（`ServerConfig::load_or_create`。同じ置き場の一時ファイルに書いてから hard link で無いときだけ置くので、書きかけの空ファイルは残らず、同時に立ち上がっても取り合わない。読むときは `name` が無ければ止まる）。
+  名乗りは iPad が pin を引く鍵なので、証明書と同じく一度決めたら使い続ける（`lnx` 固定だと LAN に 2 台あると改名でぶつかる）
+- ログの置き場: `--log-file <path>`（`LNX_SERVER_LOG`）は先頭の `~/` を自分で展開し、stdout / stderr をそのファイル（追記）へ dup2 で向ける。
+  tracing を始める前に向けるので、ペアリング URL の行も panic も入り、色は付かない。SMAppService の plist は `~` を展開せず
+  StandardOutPath に家のパスを書けないための口（試験は `tests/startup.rs`）
+- Mac 版 lnx creare（メニューバー）が lnx-server を同梱し、SMAppService で同じラベル `club.chronista.lnx-server` を載せる（mac lane）。
+  launchd は同じラベルを二つ載せないので、`server:install` の LaunchAgent とは二重に立たない。`server:*` のタスクは
+  launchd の持ち主が `managed_by = com.apple.xpc.ServiceManagement`（`launchctl print`）のものをアプリのジョブとみなし、降ろさずに止まってメニューを案内する
+  （plist の有無では決めない。#38 の plist が残っていても消えていても取り違えない）
 - 試験は実 QUIC で回す（`tests/link.rs`）: `listener("[::1]:0").spawn()` → `ProtocolClient::new(QuicClient::insecure_localhost())`
 
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
@@ -178,6 +188,12 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 ## Status log
 
+- 2026-11-04: Mac 版のメニューバー（SMAppService）に同梱する準備（mac lane の相談 a〜d）。`--config` が無ければ state dir の
+  `lnx-server.toml`（無ければ名乗り `lnx-<LocalHostName>` で作って保存）、`--log-file`（`~/` を展開して stdout / stderr を向ける）、
+  `server:*` はアプリのジョブを降ろさない。`~/Library/LaunchAgents` の外の plist から試験用ラベルを載せ、`~/` のログ・設定の作成・
+  SIGTERM で exit 0 → `SuccessfulExit = false` で立ち上がり直さないこと、を確かめた（4 つのタスクが止まることもこのとき見たが、それは前の判定（plist の有無）でのこと）。
+  team-b の指摘で、アプリのジョブの見分けは launchd の持ち主（managed_by）に、設定の作り方は一時ファイル + hard link にした。
+  今の判定は、fixture のテストと、SMAppService で載っている midistaged の読み取りで確かめた。Mac 版での端から端までの確認は Mac 版ができてから
 - 2026-11-04: サーバを launchd で常駐させる（裁定「常駐させようか」）。SIGTERM / SIGINT で畳んで goodbye を出して抜け、ログに色の制御文字を入れない。
   試験用ラベル（12740 / 12741）で install → kill -9 から立ち上がり直す → restart（SIGTERM で畳む）→ uninstall（en0 に goodbye が出る）まで通した。
   あわせて、同じ名前の二つ目の lnx-server が goodbye で本物の記録を消すことを「やってはいけない」に足した

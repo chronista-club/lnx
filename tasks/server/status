@@ -10,6 +10,9 @@ puts "LaunchAgent: #{s.label}"
 puts "  plist: #{s.plist_path}（#{Lnx::Agent.installed?(s) ? 'ある' : '無い'}）"
 if (st = Lnx::Agent.state(s))
   puts "  launchd: #{st[:state]}、pid #{st[:pid] || '-'}、起動 #{st[:runs] || '-'} 回、前の終わり方 #{st[:last_exit] || '-'}"
+  if Lnx::Agent.app_managed?(s, state: st)
+    puts "  載せたのは Mac 版 lnx creare（SMAppService、#{st[:parent_bundle] || '?'}）。操作はメニューから"
+  end
 else
   puts "  launchd: 載っていない"
 end
