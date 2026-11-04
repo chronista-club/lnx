@@ -110,24 +110,6 @@ async fn main() -> Result<()> {
         cfg.servers.len()
     );
 
-    let port: u16 = cli
-        .addr
-        .rsplit(':')
-        .next()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(DEFAULT_PORT);
-    let _advertiser = if cli.no_mdns {
-        None
-    } else {
-        match Advertiser::start(&cfg.name, port, serve::VERSION) {
-            Ok(a) => Some(a),
-            Err(e) => {
-                warn!("bonjour を始められない（続行）: {e}");
-                None
-            }
-        }
-    };
-
     // 身元: 一度作った自己署名証明書を使い続ける（アプリはこれを pin する）
     let id = ServerIdentity::load_or_create(&state_dir)?;
     info!("証明書: {}", id.cert_path().display());
@@ -150,22 +132,67 @@ async fn main() -> Result<()> {
         .await?;
     info!("手元用（ペアリング）: {}", cli.local_addr);
 
+    // 本体: 保存した自己署名証明書で LAN に開く（spawn は bind を済ませてから返る）
+    let name = cfg.name.clone();
     let server = serve::build(cfg).await?;
-    info!("{} で待ち受け", cli.addr);
-    // ここで待つ（常駐の本体）。保存した自己署名証明書で LAN に開く。
-    // launchd（bootout / kickstart -k）は SIGTERM、端末の Ctrl-C は SIGINT で止める。
-    // どちらも畳んで抜け、Advertiser の drop で Bonjour の goodbye を出す（落ちると幽霊が残る）
-    let listen = Arc::new(server)
+    let listening = Arc::new(server)
         .listener(&cli.addr)
         .cert(id.cert_source())
-        .run();
-    tokio::select! {
-        result = listen => result?,
-        _ = sigterm.recv() => info!("SIGTERM を受けたので止める"),
-        _ = sigint.recv() => info!("SIGINT を受けたので止める"),
+        .spawn()
+        .await?;
+    let bound = listening.local_addr();
+    info!("{bound} で待ち受け");
+
+    // 名乗りは両方の待ち受けを確保してから。確保できずに落ちるプロセスが同じ名前で名乗ると、落ちるときの goodbye で
+    // 動いている本物の記録を LAN から消す（KeepAlive の下では 10 秒おきに繰り返す。design 01）
+    let _advertiser = if cli.no_mdns {
+        None
+    } else {
+        match Advertiser::start(&name, bound.port(), serve::VERSION) {
+            Ok(a) => Some(a),
+            Err(e) => {
+                warn!("bonjour を始められない（続行）: {e}");
+                None
+            }
+        }
+    };
+
+    // ここで待つ（常駐の本体）。launchd（bootout / unregister / kickstart -k）は SIGTERM、端末の Ctrl-C は SIGINT で止める。
+    // どちらも畳んで抜け、Advertiser の drop で Bonjour の goodbye を出す（落ちると幽霊が残る）
+    let mut watch = tokio::time::interval(LISTEN_WATCH);
+    let signal = loop {
+        tokio::select! {
+            _ = sigterm.recv() => break Some("SIGTERM"),
+            _ = sigint.recv() => break Some("SIGINT"),
+            _ = watch.tick() => if listening.is_finished() { break None },
+        }
+    };
+    match signal {
+        Some(signal) => {
+            info!("{signal} を受けたので止める");
+            match tokio::time::timeout(SHUTDOWN_WAIT, listening.shutdown()).await {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => warn!("待ち受けを畳むときのエラー: {e}"),
+                Err(_) => warn!("待ち受けを {SHUTDOWN_WAIT:?} で畳めない（そのまま抜ける）"),
+            }
+        }
+        // 待ち受けが自分で終わった（endpoint の driver が受信のエラーで落ちた等）。club-unison はこのとき Ok を返すので、
+        // 結果に関わらず非 0 で抜ける。exit 0 だと Mac 版の KeepAlive = { SuccessfulExit = false } が立て直さない
+        None => {
+            let result = listening.shutdown().await;
+            anyhow::bail!(
+                "待ち受けが思いがけず終わった（{result:?}）。立て直しは launchd に任せる"
+            );
+        }
     }
     Ok(())
 }
+
+/// 待ち受けのタスクが終わっていないかを見る間（ServerHandle は終わりを待つ口を持たない）
+const LISTEN_WATCH: std::time::Duration = std::time::Duration::from_secs(1);
+
+/// 止める合図のあと、待ち受けを畳むのを待つ上限（launchd の止める待ちより十分短く）
+const SHUTDOWN_WAIT: std::time::Duration = std::time::Duration::from_secs(2);
 
 /// この機械の名前（既定の名乗りの元）。macOS は LocalHostName（Bonjour の名前で、ネットワークで変わらない）、
 /// 取れなければ hostname

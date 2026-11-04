@@ -91,7 +91,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 - `serve_session`: `Hello` で Welcome を返し、心拍タスクを 1 本起こす（多重 Hello では張り直さない）。`recv` が閉じたら心拍を止める
 - `serve_registry`: `List` で `Registry::snapshot()`、`watch` の変化を `RegistryChanged` で押し出す
 - `Registry` は `tokio::sync::watch` の `Sender` を正本に持つ（`send_replace` で購読者ゼロでも更新できる）
-- `Advertiser`（mdns-sd）が `_lnx._udp` を広告。TXT に `name`（名乗り = QR の name）と `version` と `protocol=unison`。Bonjour のインスタンス名は同名が二つあると「lnx-mac (2)」に改名されるので、アプリは pin の鍵に TXT の `name` を使う
+- `Advertiser`（mdns-sd）が `_lnx._udp` を広告する。広告は手元用と本体の両方の待ち受けを bind できてから始める（確保できずに落ちるプロセスに、goodbye で本物の記録を消させない。試験は `tests/startup.rs`）。TXT に `name`（名乗り = QR の name）と `version` と `protocol=unison`。Bonjour のインスタンス名は同名が二つあると「lnx-mac (2)」に改名されるので、アプリは pin の鍵に TXT の `name` を使う
 - 待ち受けは `[::]:12730`（UDP / QUIC、dual stack）。cert は `identity::ServerIdentity` が一度だけ作って保存した自己署名（`--state-dir` / `LNX_SERVER_STATE`、既定は `~/Library/Application Support/club.chronista.lnx-server` の `cert.pem` と `key.pem`、鍵は 0600）。起動時にペアリング用の QR と URL（`lnx://pair?v=1&name=<名乗り>&cert=<leaf DER の base64url、padding なし>`）を出す（QR は `--qr` のときだけ。ふだんは Mac 版が窓に出す）。`--no-mdns` / `--name` / `--config` / `--log-file` / `LNX_SERVER_ADDR`
 - 止め方: SIGTERM（launchd の `bootout` / `kickstart -k`）と SIGINT（Ctrl-C）を main の最初で受け、待ち受けを畳んで抜ける。
   `Advertiser` の drop は goodbye（TTL 0）の取り下げを最大 1 秒待ち、mdns-sd が +120ms に予約する再送が出るまで 200ms 置いてから、
@@ -164,7 +164,8 @@ mise run ios:run         # ビルド → シミュレータへインストール
 - **実機で「LNX を探しています」のまま動かないときは、まず「ローカルネットワーク」の許可を疑う。** 許可しないと Bonjour は何も返さない。アプリを消して入れ直すと聞き直す（iPad の実例 2026-11-04）
 - **実機の足跡は stderr に出す。** stdout はパイプ先でバッファされ、`devicectl … --console` に届かない。`--console` の devicectl を殺すとアプリも終わる。行の頭に時刻（その機械の時刻、ミリ秒）を付けている。**ログは起動ごとに別のファイルへ取る**（同じファイルに `>` で取り直すと、前の起動の区間が消える。サーバ側の出来事と突き合わせられなくなった実例 2026-11-04）
 - **同じ Mac で、本番と同じ名前の lnx-server をもう一つ立てない。** 試験は別の `--name` か `--no-mdns`。
-  起動に失敗して 1 秒足らずで落ちるものでも、Bonjour を始めていれば goodbye を出し、動いている本物の記録（SRV / TXT / A）を LAN 中のキャッシュから消す。
+  Bonjour を始めてから落ちると goodbye を出し、動いている本物の記録（SRV / TXT / A）を LAN 中のキャッシュから消す。
+  （2026-11-05 から、port を確保できずに落ちるものは名乗らない。それでも、別の port で立った同じ名前のものは名乗って落ちる）
   改名（`lnx-mac (2)`）してから落ちても、共有しているホスト名 `lnx-mac.local` の A / AAAA を消す（2026-11-04 に同じ mdns-sd で再現）
 - **常駐中に `server:run` で二つ目を立てない。** 古いサーバを止めても `KeepAlive` で立ち上がり直して取り合う（`server:run` は止まって案内する）
 
@@ -188,6 +189,11 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 ## Status log
 
+- 2026-11-05: Bonjour の広告を、手元用と本体の待ち受けを bind できてから始める（D、mako の GO）。今までは名乗ってから bind していたので、
+  port を握られた起動（KeepAlive の 10 秒おきを含む）が、落ちるときの goodbye で本物の記録を消していた。本体も `spawn` で bind し、
+  待ち受けが自分で終わっていないかを 1 秒おきに見て、終わっていたら非 0 で抜ける（club-unison はそのとき Ok を返すが、
+  exit 0 だと Mac 版の `KeepAlive = { SuccessfulExit = false }` が立て直さない。この枝は endpoint を外から落とせず試験していない）。
+  止めるときは `shutdown` で畳む（最大 2 秒）
 - 2026-11-04: Mac 版のメニューバー（SMAppService）に同梱する準備（mac lane の相談 a〜d）。`--config` が無ければ state dir の
   `lnx-server.toml`（無ければ名乗り `lnx-<LocalHostName>` で作って保存）、`--log-file`（`~/` を展開して stdout / stderr を向ける）、
   `server:*` はアプリのジョブを降ろさない。`~/Library/LaunchAgents` の外の plist から試験用ラベルを載せ、`~/` のログ・設定の作成・
