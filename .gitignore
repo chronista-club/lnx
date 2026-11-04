@@ -147,8 +147,9 @@ apps/ios/build/
 # Vantage Point lane workspaces (repo-local lane refactor)
 .vp/
 
-# Mac / 実機向けビルドの置き場（mac:run、署名ビルド）
+# Mac / 実機向けビルドの置き場（mac:run / mac:install、mac:test、署名ビルド）
 apps/ios/build-mac/
+apps/ios/build-mac-test/
 apps/ios/build-device/
 
 # Claude Code のサブエージェント用 worktree

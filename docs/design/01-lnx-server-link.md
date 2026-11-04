@@ -2,7 +2,7 @@
 
 > **Status**: Draft（Status log 参照）
 > **Related**: [spec 01](../spec/01-core-concept.md)（場の同期）、[spec 02](../spec/02-creare.md)（統合のハブ）、[design 02](02-architecture.md)（全体の構成）、`mem_1Cgfoo741LiQbchNsvJrY6`（起票・裁定）
-> **対象**: `crates/lnx-server/`, `apps/ios/LnxCreare/Link/`, `apps/ios/LnxCreare/Screens/`
+> **対象**: `crates/lnx-server/`, `apps/ios/LnxCreare/Link/`, `apps/ios/LnxCreare/Screens/`, `apps/ios/LnxCreare/Mac/`
 
 ## Abstract
 
@@ -115,7 +115,8 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   `Contents/Library/LaunchAgents/club.chronista.lnx-server.plist` をメニューバーの「開始」で `SMAppService.agent` に登録する（前例 midistage `mem_1Cfuxqjxy6HUi7p7ByQRY4`）。
   ラベルは `server:install` と同じなので、launchd が二つ載せない。`server:install` の plist が残っていれば、アプリは登録せずに `server:uninstall` を案内する。
   `KeepAlive = { SuccessfulExit = false }`（SIGTERM で畳んだ exit 0 は起こし直さない）。plist は `~` を書けないので、設定・名乗り・証明書はサーバの既定の置き場、ログは `--log-file`。
-  停止 = 登録の解除、再起動 = 解除 → 前のプロセスが消えるのを待つ → 登録（SMAppService の unregister は reap を待たない）。アプリ側は `apps/ios/LnxCreare/Mac/`、手順は guide 01
+  停止 = 登録の解除、再起動 = 解除 → 前のプロセスが消えるのを待つ → 登録（SMAppService の unregister は reap を待たない）。
+  常駐は登録した .app の中の実行ファイルを次の起動で使うので、登録は `mac:install` で `~/Applications` に入れた .app から（`build-mac` の .app は作り直しのたびに変わる）。アプリ側は `apps/ios/LnxCreare/Mac/`、手順は guide 01
 - 試験は実 QUIC で回す（`tests/link.rs`）: `listener("[::1]:0").spawn()` → `ProtocolClient::new(QuicClient::insecure_localhost())`
 
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）

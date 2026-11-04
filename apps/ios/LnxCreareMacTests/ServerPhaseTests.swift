@@ -1,3 +1,4 @@
+import Foundation
 import ServiceManagement
 import Testing
 @testable import LnxCreare
@@ -54,6 +55,37 @@ struct ServerPhaseTests {
     @Test("server:install の常駐が入っていれば、外し方を案内する")
     func legacyDetail() {
         #expect(ServerPhase.legacy(running: true).detail?.contains("mise run server:uninstall") == true)
+    }
+
+    @Test("メニューに出す操作: 動いていれば停止と再起動、止まっていれば開始、許可待ちは設定を開くか登録をやめる")
+    func actions() {
+        #expect(ServerPhase.running(pid: 1).actions == [.stop, .restart])
+        #expect(ServerPhase.stopped(lastExit: "1").actions == [.start])
+        #expect(ServerPhase.off.actions == [.start])
+        #expect(ServerPhase.requiresApproval.actions == [.openLoginItems, .stop])
+    }
+
+    @Test("server:install の常駐と壊れたビルドでは、メニューから動かさない（案内だけ）")
+    func noActions() {
+        #expect(ServerPhase.legacy(running: true).actions.isEmpty)
+        #expect(ServerPhase.legacy(running: false).actions.isEmpty)
+        #expect(ServerPhase.broken.actions.isEmpty)
+    }
+}
+
+/// 常駐は mac:install で入れた .app から登録する（build-mac の .app は作り直すたびに中身が変わる）
+@Suite("BundledServer.isInstalled")
+struct InstalledLocationTests {
+    @Test("Applications の下なら入れた .app")
+    func installed() {
+        #expect(BundledServer.isInstalled(URL(filePath: "/Users/mako/Applications/LnxCreare.app")))
+        #expect(BundledServer.isInstalled(URL(filePath: "/Applications/LnxCreare.app")))
+    }
+
+    @Test("ビルドの置き場や DerivedData は開発用")
+    func development() {
+        #expect(!BundledServer.isInstalled(URL(filePath: "/Users/mako/repos/lnx/apps/ios/build-mac/Build/Products/Debug/LnxCreare.app")))
+        #expect(!BundledServer.isInstalled(URL(filePath: "/Users/mako/Library/Developer/Xcode/DerivedData/LnxCreare-x/Build/Products/Debug/LnxCreare.app")))
     }
 }
 

@@ -33,6 +33,15 @@ struct ServerMenuModelTests {
         #expect(model.phase == .legacy(running: false))
     }
 
+    @Test("server:install の常駐が入っていれば、再起動もしない（解除も登録もしない）")
+    func restartRefusesWithLegacy() async {
+        let residency = FakeResidency(registration: .enabled, legacy: true)
+        let model = ServerMenuModel(residency: residency, pause: { _ in })
+        await model.restart()
+        #expect(residency.calls == ["job"])
+        #expect(model.lastError?.contains("server:uninstall") == true)
+    }
+
     @Test("登録済みで止まっていれば、開始は再起動と同じ（解除 → 登録）")
     func startWhenStoppedReRegisters() async {
         let residency = FakeResidency(registration: .enabled)

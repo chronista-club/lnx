@@ -22,6 +22,9 @@ struct LnxMenu: View {
         if let error = model.lastError {
             Text("失敗: \(error)")
         }
+        if !BundledServer.isInstalled(Bundle.main.bundleURL) {
+            Text("開発用のビルドです。常駐は mise run mac:install で入れた lnx creare から")
+        }
         Divider()
         serverActions
             .disabled(model.busy)
@@ -43,28 +46,28 @@ struct LnxMenu: View {
             .keyboardShortcut("q")
     }
 
+    /// どの状態で何を出すかは ServerPhase.actions（試験はそちら）。server:install の常駐と壊れたビルドは案内（detail）だけ
     @ViewBuilder
     private var serverActions: some View {
-        switch model.phase {
-        case .running:
-            Button { Task { await model.stop() } } label: {
-                Label { Text("停止（ログイン時にも立ち上げない）") } icon: { Icon.menuImage(.stop) }
+        ForEach(model.phase.actions, id: \.self) { action in
+            switch action {
+            case .start:
+                Button { Task { await model.start() } } label: {
+                    Label { Text("開始") } icon: { Icon.menuImage(.play) }
+                }
+            case .stop:
+                Button { Task { await model.stop() } } label: {
+                    Label {
+                        Text(model.phase == .requiresApproval ? "登録をやめる" : "停止（ログイン時にも立ち上げない）")
+                    } icon: { Icon.menuImage(.stop) }
+                }
+            case .restart:
+                Button { Task { await model.restart() } } label: {
+                    Label { Text("再起動") } icon: { Icon.menuImage(.arrowClockwise) }
+                }
+            case .openLoginItems:
+                Button("ログイン項目を開く…") { BundledServer.openLoginItems() }
             }
-            Button { Task { await model.restart() } } label: {
-                Label { Text("再起動") } icon: { Icon.menuImage(.arrowClockwise) }
-            }
-        case .stopped, .off:
-            Button { Task { await model.start() } } label: {
-                Label { Text("開始") } icon: { Icon.menuImage(.play) }
-            }
-        case .requiresApproval:
-            Button("ログイン項目を開く…") { BundledServer.openLoginItems() }
-            Button { Task { await model.stop() } } label: {
-                Label { Text("登録をやめる") } icon: { Icon.menuImage(.stop) }
-            }
-        case .legacy, .broken:
-            // 案内（detail）だけ。メニューからは動かさない
-            EmptyView()
         }
     }
 

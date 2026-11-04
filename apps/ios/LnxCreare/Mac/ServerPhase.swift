@@ -48,6 +48,17 @@ struct LaunchdJob: Equatable, Sendable {
     }
 }
 
+/// メニューから LNX サーバに対してできること
+enum ServerAction: Equatable, Sendable {
+    /// 登録（済みなら登録し直し）
+    case start
+    /// 登録の解除。許可待ちのときは「登録をやめる」
+    case stop
+    case restart
+    /// システム設定 › ログイン項目
+    case openLoginItems
+}
+
 /// メニューバーに出す LNX サーバの今。登録・launchd・server:install の常駐の 3 つから決める
 enum ServerPhase: Equatable, Sendable {
     case running(pid: Int32)
@@ -70,6 +81,16 @@ enum ServerPhase: Equatable, Sendable {
         case .enabled:
             if let job, job.isRunning, let pid = job.pid { return .running(pid: pid) }
             return .stopped(lastExit: job?.lastExit)
+        }
+    }
+
+    /// メニューに出す操作（server:install の常駐と壊れたビルドは、案内だけで動かさない）
+    var actions: [ServerAction] {
+        switch self {
+        case .running: [.stop, .restart]
+        case .stopped, .off: [.start]
+        case .requiresApproval: [.openLoginItems, .stop]
+        case .legacy, .broken: []
         }
     }
 

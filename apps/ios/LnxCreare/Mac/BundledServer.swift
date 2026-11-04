@@ -15,6 +15,13 @@ struct BundledServer: ServerResidency {
     /// server:install が置く plist
     nonisolated static var legacyPlistURL: URL { home.appending(path: "Library/LaunchAgents/\(plistName)") }
 
+    /// 常駐は登録した .app の中の lnx-server を、次の起動（落ちたとき・ログイン時）で使う。
+    /// build-mac の .app は mac:run / mac:test のたびに中身が変わり、worktree を消すと行き先も無くなるので、
+    /// 常駐は mac:install で Applications に入れた .app から登録する
+    nonisolated static func isInstalled(_ app: URL) -> Bool {
+        app.deletingLastPathComponent().lastPathComponent == "Applications"
+    }
+
     private var service: SMAppService { .agent(plistName: Self.plistName) }
 
     func currentRegistration() -> Registration {

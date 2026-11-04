@@ -20,6 +20,7 @@ mise run ios:gen             # 生成だけ
 mise run ios:test            # テスト（Swift Testing + UI テスト、既定は iPad シミュレータ）
 mise run ios:run             # シミュレータで起動
 mise run mac:run             # Mac 版をビルドして開く（同じターゲットの macOS destination。lnx-server を同梱）
+mise run mac:install         # Mac 版を ~/Applications に入れて開く（LNX サーバの常駐はここから登録）
 mise run mac:test            # Mac 版の単体テスト（LnxCreareMacTests。共有の LnxCreareTests も Mac で回す）
 ```
 

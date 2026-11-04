@@ -1,0 +1,44 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="Mac 版を Release でビルドして ~/Applications に入れ、開く（LNX サーバの常駐はこの .app のメニューから登録する）"
+#MISE depends=["ios:gen"]
+
+# 常駐（SMAppService）は、登録した .app の中の lnx-server を次の起動（落ちたとき・ログイン時）で使う。
+# build-mac の .app は mac:run のたびに中身が変わり、worktree を消すと行き先も無くなるので、ここへ写したものから登録する
+# （#38 の server:install が実行ファイルを ~/.local/share へ写すのと同じ考え）。置き場は LNX_MAC_APPS で変えられる（試験用）
+require "fileutils"
+require_relative "../_lib/lnx"
+
+apps = ENV.fetch("LNX_MAC_APPS") { File.join(Dir.home, "Applications") }
+FileUtils.mkdir_p(apps)
+# ps は symlink を解いた実パスで出す（/tmp → /private/tmp）ので、比べる側も実パスにする
+apps = File.realpath(apps)
+dest = File.join(apps, "LnxCreare.app")
+executable = File.join(dest, "Contents", "MacOS", "LnxCreare")
+
+Lnx.run("xcodebuild", "-project", "LnxCreare.xcodeproj", "-scheme", "LnxCreare", "-configuration", "Release",
+        "-destination", "platform=macOS,arch=arm64", "-derivedDataPath", "build-mac", "-quiet", "build",
+        chdir: Lnx::IOS_DIR)
+built = File.join(Lnx::IOS_DIR, "build-mac", "Build", "Products", "Release", "LnxCreare.app")
+
+# 入っている .app が開いていれば終わらせる（ほかの置き場の lnx creare には触らない。常駐のサーバは止めない）
+pids = `ps -axo pid=,args=`.lines.map do |line|
+  pid, args = line.strip.split(" ", 2)
+  pid.to_i if args == executable
+end.compact
+unless pids.empty?
+  puts "開いている #{dest}（pid #{pids.join(', ')}）を終わらせる"
+  pids.each { |pid| Process.kill("TERM", pid) }
+  deadline = Time.now + 5
+  sleep 0.1 while Time.now < deadline && pids.any? { |pid| Lnx.alive?(pid) }
+end
+
+# 隣に写してから入れ替える（途中で止まっても、入っている .app を半端にしない）
+staging = "#{dest}.new"
+FileUtils.rm_rf(staging)
+Lnx.run("ditto", built, staging)
+FileUtils.rm_rf(dest)
+File.rename(staging, dest)
+puts "入れた: #{dest}"
+puts "常駐はこの lnx creare のメニューバー（LNX）から「開始」。常駐中に入れ直したら「再起動」で新しい lnx-server に入れ替わる"
+Lnx.run("open", dest)

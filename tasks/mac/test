@@ -1,11 +1,11 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
-#MISE description="Mac 版の単体テスト（LnxCreareMacTests: メニューバー、同梱の lnx-server）。host は Mac 版の lnx creare"
+#MISE description="Mac 版の単体テスト（LnxCreareMacTests: メニューバー、同梱の lnx-server、共有の LnxCreareTests）。ビルドは build-mac-test（mac:run の .app に触れない）"
 #MISE depends=["ios:gen"]
 
 require_relative "../_lib/lnx"
 
 Lnx.run("xcodebuild", "-project", "LnxCreare.xcodeproj", "-scheme", "LnxCreareMac",
-        "-destination", "platform=macOS,arch=arm64", "-derivedDataPath", "build-mac", "-quiet", "test",
+        "-destination", "platform=macOS,arch=arm64", "-derivedDataPath", "build-mac-test", "-quiet", "test",
         chdir: Lnx::IOS_DIR)
 puts "ok: macOS"
