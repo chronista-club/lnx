@@ -42,7 +42,16 @@ struct BundledServer: ServerResidency {
     }
 
     func job() async -> LaunchdJob? {
-        await Launchctl.print("gui/\(getuid())/\(Self.label)").map(LaunchdJob.parse)
+        guard let result = await Command.run("/bin/launchctl", ["print", "gui/\(getuid())/\(Self.label)"]),
+              result.status == 0 else { return nil }
+        return LaunchdJob.parse(result.output)
+    }
+
+    func listeners() async -> [PortListener] {
+        // 見つからなければ lsof は 1 で終わる（片方の port だけ見つかったときも）。出力だけを読む
+        let ports = [LnxDefaults.port, LnxDefaults.localPort].map { "-iUDP:\($0)" }
+        guard let result = await Command.run("/usr/sbin/lsof", ["-nP", "-F", "pcn"] + ports) else { return [] }
+        return PortListener.parse(result.output)
     }
 
     static func openLoginItems() {
@@ -50,21 +59,21 @@ struct BundledServer: ServerResidency {
     }
 }
 
-/// launchctl を読むだけに使う（出し入れは SMAppService）
-enum Launchctl {
-    /// `launchctl print <service>` の出力。載っていなければ nil
-    static func print(_ service: String) async -> String? {
+/// 状態を読むだけのコマンド（launchctl print、lsof）。出し入れは SMAppService
+enum Command {
+    /// 終わりの status と stdout。走らせられなければ nil。メインの外で待つ
+    static func run(_ path: String, _ arguments: [String]) async -> (status: Int32, output: String)? {
         await Task.detached {
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-            process.arguments = ["print", service]
+            process.executableURL = URL(fileURLWithPath: path)
+            process.arguments = arguments
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = FileHandle.nullDevice
             do { try process.run() } catch { return nil }
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
-            return process.terminationStatus == 0 ? String(decoding: data, as: UTF8.self) : nil
+            return (process.terminationStatus, String(decoding: data, as: UTF8.self))
         }.value
     }
 }

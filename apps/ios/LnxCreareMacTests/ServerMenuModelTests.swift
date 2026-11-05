@@ -18,7 +18,8 @@ struct ServerMenuModelTests {
         }
         let model = ServerMenuModel(residency: residency, pause: { _ in })
         await model.start()
-        #expect(residency.calls == ["register", "job"])
+        // 先頭の job は守り（launchd の外のプロセスが待ち受けを握っていないか）、最後は読み直し
+        #expect(residency.calls == ["job", "register", "job"])
         #expect(model.phase == .running(pid: 4242))
         #expect(model.lastError == nil)
     }
@@ -71,7 +72,7 @@ struct ServerMenuModelTests {
         // 解除のあと 2 回はまだ居る、3 回目に消える
         residency.onUnregister = { [running] in residency.queue = [running, running] }
         await model.restart()
-        #expect(residency.calls == ["unregister", "job", "job", "job", "register", "job"])
+        #expect(residency.calls == ["job", "unregister", "job", "job", "job", "register", "job"])
         #expect(pauses == 2)
     }
 
@@ -80,8 +81,10 @@ struct ServerMenuModelTests {
         let residency = FakeResidency(registration: .enabled, settled: running)
         let model = ServerMenuModel(residency: residency, pause: { _ in })
         await model.restart()
-        let beforeRegister = residency.calls.prefix { $0 != "register" }
-        #expect(beforeRegister.filter { $0 == "job" }.count == ServerMenuModel.reapChecks)
+        // 解除してから登録するまでに見る回数（解除の前の job は守り）
+        let afterUnregister = residency.calls.drop { $0 != "unregister" }
+        let reapWait = afterUnregister.prefix { $0 != "register" }
+        #expect(reapWait.filter { $0 == "job" }.count == ServerMenuModel.reapChecks)
         #expect(residency.calls.contains("register"))
     }
 
@@ -133,6 +136,8 @@ final class FakeResidency: ServerResidency {
     /// job() は queue を先頭から 1 つずつ返し、尽きたら settled を返す（nil = launchd に居ない）
     var queue: [LaunchdJob] = []
     var settled: LaunchdJob?
+    /// 12730 / 12731 で待ち受けているプロセス（守りの試験）
+    var portListeners: [PortListener] = []
     var calls: [String] = []
     var registerError: Error?
     var unregisterError: Error?
@@ -164,4 +169,6 @@ final class FakeResidency: ServerResidency {
         calls.append("job")
         return queue.isEmpty ? settled : queue.removeFirst()
     }
+
+    func listeners() async -> [PortListener] { portListeners }
 }

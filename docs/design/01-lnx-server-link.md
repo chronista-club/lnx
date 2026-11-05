@@ -114,6 +114,8 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 - Mac 版の常駐（SMAppService）: Mac 版 lnx creare が lnx-server を `.app` に同梱し（`Contents/MacOS/lnx-server`、アプリと同じ identity で署名）、
   `Contents/Library/LaunchAgents/club.chronista.lnx-server.plist` をメニューバーの「開始」で `SMAppService.agent` に登録する（前例 midistage `mem_1Cfuxqjxy6HUi7p7ByQRY4`）。
   アプリの側は、`server:install` の plist が残っていれば登録せずに `server:uninstall` を案内する（同じラベルなので、走っているのはそちら）。
+  常駐が走っていないのに launchd の外のプロセスが 12730 / 12731 を握っていれば（`lsof -F pcn`。常駐自身の pid は除く）、「開始」「再起動」を出さずに握っている pid を案内する（`ServerPhase.portTaken`。2026-11-05 の事故の守り）。
+  登録済みで落ち続けているときは「停止」だけ出す。lsof は常駐が走っていないときだけ回す
   `KeepAlive = { SuccessfulExit = false }`（SIGTERM で畳んだ exit 0 は起こし直さない）。plist は `~` を書けないので、設定・名乗り・証明書はサーバの既定の置き場、ログは `--log-file`。
   停止 = 登録の解除、再起動 = 解除 → 前のプロセスが消えるのを待つ → 登録（SMAppService の unregister は reap を待たない）。
   常駐の実体は登録した .app の中の実行ファイルなので、登録は `mac:install` で `~/Applications` に入れた .app から（`build-mac` の .app は作り直しのたびに変わる）。

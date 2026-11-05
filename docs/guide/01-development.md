@@ -120,8 +120,8 @@ Mac 版 lnx creare は lnx-server を `.app` に同梱し、メニューバー�
 
 | メニュー | すること |
 |---|---|
-| 1 行目 | サーバの今（動いている pid / 止まっている / 常駐していない / ログイン項目の許可待ち）。アイコンも動いているかで変わる（`waveform` / `waveform-slash`） |
-| 開始 | `SMAppService.agent(plistName:).register()`。すぐ立ち上がり、ログイン時にも立ち上がる。「システム設定 › 一般 › ログイン項目」に lnx creare の名前で載る |
+| 1 行目 | サーバの今（動いている pid / 止まっている / 常駐していない / ログイン項目の許可待ち / ほかのプロセスが待ち受けを握っている）。アイコンも動いているかで変わる（`waveform` / `waveform-slash`） |
+| 開始 | `SMAppService.agent(plistName:).register()`。すぐ立ち上がり、ログイン時にも立ち上がる。「システム設定 › 一般 › ログイン項目」に lnx creare の名前で載る。launchd の外のプロセス（端末の `server:run` など）が 12730 / 12731 を握っていれば出さずに案内する（「再起動」も同じ。握られたまま常駐させると KeepAlive で落ち続ける） |
 | 停止 | `unregister()`。launchd が SIGTERM を送り、サーバは goodbye を出して畳む。ログイン時にも立ち上がらない |
 | 再起動 | 解除 → 前のプロセスが launchd から消えるのを待つ（最大 5 秒）→ 登録。同梱の lnx-server を作り直したあとはこれで入れ替える（SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある）） |
 | ログを開く | `~/Library/Logs/lnx-server.log`（lnx-server が `--log-file` で自分で書く。`server:logs` と同じ場所） |
@@ -209,6 +209,7 @@ UDID は `xcrun devicectl list devices` で見る。「LNX を探しています
 | 常駐させたのに iPad が Wi-Fi で見つけない | lnx-server 自身のローカルネットワークの許可を確かめる（上の「常駐させる」）。`server:logs` に `bonjour: … を広告` が出ているかも見る |
 | `server:*` が「Mac 版 lnx creare（メニューバー）が SMAppService で常駐させている」と言って止まる | 同じラベルを Mac 版が載せている（`launchctl print` の `managed_by` が ServiceManagement）。開始・停止・再起動はメニューから。端末で回したいときはメニューで止めてから |
 | 常駐が立ち上がらない（`server:install` が「立ち上がらない」で止まる） | 出てきたログの最後を見る。ポートを別のプロセスが握っていれば `KeepAlive` が 10 秒おきに立て直し続けるので、`server:status` の待ち受けで握っている pid を探す |
+| メニューバーが「…（pid N）が待ち受けを握っています」と言って「開始」を出さない | 端末の `mise run server:run` などが 12730 / 12731 を握っている（`lsof -nP -iUDP:12730`）。それを止めてから「開始」。登録済みなら、握られているあいだ常駐は 10 秒おきに落ちているので、止められないなら「停止」で常駐をやめる |
 | メニューバーが「server:install の常駐で動いています」/「…が入っています」と言って「開始」を出さない | `~/Library/LaunchAgents/club.chronista.lnx-server.plist` がある。`mise run server:uninstall` で外してから「開始」 |
 | Mac 版のビルドが「failed to run protoc」で止まる | 同梱の script は brew の `protoc` を `/opt/homebrew/bin` か `/usr/local/bin` に探す。`brew install protobuf` |
 | `mac:install` し直したのに、常駐しているサーバが古いまま | 走っているプロセスは前の実行ファイルのまま。メニューの「再起動」で入れ替える（SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある）） |

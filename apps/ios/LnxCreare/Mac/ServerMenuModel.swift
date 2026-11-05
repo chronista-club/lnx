@@ -12,15 +12,20 @@ protocol ServerResidency {
     func unregister() async throws
     /// launchd に載っていなければ nil
     func job() async -> LaunchdJob?
+    /// 12730 / 12731 で待ち受けているプロセス（常駐自身も含む）
+    func listeners() async -> [PortListener]
 }
 
 /// メニューの操作が断られた理由
 enum ServerMenuError: LocalizedError {
     case legacyInstalled
+    case portTaken(PortListener)
 
     var errorDescription: String? {
         switch self {
         case .legacyInstalled: "server:install の常駐が入っています。先に mise run server:uninstall で外してください"
+        case .portTaken(let holder):
+            "\(holder.command)（pid \(holder.pid)）が待ち受け（\(LnxDefaults.port) / \(LnxDefaults.localPort)）を握っています。止めてから開始してください（端末の mise run server:run なら Ctrl-C）"
         }
     }
 }
@@ -61,14 +66,19 @@ final class ServerMenuModel {
 
     func refresh() async {
         let job = await residency.job()
+        let registration = residency.currentRegistration()
+        // 常駐が走っているあいだは、待ち受けを握っているのは常駐自身。lsof を回さない
+        let running = registration == .enabled && job?.isRunning == true
+        let listeners = running ? [] : await residency.listeners()
         phase = ServerPhase.resolve(
-            registration: residency.currentRegistration(), job: job, legacyInstalled: residency.legacyInstalled()
+            registration: registration, job: job, legacyInstalled: residency.legacyInstalled(), listeners: listeners
         )
     }
 
     func start() async {
         await perform {
             try self.refuseLegacy()
+            try await self.refusePortTaken()
             if self.residency.currentRegistration() == .enabled {
                 try await self.reRegister()
             } else {
@@ -84,6 +94,7 @@ final class ServerMenuModel {
     func restart() async {
         await perform {
             try self.refuseLegacy()
+            try await self.refusePortTaken()
             try await self.reRegister()
         }
     }
@@ -91,6 +102,14 @@ final class ServerMenuModel {
     /// 同じラベルを二つ載せようとしない（server:install の常駐が先に居る）
     private func refuseLegacy() throws {
         if residency.legacyInstalled() { throw ServerMenuError.legacyInstalled }
+    }
+
+    /// launchd の外のプロセスが待ち受けを握っているうちは登録しない（KeepAlive で落ち続ける。2026-11-05 の事故）
+    private func refusePortTaken() async throws {
+        let job = await residency.job()
+        if let holder = PortListener.foreign(in: await residency.listeners(), job: job) {
+            throw ServerMenuError.portTaken(holder)
+        }
     }
 
     /// 実行ファイルを入れ直したときも、これで新しい同梱版に入れ替える（SDK のヘッダは、実行ファイルを変えたら解除してから登録し直すよう求めている）

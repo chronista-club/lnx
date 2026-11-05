@@ -48,6 +48,43 @@ struct LaunchdJob: Equatable, Sendable {
     }
 }
 
+/// 12730 / 12731 で待ち受けているプロセス。launchd の外のものが握っていると、常駐の lnx-server は bind に失敗して落ち続ける
+struct PortListener: Equatable, Sendable {
+    var pid: Int32
+    var command: String
+
+    /// `lsof -nP -F pcn -iUDP:…` の出力から、待ち受けているものだけを拾う（tasks/_lib/lnx.rb の listener_pids と同じ読み方）。
+    /// n 行が "a->b" のソケットは相手の決まったクライアント（Mac 版 lnx creare など）なので除く
+    static func parse(_ output: String) -> [PortListener] {
+        var found: [PortListener] = []
+        var pid: Int32?
+        var command = ""
+        for line in output.split(separator: "\n") {
+            guard let tag = line.first else { continue }
+            let value = String(line.dropFirst())
+            switch tag {
+            case "p":
+                pid = Int32(value)
+                command = ""
+            case "c":
+                command = value
+            case "n":
+                if let pid, !value.contains("->"), !found.contains(where: { $0.pid == pid }) {
+                    found.append(PortListener(pid: pid, command: command))
+                }
+            default:
+                break
+            }
+        }
+        return found
+    }
+
+    /// 常駐自身ではない待ち受け（いちばん先のもの）
+    static func foreign(in listeners: [PortListener], job: LaunchdJob?) -> PortListener? {
+        listeners.first { $0.pid != job?.pid }
+    }
+}
+
 /// メニューから LNX サーバに対してできること
 enum ServerAction: Equatable, Sendable {
     /// 登録（済みなら登録し直し）
@@ -71,16 +108,23 @@ enum ServerPhase: Equatable, Sendable {
     case legacy(running: Bool)
     /// このビルドに lnx-server が入っていない
     case broken
+    /// 常駐が走っていないのに、launchd の外のプロセスが待ち受けを握っている（端末の server:run など）。
+    /// このまま開始すると KeepAlive で落ち続ける（2026-11-05 の事故）。registered なら今まさに落ち続けている
+    case portTaken(PortListener, registered: Bool)
 
-    static func resolve(registration: Registration, job: LaunchdJob?, legacyInstalled: Bool) -> ServerPhase {
+    static func resolve(
+        registration: Registration, job: LaunchdJob?, legacyInstalled: Bool, listeners: [PortListener] = []
+    ) -> ServerPhase {
         if legacyInstalled { return .legacy(running: job?.isRunning ?? false) }
+        if registration == .notFound { return .broken }
+        if registration == .enabled, let job, job.isRunning, let pid = job.pid { return .running(pid: pid) }
+        if let holder = PortListener.foreign(in: listeners, job: job) {
+            return .portTaken(holder, registered: registration != .notRegistered)
+        }
         switch registration {
-        case .notFound: return .broken
         case .notRegistered: return .off
         case .requiresApproval: return .requiresApproval
-        case .enabled:
-            if let job, job.isRunning, let pid = job.pid { return .running(pid: pid) }
-            return .stopped(lastExit: job?.lastExit)
+        case .enabled, .notFound: return .stopped(lastExit: job?.lastExit)
         }
     }
 
@@ -90,6 +134,8 @@ enum ServerPhase: Equatable, Sendable {
         case .running: [.stop, .restart]
         case .stopped, .off: [.start]
         case .requiresApproval: [.openLoginItems, .stop]
+        // 握っている側を止めるまで開始しない。登録済みで落ち続けているなら、常駐をやめることだけはできる
+        case .portTaken(_, let registered): registered ? [.stop] : []
         case .legacy, .broken: []
         }
     }
@@ -99,7 +145,7 @@ enum ServerPhase: Equatable, Sendable {
         switch self {
         case .running: true
         case .legacy(let running): running
-        case .stopped, .off, .requiresApproval, .broken: false
+        case .stopped, .off, .requiresApproval, .broken, .portTaken: false
         }
     }
 
@@ -111,6 +157,7 @@ enum ServerPhase: Equatable, Sendable {
         case .requiresApproval: "LNX サーバ — ログイン項目の許可待ち"
         case .legacy(let running): running ? "LNX サーバ — server:install の常駐で動いています" : "LNX サーバ — server:install の常駐が入っています"
         case .broken: "LNX サーバ — このビルドに入っていません"
+        case .portTaken(let holder, _): "LNX サーバ — \(holder.command)（pid \(holder.pid)）が待ち受けを握っています"
         }
     }
 
@@ -124,6 +171,10 @@ enum ServerPhase: Equatable, Sendable {
         case .requiresApproval: "システム設定 › 一般 › ログイン項目 で lnx creare を許可してください"
         case .legacy: "メニューから動かすには、先に mise run server:uninstall で外してください"
         case .broken: "mise run mac:run でビルドし直してください"
+        case .portTaken(_, let registered):
+            registered
+                ? "握っているあいだ、常駐は 10 秒おきに立ち上がっては落ちます。端末の mise run server:run なら Ctrl-C で止めてください（常駐をやめるなら「停止」）"
+                : "端末の mise run server:run なら Ctrl-C で止めてから「開始」してください"
         }
     }
 }
