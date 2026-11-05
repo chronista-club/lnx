@@ -118,6 +118,19 @@ struct PortGuardModelTests {
         #expect(model.phase == .running(pid: 10))
     }
 
+    @Test("開始の確認でも、常駐自身を外のものと取り違えない（KeepAlive がちょうど起こし直した）")
+    func startRereadsJob() async {
+        let residency = FakeResidency(registration: .enabled)
+        // 1 回目の launchctl は落ちたあと、lsof の時点では起こし直された常駐（pid 10）が待ち受けている
+        residency.queue = [LaunchdJob(state: "spawn scheduled", pid: nil, lastExit: "1")]
+        residency.settled = LaunchdJob(state: "running", pid: 10, lastExit: nil)
+        residency.portListeners = [PortListener(pid: 10, command: "lnx-server")]
+        let model = ServerMenuModel(residency: residency, pause: { _ in })
+        await model.start()
+        #expect(model.lastError == nil)
+        #expect(residency.calls.contains("register"))
+    }
+
     @Test("外のプロセスが握っていれば、再起動もしない（解除も登録もしない）")
     func restartRefuses() async {
         let residency = FakeResidency(registration: .enabled)

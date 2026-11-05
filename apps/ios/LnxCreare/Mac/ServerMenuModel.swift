@@ -53,7 +53,7 @@ final class ServerMenuModel {
         self.pause = pause
     }
 
-    /// アイコンが今を表すよう、見張り続ける（launchctl print を数秒おきに）
+    /// アイコンが今を表すよう、見張り続ける（launchctl print を数秒おきに。常駐が走っていないときは lsof も）
     func startWatching(every interval: Duration = .seconds(2)) {
         guard watching == nil else { return }
         watching = Task { [weak self] in
@@ -70,10 +70,7 @@ final class ServerMenuModel {
         // 常駐が走っているあいだは、待ち受けを握っているのは常駐自身。見張りでは lsof を回さない
         let running = registration == .enabled && job?.isRunning == true
         let listeners = running ? [] : await residency.listeners()
-        // 開始の直後は、launchd を読んだあとに常駐が bind していることがある。外のものに見えたら読み直して確かめる
-        if PortListener.foreign(in: listeners, job: job) != nil {
-            job = await residency.job()
-        }
+        job = await rereadIfForeign(listeners, job: job)
         phase = ServerPhase.resolve(
             registration: registration, job: job, legacyInstalled: residency.legacyInstalled(), listeners: listeners
         )
@@ -110,10 +107,17 @@ final class ServerMenuModel {
 
     /// launchd の外のプロセスが待ち受けを握っているうちは登録しない（KeepAlive で落ち続ける。2026-11-05 の事故）
     private func refusePortTaken() async throws {
-        let job = await residency.job()
-        if let holder = PortListener.foreign(in: await residency.listeners(), job: job) {
+        let listeners = await residency.listeners()
+        let job = await rereadIfForeign(listeners, job: await residency.job())
+        if let holder = PortListener.foreign(in: listeners, job: job) {
             throw ServerMenuError.portTaken(holder)
         }
+    }
+
+    /// 外のものに見えたら launchd を読み直す。launchd を読んだあとに常駐が bind していることがある
+    /// （開始の直後、KeepAlive がちょうど起こし直したとき）。読み直せば常駐自身だと分かる
+    private func rereadIfForeign(_ listeners: [PortListener], job: LaunchdJob?) async -> LaunchdJob? {
+        PortListener.foreign(in: listeners, job: job) == nil ? job : await residency.job()
     }
 
     /// 実行ファイルを入れ直したときも、これで新しい同梱版に入れ替える（SDK のヘッダは、実行ファイルを変えたら解除してから登録し直すよう求めている）
