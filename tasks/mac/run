@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="Mac 版の lnx creare をビルドして開く（同じターゲットの macOS destination）"
+#MISE depends=["ios:gen"]
+
+require_relative "../_lib/lnx"
+
+Lnx.run("xcodebuild", "-project", "LnxCreare.xcodeproj", "-scheme", "LnxCreare",
+        "-destination", "platform=macOS,arch=arm64", "-derivedDataPath", "build-mac", "-quiet", "build",
+        chdir: Lnx::IOS_DIR)
+app = File.join(Lnx::IOS_DIR, "build-mac", "Build", "Products", "Debug", "LnxCreare.app")
+Lnx.run("open", app)

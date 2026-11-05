@@ -1,7 +1,9 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
-#MISE description="lnx-server のテスト（実 QUIC の往復を含む）。引数はそのまま cargo test へ"
+#MISE description="lnx-server のテスト（実 QUIC の往復を含む）と、常駐タスクの組み立てのテスト。引数はそのまま cargo test へ"
 
+require "rbconfig"
 require_relative "../_lib/lnx"
 
 Lnx.run("cargo", "test", "-p", "lnx-server", *ARGV)
+Lnx.run(RbConfig.ruby, File.join(Lnx::ROOT, "tasks", "_lib", "test", "agent_test.rb"))

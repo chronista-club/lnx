@@ -8,9 +8,9 @@ includes = ["tasks"]
 RUST_LOG = "info"
 RUST_BACKTRACE = "1"
 # iOS: 既定のシミュレータ（iPad をメイン開発機とする）。同名の端末が runtime ごとにあるので OS も指定する
-# （27.0 の runtime は 2026-11-03 時点で "path not found"）
+# （27.0 の runtime は "path not found" で起動できないので 27.2。2026-11-04 に xcodebuild -downloadPlatform iOS で入れ直した）
 LNX_IOS_SIM = "iPad Pro 11-inch (M5)"
-LNX_IOS_OS = "26.5"
+LNX_IOS_OS = "27.2"
 
 [tools]
 # Rust は rust-toolchain.toml（rustup）で固定する。mise には rust を書かない（裁定 2026-09-15、mem_1Cf5RnR2KKVdmemBSpiU9A）

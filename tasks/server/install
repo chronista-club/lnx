@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="LNX サーバを launchd で常駐させる（build → 実行ファイルを写す → plist → bootstrap。ログは ~/Library/Logs/lnx-server.log）"
+
+require_relative "../_lib/lnx"
+require_relative "../_lib/agent"
+
+s = Lnx::Agent::Settings.from_env
+problems = Lnx::Agent.isolation_problems(s)
+unless problems.empty?
+  abort "試験用ラベル（#{s.label}）が本番に触れる:\n#{problems.map { |p| "  - #{p}" }.join("\n")}"
+end
+# アプリが載せたジョブを bootout で降ろさない
+abort Lnx::Agent.app_managed_message(s) if Lnx::Agent.app_managed?(s)
+Lnx.run("cargo", "build", "-q", "-p", "lnx-server")
+
+# 入れ直しなら一度降ろす。server:run で立てたサーバが同じ port を握っていれば止める
+Lnx::Agent.bootout(s)
+Lnx.stop_listeners(s.port)
+
+Lnx::Agent.install_binary(Lnx::SERVER_BIN, s)
+seeded = Lnx::Agent.seed_config(Lnx::SERVER_CONFIG, s)
+puts "実行ファイル: #{s.bin_path}"
+puts "設定: #{s.config_path}#{seeded ? '（example から写した。一覧はここを直す）' : ''}"
+
+Lnx::Agent.write_plist(s)
+Lnx.run("launchctl", "bootstrap", "gui/#{Process.uid}", s.plist_path)
+Lnx::Agent.confirm_running(s)

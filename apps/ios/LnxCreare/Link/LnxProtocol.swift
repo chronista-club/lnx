@@ -79,3 +79,26 @@ struct RemoteServer: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// 画面用の "host:port"。`Text("\(port)")` は数値を桁区切りしてしまう（7,879）ので文字列で組む
     var endpointLabel: String { "\(host):\(String(port))" }
 }
+
+// MARK: - 手元用（crates/lnx-server/schemas/lnx-local.kdl）
+// サーバは [::1]:12731 にだけ bind する。同じ Mac のアプリ（Mac 版）がペアリング URL を取り、窓に QR を出す
+
+/// pairing channel — ペアリング URL を取る（ループバックだけ）
+struct PairingChannel: StreamChannelMeta {
+    static let name = "pairing"
+    /// event は無い（schema に無い）。型を満たすための空
+    struct NoEvent: Decodable, Sendable {}
+    typealias Event = NoEvent
+}
+
+struct GetPairing: UnisonRequest {
+    static let method = "Get"
+    typealias Response = PairingInfo
+}
+
+/// lnx://pair?v=1&name=<name>&cert=<leaf DER の base64url、padding なし>
+struct PairingInfo: Decodable, Sendable, Equatable {
+    var url: String
+    var name: String
+    var cert: String
+}

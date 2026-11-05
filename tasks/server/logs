@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="常駐している LNX サーバのログを追う（tail -F ~/Library/Logs/lnx-server.log）"
+
+require_relative "../_lib/lnx"
+require_relative "../_lib/agent"
+
+s = Lnx::Agent::Settings.from_env
+Lnx.exec!("tail", "-n", "100", "-F", s.log_path)

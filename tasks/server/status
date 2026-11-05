@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="常駐している LNX サーバの様子（launchd の状態、pid、待ち受け、ログの最後）"
+
+require_relative "../_lib/lnx"
+require_relative "../_lib/agent"
+
+s = Lnx::Agent::Settings.from_env
+puts "LaunchAgent: #{s.label}"
+puts "  plist: #{s.plist_path}（#{Lnx::Agent.installed?(s) ? 'ある' : '無い'}）"
+if (st = Lnx::Agent.state(s))
+  puts "  launchd: #{st[:state]}、pid #{st[:pid] || '-'}、起動 #{st[:runs] || '-'} 回、前の終わり方 #{st[:last_exit] || '-'}"
+  if Lnx::Agent.app_managed?(s, state: st)
+    puts "  載せたのは Mac 版 lnx creare（SMAppService、#{st[:parent_bundle] || '?'}）。操作はメニューから"
+  end
+else
+  puts "  launchd: 載っていない"
+end
+puts "  実行ファイル: #{s.bin_path}"
+puts "  ログ: #{s.log_path}"
+
+# 入っていれば plist の port を見る（install のときの env で走っている）
+ports = Lnx::Agent.installed_ports(s) || [s.port, s.local_port]
+ports.each do |port|
+  pids = Lnx.listener_pids(port)
+  puts "  port #{port}: #{pids.empty? ? '誰も待ち受けていない' : "pid #{pids.join(', ')} が待ち受け中"}"
+end
+
+puts "--- ログの最後"
+puts Lnx::Agent.tail(s, 10)

@@ -28,4 +28,10 @@ struct ScreenRouteTests {
         let state = LinkState.reconnecting(attempt: 2, delay: .seconds(1))
         #expect(ScreenRoute.resolve(state: state, selection: field) == .connecting)
     }
+
+    @Test("ペアリングが要るならペアリング画面")
+    func pairing() {
+        #expect(ScreenRoute.resolve(state: .needsPairing(serverName: "lnx-mac"), selection: nil) == .pairing(serverName: "lnx-mac"))
+        #expect(ScreenRoute.resolve(state: .needsPairing(serverName: nil), selection: field) == .pairing(serverName: nil))
+    }
 }

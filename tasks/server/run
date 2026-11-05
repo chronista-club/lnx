@@ -1,8 +1,24 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
-#MISE description="LNX サーバをこの Mac で起動（[::]:12730。一覧は crates/lnx-server/lnx-server.example.toml）"
+#MISE description="LNX サーバをこの Mac で起動（[::]:12730。同じポートの古いサーバは止めてから。一覧は crates/lnx-server/lnx-server.example.toml。常駐中なら止まって案内する）"
 
 require_relative "../_lib/lnx"
+require_relative "../_lib/agent"
 
 config = ENV.fetch("LNX_SERVER_CONFIG", Lnx::SERVER_CONFIG)
-Lnx.exec!("cargo", "run", "-q", "-p", "lnx-server", "--", "--config", config)
+agent = Lnx::Agent::Settings.from_env
+
+# 常駐（LaunchAgent）が入っていると、古いサーバを止めても KeepAlive で立ち上がり直して取り合いになる
+abort Lnx::Agent.app_managed_message(agent) if Lnx::Agent.app_managed?(agent)
+if Lnx::Agent.installed?(agent) || Lnx::Agent.loaded?(agent)
+  abort <<~MSG
+    LNX サーバは LaunchAgent（#{agent.label}）で常駐している（mise run server:status）。
+    作り直して立て直すなら mise run server:restart、ログは mise run server:logs。
+    端末で回したいなら、先に mise run server:uninstall で常駐をやめる
+  MSG
+end
+
+# 先にビルドする（古いサーバが止まっている時間を短くする）
+Lnx.run("cargo", "build", "-q", "-p", "lnx-server")
+Lnx.stop_listeners(agent.port)
+Lnx.exec!(Lnx::SERVER_BIN, "--config", config)

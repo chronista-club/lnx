@@ -6,7 +6,8 @@ name: LnxCreare
 options:
   bundleIdPrefix: club.chronista.lnx
   deploymentTarget:
-    iOS: "26.0"
+    iOS: "27.0"
+    macOS: "27.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
@@ -19,7 +20,7 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    DEVELOPMENT_TEAM: J627YTC8NE
+    DEVELOPMENT_TEAM: 3EQKG4B352  # ANYCREATIVE, K.K.
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
@@ -27,7 +28,8 @@ settings:
 targets:
   LnxCreare:
     type: application
-    platform: iOS
+    # 一つのターゲットで iOS と macOS（spec 02 の「macOS/iOS 統一コードベース」）
+    supportedDestinations: [iOS, macOS]
     sources:
       - path: LnxCreare
         excludes:
@@ -35,6 +37,11 @@ targets:
     dependencies:
       - package: club-unison
         product: UnisonClient
+    # Mac 版だけ: lnx-server を .app に同梱し、LaunchAgent の plist を置く（SMAppService が登録する）。iOS では何もしない
+    postBuildScripts:
+      - name: lnx-server を同梱（macOS）
+        script: exec "${PROJECT_DIR}/scripts/embed-lnx-server.sh"
+        basedOnDependencyAnalysis: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare
@@ -44,6 +51,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: lnx creare
         INFOPLIST_KEY_NSMicrophoneUsageDescription: 周囲の音をビジュアルに変えるために、マイクを使います。
+        INFOPLIST_KEY_NSCameraUsageDescription: LNX の画面に出ているペアリングの QR を読むために、カメラを使います。
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
@@ -51,6 +59,7 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
 
   LnxCreareTests:
     type: bundle.unit-test
@@ -65,6 +74,26 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare.tests
         GENERATE_INFOPLIST_FILE: YES
+
+  # Mac 版の単体テスト。Mac だけのもの（メニューバー、同梱の lnx-server）と、共有の LnxCreareTests を Mac でも回す
+  # （`#if os(macOS)` の側を試す）。host は LnxCreare の Mac 版。mise run mac:test
+  LnxCreareMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: LnxCreareMacTests
+      - path: LnxCreareTests
+    dependencies:
+      - target: LnxCreare
+      - package: club-unison
+        product: UnisonClient
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare.mactests
+        GENERATE_INFOPLIST_FILE: YES
+        # host が iOS と macOS の両方のターゲットなので、XcodeGen は iOS の形（LnxCreare.app/LnxCreare）を付ける。Mac の形に直す
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/LnxCreare.app/Contents/MacOS/LnxCreare
+        BUNDLE_LOADER: $(TEST_HOST)
 
   LnxCreareUITests:
     type: bundle.ui-testing
@@ -92,3 +121,16 @@ schemes:
       targets:
         - LnxCreareTests
         - LnxCreareUITests
+
+  # Mac 版のテスト（mise run mac:test）。iOS の LnxCreare scheme とは分ける
+  LnxCreareMac:
+    build:
+      targets:
+        LnxCreare: all
+        LnxCreareMacTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - LnxCreareMacTests

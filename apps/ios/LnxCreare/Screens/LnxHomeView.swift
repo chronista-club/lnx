@@ -3,10 +3,19 @@ import SwiftUI
 /// LNX 自身の画面。心拍が脈打ち、知っているサーバが並ぶ
 struct LnxHomeView: View {
     let supervisor: LinkSupervisor
+    #if os(macOS)
+    @State private var offeringPairing = false
+    #else
+    @State private var confirmingUnpair = false
+    #endif
 
     var body: some View {
         VStack(spacing: 24) {
             header
+            #if os(macOS)
+            Button("iPad をペアリング") { offeringPairing = true }
+                .accessibilityIdentifier("home.pairIPad")
+            #endif
             Spacer()
             Pulse(seq: supervisor.heartbeat?.seq ?? 0)
             Text(heartbeatLine)
@@ -15,8 +24,68 @@ struct LnxHomeView: View {
                 .foregroundStyle(.white.opacity(0.5))
             Spacer()
             serverList
+            #if !os(macOS)
+            // 右上のメニューと同じもの。ここにも置く（わかりやすい。裁定 2026-11-04）
+            if supervisor.canUnpair {
+                Button("ペアリングを解除") { confirmingUnpair = true }
+                    .font(.footnote)
+                    .tint(.white.opacity(0.5))
+                    .accessibilityIdentifier("home.unpair")
+            }
+            #endif
         }
         .padding(32)
+        // 画面いっぱいに広げてから重ねる（VStack は中身の幅に縮むので、そのままだと見出しの右上に乗る）
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .topTrailing) { menu.padding(20) }
+        #if os(macOS)
+        .sheet(isPresented: $offeringPairing) {
+            PairingOfferView { offeringPairing = false }
+        }
+        #else
+        // 確認は一段だけ
+        .confirmationDialog(unpairQuestion, isPresented: $confirmingUnpair, titleVisibility: .visible) {
+            Button("解除する", role: .destructive) { supervisor.unpair() }
+        } message: {
+            Text("次につなぐときは、Mac 版の「iPad をペアリング」の QR を読み直します")
+        }
+        #endif
+    }
+
+    /// 右上のメニュー（裁定 2026-11-04。下 / 上のボタンと同じものをここにも）。Mac 版は「iPad をペアリング」（QR を出す）、
+    /// iPhone / iPad は「ペアリングを解除」（pin を消して切断 → ペアリング画面）。Mac 版は手元の localhost なので解除は無い
+    @ViewBuilder
+    private var menu: some View {
+        #if os(macOS)
+        Menu {
+            Button { offeringPairing = true } label: {
+                Label { Text("iPad をペアリング") } icon: { Icon.menuImage(.qrCode) }
+            }
+        } label: {
+            // macOS の Menu は label を AppKit のボタンに移すとき frame を落とし、素の大きさ（256）で出す。
+            // メニュー項目と同じく、小さく描き直した画像を渡す（2026-11-04、Mac の実画面で確認）
+            Icon.menuImage(.dotsThreeCircle, size: 20)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        // label の中の修飾は AppKit へ移すときに落ちうるので、読み上げの名前は Menu 本体に付ける
+        .accessibilityLabel("メニュー")
+        .accessibilityIdentifier("home.menu")
+        #else
+        if supervisor.canUnpair {
+            Menu {
+                Button(role: .destructive) { confirmingUnpair = true } label: {
+                    Label { Text("ペアリングを解除") } icon: { Icon.menuImage(.linkBreak) }
+                }
+            } label: {
+                Icon.view(.dotsThreeCircle, size: 28, label: "メニュー")
+                    .foregroundStyle(.white.opacity(0.7))
+                    .contentShape(Rectangle())
+            }
+            .accessibilityIdentifier("home.menu")
+        }
+        #endif
     }
 
     private var header: some View {
@@ -30,6 +99,11 @@ struct LnxHomeView: View {
                     .foregroundStyle(.white.opacity(0.7))
             }
         }
+    }
+
+    private var unpairQuestion: String {
+        if case .connected(let welcome) = supervisor.state { return "「\(welcome.serverName)」とのペアリングを解除しますか" }
+        return "ペアリングを解除しますか"
     }
 
     private var heartbeatLine: String {
@@ -61,7 +135,7 @@ struct LnxHomeView: View {
                                     .foregroundStyle(.white.opacity(0.5))
                             }
                             Spacer()
-                            Image(systemName: "chevron.right")
+                            Icon.view(.caretRight, size: 16)
                                 .foregroundStyle(.white.opacity(0.5))
                         }
                         .padding(14)
