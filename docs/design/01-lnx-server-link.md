@@ -115,7 +115,8 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   `Contents/Library/LaunchAgents/club.chronista.lnx-server.plist` をメニューバーの「開始」で `SMAppService.agent` に登録する（前例 midistage `mem_1Cfuxqjxy6HUi7p7ByQRY4`）。
   アプリの側は、`server:install` の plist が残っていれば登録せずに `server:uninstall` を案内する（同じラベルなので、走っているのはそちら）。
   常駐が走っていないのに launchd の外のプロセスが 12730 / 12731 を握っていれば（`lsof -F pcn`。常駐自身の pid は除く）、「開始」「再起動」を出さずに握っている pid を案内する（`ServerPhase.portTaken`。2026-11-05 の事故の守り）。
-  登録済みで落ち続けているときは「停止」だけ出す。lsof は常駐が走っていないときだけ回す
+  登録済みで落ち続けているとき・許可待ちのときは「停止」（許可待ちは「登録をやめる」）だけ出す。見張り（2 秒おき）の lsof は常駐が走っていないときだけ回し、
+  開始・再起動の前には必ず読む。外のものに見えたら launchd を読み直す（開始の直後に、launchd を読んだあとで常駐が bind していることがある）
   `KeepAlive = { SuccessfulExit = false }`（SIGTERM で畳んだ exit 0 は起こし直さない）。plist は `~` を書けないので、設定・名乗り・証明書はサーバの既定の置き場、ログは `--log-file`。
   停止 = 登録の解除、再起動 = 解除 → 前のプロセスが消えるのを待つ → 登録（SMAppService の unregister は reap を待たない）。
   常駐の実体は登録した .app の中の実行ファイルなので、登録は `mac:install` で `~/Applications` に入れた .app から（`build-mac` の .app は作り直しのたびに変わる）。
@@ -199,6 +200,9 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 ## Status log
 
+- 2026-11-05: 守り（外のプロセスが待ち受けを握っていたら「開始」「再起動」を出さない）をこの Mac で実測。常駐を「停止」して端末と同じ `server:run`（pid 9028）を立てると、
+  メニューは「lnx-server（pid 9028）が待ち受けを握っています」「端末の mise run server:run なら Ctrl-C で止めてから「開始」」になり、「開始」は出なかった。
+  止めてから「開始」で常駐に戻した。そのあいだ lnx-mac を名乗ったのは常に一つ。アプリが前面にいるとステータス項目は Accessibility に出ない（System Events の最後のメニューバーがアプリ本体のものになる）
 - 2026-11-05: この Mac で通しを確認（`~/Applications/LnxCreare.app` から登録、名乗り lnx-mac）。開始 → 12730 / 12731 で待ち受け、ログは `~/Library/Logs/lnx-server.log`、
   en0 から lnx-mac が答える、Mac 版と iPad（USB の bridge100）が hello、QR が出る。停止 → SIGTERM で畳んで launchd から消え、立ち上がり直さず en0 も答えなくなる。
   再起動 → 0.3 秒で新しい pid、port の取り合い無し。kill -9 → 1 秒で立ち上がり直す（en0 で答えるまで約 13 秒）。`server:install` / `restart` / `uninstall` / `run` はアプリのジョブを見て止まる。

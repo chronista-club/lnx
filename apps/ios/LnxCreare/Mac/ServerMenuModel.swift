@@ -65,11 +65,15 @@ final class ServerMenuModel {
     }
 
     func refresh() async {
-        let job = await residency.job()
+        var job = await residency.job()
         let registration = residency.currentRegistration()
-        // 常駐が走っているあいだは、待ち受けを握っているのは常駐自身。lsof を回さない
+        // 常駐が走っているあいだは、待ち受けを握っているのは常駐自身。見張りでは lsof を回さない
         let running = registration == .enabled && job?.isRunning == true
         let listeners = running ? [] : await residency.listeners()
+        // 開始の直後は、launchd を読んだあとに常駐が bind していることがある。外のものに見えたら読み直して確かめる
+        if PortListener.foreign(in: listeners, job: job) != nil {
+            job = await residency.job()
+        }
         phase = ServerPhase.resolve(
             registration: registration, job: job, legacyInstalled: residency.legacyInstalled(), listeners: listeners
         )

@@ -109,8 +109,9 @@ enum ServerPhase: Equatable, Sendable {
     /// このビルドに lnx-server が入っていない
     case broken
     /// 常駐が走っていないのに、launchd の外のプロセスが待ち受けを握っている（端末の server:run など）。
-    /// このまま開始すると KeepAlive で落ち続ける（2026-11-05 の事故）。registered なら今まさに落ち続けている
-    case portTaken(PortListener, registered: Bool)
+    /// このまま開始すると KeepAlive で落ち続ける（2026-11-05 の事故）。登録済み（enabled）なら今まさに落ち続けている。
+    /// 許可待ちなら launchd はまだ起こしていないが、許可すると落ち続ける
+    case portTaken(PortListener, registration: Registration)
 
     static func resolve(
         registration: Registration, job: LaunchdJob?, legacyInstalled: Bool, listeners: [PortListener] = []
@@ -119,7 +120,7 @@ enum ServerPhase: Equatable, Sendable {
         if registration == .notFound { return .broken }
         if registration == .enabled, let job, job.isRunning, let pid = job.pid { return .running(pid: pid) }
         if let holder = PortListener.foreign(in: listeners, job: job) {
-            return .portTaken(holder, registered: registration != .notRegistered)
+            return .portTaken(holder, registration: registration)
         }
         switch registration {
         case .notRegistered: return .off
@@ -134,9 +135,17 @@ enum ServerPhase: Equatable, Sendable {
         case .running: [.stop, .restart]
         case .stopped, .off: [.start]
         case .requiresApproval: [.openLoginItems, .stop]
-        // 握っている側を止めるまで開始しない。登録済みで落ち続けているなら、常駐をやめることだけはできる
-        case .portTaken(_, let registered): registered ? [.stop] : []
+        // 握っている側を止めるまで開始しない。登録があれば、常駐（許可待ちなら登録）をやめることだけはできる
+        case .portTaken(_, let registration): registration == .notRegistered ? [] : [.stop]
         case .legacy, .broken: []
+        }
+    }
+
+    /// 「停止」の項目の文言。許可待ちのときは、まだ動いていないので「登録をやめる」
+    var stopTitle: String {
+        switch self {
+        case .requiresApproval, .portTaken(_, .requiresApproval): "登録をやめる"
+        default: "停止（ログイン時にも立ち上げない）"
         }
     }
 
@@ -171,10 +180,12 @@ enum ServerPhase: Equatable, Sendable {
         case .requiresApproval: "システム設定 › 一般 › ログイン項目 で lnx creare を許可してください"
         case .legacy: "メニューから動かすには、先に mise run server:uninstall で外してください"
         case .broken: "mise run mac:run でビルドし直してください"
-        case .portTaken(_, let registered):
-            registered
-                ? "握っているあいだ、常駐は 10 秒おきに立ち上がっては落ちます。端末の mise run server:run なら Ctrl-C で止めてください（常駐をやめるなら「停止」）"
-                : "端末の mise run server:run なら Ctrl-C で止めてから「開始」してください"
+        case .portTaken(_, .enabled):
+            "握っているあいだ、常駐は 10 秒おきに立ち上がっては落ちます。端末の mise run server:run なら Ctrl-C で止めてください（常駐をやめるなら「停止」）"
+        case .portTaken(_, .requiresApproval):
+            "ログイン項目で許可すると立ち上がりますが、握られているあいだは落ち続けます。端末の mise run server:run なら Ctrl-C で止めてから許可してください"
+        case .portTaken:
+            "端末の mise run server:run なら Ctrl-C で止めてから「開始」してください"
         }
     }
 }

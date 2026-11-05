@@ -25,7 +25,7 @@ struct PortGuardTests {
     @Test("常駐していないのに外のプロセスが握っていれば portTaken（開始を出さない）")
     func takenWhileOff() {
         let phase = ServerPhase.resolve(registration: .notRegistered, job: nil, legacyInstalled: false, listeners: [terminal])
-        #expect(phase == .portTaken(terminal, registered: false))
+        #expect(phase == .portTaken(terminal, registration: .notRegistered))
         #expect(phase.actions.isEmpty)
         #expect(!phase.isRunning)
     }
@@ -33,8 +33,19 @@ struct PortGuardTests {
     @Test("登録済みで落ち続けているなら portTaken で、停止（常駐をやめる）だけ出す")
     func takenWhileLooping() {
         let phase = ServerPhase.resolve(registration: .enabled, job: loopingJob, legacyInstalled: false, listeners: [terminal])
-        #expect(phase == .portTaken(terminal, registered: true))
+        #expect(phase == .portTaken(terminal, registration: .enabled))
         #expect(phase.actions == [.stop])
+        #expect(phase.stopTitle == "停止（ログイン時にも立ち上げない）")
+    }
+
+    @Test("許可待ちのときは落ち続けてはいない。「登録をやめる」だけ出し、許可しても握られていると落ちると案内する")
+    func takenWhileAwaitingApproval() {
+        let phase = ServerPhase.resolve(registration: .requiresApproval, job: nil, legacyInstalled: false, listeners: [terminal])
+        #expect(phase == .portTaken(terminal, registration: .requiresApproval))
+        #expect(phase.actions == [.stop])
+        #expect(phase.stopTitle == "登録をやめる")
+        #expect(phase.detail?.contains("10 秒おき") == false)
+        #expect(phase.detail?.contains("許可") == true)
     }
 
     @Test("握っているのが常駐自身なら running のまま")
@@ -50,10 +61,10 @@ struct PortGuardTests {
 
     @Test("案内には握っているプロセスと pid、止め方を出す")
     func detail() {
-        let phase = ServerPhase.portTaken(terminal, registered: false)
+        let phase = ServerPhase.portTaken(terminal, registration: .notRegistered)
         #expect(phase.title.contains("68111"))
         #expect(phase.detail?.contains("server:run") == true)
-        #expect(ServerPhase.portTaken(terminal, registered: true).detail?.contains("10 秒おき") == true)
+        #expect(ServerPhase.portTaken(terminal, registration: .enabled).detail?.contains("10 秒おき") == true)
     }
 }
 
@@ -70,6 +81,41 @@ struct PortGuardModelTests {
         await model.start()
         #expect(!residency.calls.contains("register"))
         #expect(model.lastError?.contains("68111") == true)
+        // メニューも案内になる（開始を出さない）
+        #expect(model.phase == .portTaken(terminal, registration: .notRegistered))
+        #expect(model.phase.actions.isEmpty)
+    }
+
+    @Test("見張りの読み直しで、外のプロセスが握っていれば案内になる")
+    func refreshShowsPortTaken() async {
+        let residency = FakeResidency(registration: .notRegistered)
+        residency.portListeners = [terminal]
+        let model = ServerMenuModel(residency: residency, pause: { _ in })
+        await model.refresh()
+        #expect(model.phase == .portTaken(terminal, registration: .notRegistered))
+    }
+
+    @Test("常駐が走っているあいだの見張りでは lsof を回さない")
+    func refreshSkipsListenersWhileRunning() async {
+        let residency = FakeResidency(registration: .enabled, settled: LaunchdJob(state: "running", pid: 10, lastExit: nil))
+        let model = ServerMenuModel(residency: residency, pause: { _ in })
+        await model.refresh()
+        #expect(residency.listenerReads == 0)
+        residency.settled = nil
+        await model.refresh()
+        #expect(residency.listenerReads == 1)
+    }
+
+    @Test("開始の直後（launchd を読んだあとに常駐が bind した）でも、常駐自身を外のものと取り違えない")
+    func refreshRereadsJob() async {
+        let residency = FakeResidency(registration: .enabled)
+        // 1 回目の launchctl はまだ spawn 前、lsof の時点では常駐（pid 10）が待ち受けている
+        residency.queue = [LaunchdJob(state: "spawn scheduled", pid: nil, lastExit: nil)]
+        residency.settled = LaunchdJob(state: "running", pid: 10, lastExit: nil)
+        residency.portListeners = [PortListener(pid: 10, command: "lnx-server")]
+        let model = ServerMenuModel(residency: residency, pause: { _ in })
+        await model.refresh()
+        #expect(model.phase == .running(pid: 10))
     }
 
     @Test("外のプロセスが握っていれば、再起動もしない（解除も登録もしない）")

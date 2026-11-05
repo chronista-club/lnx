@@ -170,5 +170,10 @@ final class FakeResidency: ServerResidency {
         return queue.isEmpty ? settled : queue.removeFirst()
     }
 
-    func listeners() async -> [PortListener] { portListeners }
+    /// lsof を回した回数（calls には入れない。呼び順の試験を守りの読みに縛らない）
+    var listenerReads = 0
+    func listeners() async -> [PortListener] {
+        listenerReads += 1
+        return portListeners
+    }
 }

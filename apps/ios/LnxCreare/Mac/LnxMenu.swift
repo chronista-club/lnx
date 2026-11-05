@@ -57,9 +57,7 @@ struct LnxMenu: View {
                 }
             case .stop:
                 Button { Task { await model.stop() } } label: {
-                    Label {
-                        Text(model.phase == .requiresApproval ? "登録をやめる" : "停止（ログイン時にも立ち上げない）")
-                    } icon: { Icon.menuImage(.stop) }
+                    Label { Text(model.phase.stopTitle) } icon: { Icon.menuImage(.stop) }
                 }
             case .restart:
                 Button { Task { await model.restart() } } label: {
