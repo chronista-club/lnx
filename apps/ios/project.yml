@@ -37,6 +37,11 @@ targets:
     dependencies:
       - package: club-unison
         product: UnisonClient
+    # Mac 版だけ: lnx-server を .app に同梱し、LaunchAgent の plist を置く（SMAppService が登録する）。iOS では何もしない
+    postBuildScripts:
+      - name: lnx-server を同梱（macOS）
+        script: exec "${PROJECT_DIR}/scripts/embed-lnx-server.sh"
+        basedOnDependencyAnalysis: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare
@@ -70,6 +75,26 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare.tests
         GENERATE_INFOPLIST_FILE: YES
 
+  # Mac 版の単体テスト。Mac だけのもの（メニューバー、同梱の lnx-server）と、共有の LnxCreareTests を Mac でも回す
+  # （`#if os(macOS)` の側を試す）。host は LnxCreare の Mac 版。mise run mac:test
+  LnxCreareMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: LnxCreareMacTests
+      - path: LnxCreareTests
+    dependencies:
+      - target: LnxCreare
+      - package: club-unison
+        product: UnisonClient
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare.mactests
+        GENERATE_INFOPLIST_FILE: YES
+        # host が iOS と macOS の両方のターゲットなので、XcodeGen は iOS の形（LnxCreare.app/LnxCreare）を付ける。Mac の形に直す
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/LnxCreare.app/Contents/MacOS/LnxCreare
+        BUNDLE_LOADER: $(TEST_HOST)
+
   LnxCreareUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -96,3 +121,16 @@ schemes:
       targets:
         - LnxCreareTests
         - LnxCreareUITests
+
+  # Mac 版のテスト（mise run mac:test）。iOS の LnxCreare scheme とは分ける
+  LnxCreareMac:
+    build:
+      targets:
+        LnxCreare: all
+        LnxCreareMacTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - LnxCreareMacTests

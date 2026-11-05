@@ -33,6 +33,8 @@ struct PairingOfferView: View {
                 Text("iPad の lnx creare で「LNX とペアリング」を開き、この QR を読んでください（\(offer.serverName)）")
                     .font(.callout)
                     .multilineTextAlignment(.center)
+                    // 窓（メニューバーの「iPad をペアリング」、windowResizability(.contentSize)）では 1 行に詰めて切れるので、縦に伸ばす
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: 460)
                 Text(offer.url)
                     .font(.caption2.monospaced())

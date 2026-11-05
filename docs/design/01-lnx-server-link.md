@@ -2,7 +2,7 @@
 
 > **Status**: Draft（Status log 参照）
 > **Related**: [spec 01](../spec/01-core-concept.md)（場の同期）、[spec 02](../spec/02-creare.md)（統合のハブ）、[design 02](02-architecture.md)（全体の構成）、`mem_1Cgfoo741LiQbchNsvJrY6`（起票・裁定）
-> **対象**: `crates/lnx-server/`, `apps/ios/LnxCreare/Link/`, `apps/ios/LnxCreare/Screens/`
+> **対象**: `crates/lnx-server/`, `apps/ios/LnxCreare/Link/`, `apps/ios/LnxCreare/Screens/`, `apps/ios/LnxCreare/Mac/`
 
 ## Abstract
 
@@ -111,6 +111,16 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   launchd は同じラベルを二つ載せないので、`server:install` の LaunchAgent とは二重に立たない。`server:*` のタスクは
   launchd の持ち主が `managed_by = com.apple.xpc.ServiceManagement`（`launchctl print`）のものをアプリのジョブとみなし、降ろさずに止まってメニューを案内する
   （plist の有無では決めない。#38 の plist が残っていても消えていても取り違えない）
+- Mac 版の常駐（SMAppService）: Mac 版 lnx creare が lnx-server を `.app` に同梱し（`Contents/MacOS/lnx-server`、アプリと同じ identity で署名）、
+  `Contents/Library/LaunchAgents/club.chronista.lnx-server.plist` をメニューバーの「開始」で `SMAppService.agent` に登録する（前例 midistage `mem_1Cfuxqjxy6HUi7p7ByQRY4`）。
+  アプリの側は、`server:install` の plist が残っていれば登録せずに `server:uninstall` を案内する（同じラベルなので、走っているのはそちら）。
+  常駐が走っていないのに launchd の外のプロセスが 12730 / 12731 を握っていれば（`lsof -F pcn`。常駐自身の pid は除く）、「開始」「再起動」を出さずに握っている pid を案内する（`ServerPhase.portTaken`。2026-11-05 の事故の守り）。
+  登録済みで落ち続けているとき・許可待ちのときは「停止」（許可待ちは「登録をやめる」）だけ出す。見張り（2 秒おき）の lsof は常駐が走っていないときだけ回し、
+  開始・再起動の前には必ず読む。見張りでも開始・再起動の確認でも、外のものに見えたら launchd を読み直す（開始の直後や KeepAlive がちょうど起こし直したとき、launchd を読んだあとで常駐が bind していることがある）
+  `KeepAlive = { SuccessfulExit = false }`（SIGTERM で畳んだ exit 0 は起こし直さない）。plist は `~` を書けないので、設定・名乗り・証明書はサーバの既定の置き場、ログは `--log-file`。
+  停止 = 登録の解除、再起動 = 解除 → 前のプロセスが消えるのを待つ → 登録（SMAppService の unregister は reap を待たない）。
+  常駐の実体は登録した .app の中の実行ファイルなので、登録は `mac:install` で `~/Applications` に入れた .app から（`build-mac` の .app は作り直しのたびに変わる）。
+  入れ直したら「再起動」で登録し直す（SDK のヘッダが実行ファイルを変えたら登録し直すよう求めている。2026-11-05 に一度だけ測った: 実行ファイルを入れ替えて（同じチーム署名、中身は別）登録し直さずに kill -9 すると、launchd は 1 秒以内に新しい実行ファイルで立て直した。ログイン時は未測定）。アプリ側は `apps/ios/LnxCreare/Mac/`、手順は guide 01
 - 試験は実 QUIC で回す（`tests/link.rs`）: `listener("[::1]:0").spawn()` → `ProtocolClient::new(QuicClient::insecure_localhost())`
 
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
@@ -167,6 +177,7 @@ mise run ios:run         # ビルド → シミュレータへインストール
   Bonjour を始めてから落ちると goodbye を出し、動いている本物の記録（SRV / TXT / A）を LAN 中のキャッシュから消す。
   （2026-11-05 から、port を確保できずに落ちるものは名乗らない。それでも、別の port で立った同じ名前のものは名乗って落ちる）
   改名（`lnx-mac (2)`）してから落ちても、共有しているホスト名 `lnx-mac.local` の A / AAAA を消す（2026-11-04 に同じ mdns-sd で再現）
+- **ほかの lnx-server が 12730 / 12731 を握っているうちに、Mac 版の「開始」で常駐させない。** 同梱の lnx-server は bind に失敗して exit 1 し、`KeepAlive` で 10 秒おきに立ち上がり直し続ける。bind の前に Bonjour を始めていた版では、そのたびに同じ名前で名乗っては goodbye を出し、握っている本物の記録を LAN から消した（2026-11-05 06:46〜07:28、端末の `server:run` が握っている間に「開始」され、244 回。System Events でメニューを読んだ操作が「開始」を押した）。今は bind してから名乗る（#40）が、落ち続けるのは同じ
 - **常駐中に `server:run` で二つ目を立てない。** 古いサーバを止めても `KeepAlive` で立ち上がり直して取り合う（`server:run` は止まって案内する）
 
 ## 関連 / 未決
@@ -189,6 +200,16 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 ## Status log
 
+- 2026-11-05: 守り（外のプロセスが待ち受けを握っていたら「開始」「再起動」を出さない）をこの Mac で実測。常駐を「停止」して端末と同じ `server:run`（pid 9028）を立てると、
+  メニューは「lnx-server（pid 9028）が待ち受けを握っています」「端末の mise run server:run なら Ctrl-C で止めてから「開始」」になり、「開始」は出なかった。
+  止めてから「開始」で常駐に戻した。そのあいだ lnx-mac を名乗ったのは常に一つ。アプリが前面にいるとステータス項目は Accessibility に出ない（System Events の最後のメニューバーがアプリ本体のものになる）
+- 2026-11-05: この Mac で通しを確認（`~/Applications/LnxCreare.app` から登録、名乗り lnx-mac）。開始 → 12730 / 12731 で待ち受け、ログは `~/Library/Logs/lnx-server.log`、
+  en0 から lnx-mac が答える、Mac 版と iPad（USB の bridge100）が hello、QR が出る。停止 → SIGTERM で畳んで launchd から消え、立ち上がり直さず en0 も答えなくなる。
+  再起動 → 0.3 秒で新しい pid、port の取り合い無し。kill -9 → 1 秒で立ち上がり直す（en0 で答えるまで約 13 秒）。`server:install` / `restart` / `uninstall` / `run` はアプリのジョブを見て止まる。
+  主の窓を閉じてもメニューバーに残り、メニューから開き直すとつなぎ直す。入れ替えた実行ファイルは、登録し直さなくても kill -9 のあと新しい版で立った（一度の観測）。
+  ログイン時の自動起動と、iPad / iPhone の Wi-Fi 越しは mako の実機確認。途中、ポートが握られている間に「開始」されて 42 分落ち続けた（「やってはいけない」）
+- 2026-11-05: Mac 版のメニューバーから lnx-server を常駐させる（裁定「midistageみたいに、LNXのメニューがあって」→ GO、`mem_1CgiUS2HyVdxMAGfnfE3QX`）。
+  `.app` に同梱して SMAppService で登録し、`server:install` の素の LaunchAgent を置き換える。設定・ログの置き場は server lane が持つ
 - 2026-11-05: Bonjour の広告を、手元用と本体の待ち受けを bind できてから始める（D、mako の GO）。今までは名乗ってから bind していたので、
   port を握られた起動（KeepAlive の 10 秒おきを含む）が、落ちるときの goodbye で本物の記録を消していた。本体も `spawn` で bind し、
   待ち受けが自分で終わっていないかを 1 秒おきに見て、終わっていたら非 0 で抜ける（club-unison はそのとき Ok を返すが、
