@@ -42,7 +42,8 @@ final class LnxFinder {
             return pins.certificate(for: name) != nil
         }
         if let paired { return paired }
-        if let current, found.contains(current) { return current }
+        // 今の先は名前で照合する（解き直しでアドレスだけ変わることがある。名前が無ければそのもので）
+        if let current, let same = found.first(where: { Self.isSameServer($0, current) }) { return same }
         return found.first
     }
 
@@ -196,6 +197,12 @@ final class LnxFinder {
         guard browser != nil, advertised.contains(endpoint) else { return }
         ledger.set(.host(address, port: port, name: names[endpoint] ?? Self.serviceName(endpoint)), for: endpoint)
         LinkLog.note("found: \(found.map(\.displayName))")
+    }
+
+    /// 同じサーバか。LAN の先は名前で比べる（アドレスは経路で変わる）
+    nonisolated static func isSameServer(_ a: LinkTarget, _ b: LinkTarget) -> Bool {
+        if case .host(_, _, let nameA?) = a, case .host(_, _, let nameB?) = b { return nameA == nameB }
+        return a == b
     }
 
     /// Bonjour のインスタンス名（例 lnx-mac）

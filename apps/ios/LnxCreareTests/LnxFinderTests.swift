@@ -27,6 +27,12 @@ struct LnxFinderTests {
         #expect(LnxFinder.choose(from: [b], pins: MemoryPinStore(), current: a) == b)
     }
 
+    @Test("今の先は名前で照合する（解き直しでアドレスだけ変わっても、別のサーバへ飛ばない）")
+    func keepsCurrentByName() {
+        let aMoved = LinkTarget.host("192.168.0.9", port: 12730, name: "lnx-a")
+        #expect(LnxFinder.choose(from: [b, aMoved], pins: MemoryPinStore(), current: a) == aMoved)
+    }
+
     @Test("ペアリング済みが無ければ先頭")
     func fallsBackToFirst() {
         #expect(LnxFinder.choose(from: [a, b], pins: MemoryPinStore()) == a)

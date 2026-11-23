@@ -390,6 +390,22 @@ struct LinkSupervisorTests {
         #expect(!ok.needsFreshAddress)
     }
 
+    @Test("LAN の先でも、つながっているとき・1 回目の失敗では解き直しを求めない")
+    func noFreshAddressBeforeSecondFailure() async throws {
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let once = makeSupervisor(FakeTransport(failures: 1), pins: pins)
+        once.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
+        defer { once.stop() }
+        try await eventually {
+            if case .reconnecting(1, _) = once.state { return true }
+            return false
+        }
+        #expect(!once.needsFreshAddress)
+        try await eventually { once.state == .connected(FakeSession.welcome) }
+        #expect(!once.needsFreshAddress)
+    }
+
     @Test("stop で idle に戻り、以後つなぎ直さない")
     func stopGoesIdle() async throws {
         let transport = FakeTransport()
