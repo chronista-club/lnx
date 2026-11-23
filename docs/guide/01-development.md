@@ -184,7 +184,7 @@ xcrun devicectl device install app --device <UDID> build-device/Build/Products/D
 xcrun devicectl device process launch --device <UDID> club.chronista.lnx.creare
 ```
 
-UDID は `xcrun devicectl list devices` で見る。「LNX を探しています」のまま止まるときは、端末の設定でローカルネットワークの許可を確認する（design 01 の「やってはいけない」）。
+UDID は `xcrun devicectl list devices` で見る。「lnx を探しています」のまま止まるときは、端末の設定でローカルネットワークの許可を確認する（design 01 の「やってはいけない」）。
 
 ### 変更の流れ
 

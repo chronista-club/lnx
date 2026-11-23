@@ -13,7 +13,7 @@ struct PairingView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("LNX とペアリング")
+            Text("lnx とペアリング")
                 .font(.system(size: 34, weight: .light, design: .rounded))
                 .foregroundStyle(.white)
             Text(guide)
@@ -56,9 +56,9 @@ struct PairingView: View {
 
     private var guide: String {
         if let serverName {
-            "「\(serverName)」が起動時に出す QR を読んでください。\nはじめてつなぐ LNX は、本物かどうかをこれで確かめます"
+            "「\(serverName)」が起動時に出す QR を読んでください。\nはじめてつなぐ lnx は、本物かどうかをこれで確かめます"
         } else {
-            "LNX が起動時に出す QR を読んでください"
+            "lnx が起動時に出す QR を読んでください"
         }
     }
 

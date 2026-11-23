@@ -30,7 +30,7 @@ struct PairingOfferView: View {
                     .padding(20)
                     .background(.white, in: RoundedRectangle(cornerRadius: 12))
                     .accessibilityIdentifier("pairing.qr")
-                Text("iPad の lnx creare で「LNX とペアリング」を開き、この QR を読んでください（\(offer.serverName)）")
+                Text("iPad の lnx creare で「lnx とペアリング」を開き、この QR を読んでください（\(offer.serverName)）")
                     .font(.callout)
                     .multilineTextAlignment(.center)
                     // 窓（メニューバーの「iPad をペアリング」、windowResizability(.contentSize)）では 1 行に詰めて切れるので、縦に伸ばす
@@ -80,10 +80,10 @@ struct PairingOfferView: View {
             phase = .ready(offer, image)
         } catch let error as PairingCode.ParseError {
             LinkLog.note("pairing offer: URL を読めない \(error)")
-            phase = .failed("LNX から届いたペアリング URL をこのアプリが読めませんでした（\(error)）。\nサーバとアプリの版が合っているか確かめてください")
+            phase = .failed("lnx から届いたペアリング URL をこのアプリが読めませんでした（\(error)）。\nサーバとアプリの版が合っているか確かめてください")
         } catch {
             LinkLog.note("pairing offer: \(error)")
-            phase = .failed("この Mac の LNX（手元用 [::1]:\(LnxDefaults.localPort)）からペアリング情報を取れませんでした。\nサーバが新しいコードで動いているか確かめてください")
+            phase = .failed("この Mac の lnx（手元用 [::1]:\(LnxDefaults.localPort)）からペアリング情報を取れませんでした。\nサーバが新しいコードで動いているか確かめてください")
         }
     }
 }
