@@ -24,7 +24,8 @@ final class LinkSupervisor {
     private let heartbeatTimeout: Duration
     private var runner: Task<Void, Never>?
     /// 接続の世代。止める・解除・切り替えのたびに進め、古い世代のタスクには状態を書かせない。
-    /// club-unison の待ちは cancel に応じないので、cancel 後に遅れて戻った応答が connected を書き戻しうる（deep レビュー P3-2）
+    /// cancel と応答が競うと、遅れて戻った古い世代が connected を書き戻しうる
+    /// （club-unison 2.2 までは待ちが cancel に応じず、なおさら起きた。deep レビュー P3-2）
     private var epoch = 0
     private var heartbeatCount = 0
 

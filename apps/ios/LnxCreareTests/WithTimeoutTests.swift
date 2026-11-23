@@ -3,7 +3,7 @@ import Synchronization
 import Testing
 @testable import LnxCreare
 
-/// 期限つき await。club-unison の待ちは cancel に応じないので、応じない相手でも期限で戻れること（deep レビュー P3-1）
+/// 期限つき await。cancel に応じない処理でも期限で戻れること（club-unison 2.2 までがこの形だった。deep レビュー P3-1）
 @Suite("withTimeout")
 struct WithTimeoutTests {
     @Test("期限内に終われば値を返す")
@@ -98,7 +98,7 @@ struct WithTimeoutTests {
     }
 }
 
-/// cancel に応じない待ち（club-unison の continuation と同じ形）
+/// cancel に応じない待ち（club-unison 2.2 までの continuation と同じ形）
 final class Latch: Sendable {
     private let state = Mutex<(waiter: CheckedContinuation<Int, Never>?, value: Int?)>((nil, nil))
 

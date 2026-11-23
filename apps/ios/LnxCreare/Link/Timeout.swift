@@ -2,6 +2,7 @@ import Foundation
 import Synchronization
 
 /// 期限つき await（超えたら LinkTimeout）。各呼び出しに、club-unison の既定（request 30 秒）より短い期限を付ける。
+/// connect は `timeout:` を取らない（10 秒固定）ので、5 秒で切るにはここで包むしかない。
 ///
 /// 処理と期限を構造化しない Task で競わせ、先に終わった方で一度だけ戻る。外からの cancel でもすぐ戻る。
 /// （club-unison 2.2 までは待ちが cancel に応じず、`withThrowingTaskGroup` だと期限が来ても子が終わるまで
