@@ -4,7 +4,9 @@ lnx - wavelet synthesize engine
 
 ## 概要
 
-lnx(リンクス)は、**Low-Latency, High-Quality, Human-Friendly** をモットーとした、audio/visual表現のためのライブツールプロジェクトです。
+lnx（リンクス）は、機器と場をつなぐもの。読みの「リンクス」は links（つなぐもの）に通じます。
+**Low-Latency, High-Quality, Human-Friendly** をモットーとした、audio/visual 表現のためのライブツールプロジェクトです。
+画面と文書では小文字の lnx と書きます（大文字の LNX は Linux と読まれやすいため。識別子は変えない。[spec 01](docs/spec/01-core-concept.md)「名前と表記」）。
 
 ### ✅ 実装済み機能
 
@@ -70,7 +72,7 @@ lnx/
 │   │       └── beatmachine_demo_with_samples.rs
 │   ├── lnx-cli/            # CLIインターフェース
 │   ├── lnx-creare/         # ビジュアルクリエーター（計画中）
-│   └── lnx-server/         # LNX サーバ（Unison / QUIC、lnx creare が常時つなぐ窓口）
+│   └── lnx-server/         # lnx サーバ（Unison / QUIC、lnx creare が常時つなぐ窓口）
 └── apps/
     └── ios/                # iOS アプリ「lnx creare」（SwiftUI + XcodeGen、メイン開発機は iPad）
 ```
@@ -110,7 +112,7 @@ cargo run --example beatmachine_demo_with_samples
 cargo run --example beatmachine_demo
 ```
 
-### LNX サーバ
+### lnx サーバ
 
 ```bash
 mise run server:run          # この Mac で起動（[::]:12730、Bonjour _lnx._udp で名乗る）

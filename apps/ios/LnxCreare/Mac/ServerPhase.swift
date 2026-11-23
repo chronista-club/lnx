@@ -160,13 +160,13 @@ enum ServerPhase: Equatable, Sendable {
 
     var title: String {
         switch self {
-        case .running(let pid): "LNX サーバ — 動いています（pid \(pid)）"
-        case .stopped: "LNX サーバ — 止まっています"
-        case .off: "LNX サーバ — 常駐していません"
-        case .requiresApproval: "LNX サーバ — ログイン項目の許可待ち"
-        case .legacy(let running): running ? "LNX サーバ — server:install の常駐で動いています" : "LNX サーバ — server:install の常駐が入っています"
-        case .broken: "LNX サーバ — このビルドに入っていません"
-        case .portTaken(let holder, _): "LNX サーバ — \(holder.command)（pid \(holder.pid)）が待ち受けを握っています"
+        case .running(let pid): "lnx サーバ — 動いています（pid \(pid)）"
+        case .stopped: "lnx サーバ — 止まっています"
+        case .off: "lnx サーバ — 常駐していません"
+        case .requiresApproval: "lnx サーバ — ログイン項目の許可待ち"
+        case .legacy(let running): running ? "lnx サーバ — server:install の常駐で動いています" : "lnx サーバ — server:install の常駐が入っています"
+        case .broken: "lnx サーバ — このビルドに入っていません"
+        case .portTaken(let holder, _): "lnx サーバ — \(holder.command)（pid \(holder.pid)）が待ち受けを握っています"
         }
     }
 

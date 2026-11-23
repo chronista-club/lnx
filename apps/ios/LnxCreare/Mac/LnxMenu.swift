@@ -81,7 +81,12 @@ struct LnxMenuBarIcon: View {
 
     var body: some View {
         Icon.menuImage(running ? .waveform : .waveformSlash, size: 18)
-            .accessibilityLabel(running ? "LNX サーバ（動いています）" : "LNX サーバ（止まっています）")
+            .accessibilityLabel(Self.accessibilityName(running: running))
+    }
+
+    /// 読み上げの名前。メニューバーの項目の名前にもなる（System Events で項目を確かめるときもこれ）
+    static func accessibilityName(running: Bool) -> String {
+        running ? "lnx サーバ（動いています）" : "lnx サーバ（止まっています）"
     }
 }
 

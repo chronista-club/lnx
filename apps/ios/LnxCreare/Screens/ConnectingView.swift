@@ -37,9 +37,9 @@ struct ConnectingView: View {
     private var message: String {
         switch state {
         case .idle:
-            "LNX を探しています"
+            "lnx を探しています"
         case .connecting(let attempt):
-            attempt <= 1 ? "LNX につないでいます" : "LNX につないでいます（\(attempt) 回目）"
+            attempt <= 1 ? "lnx につないでいます" : "lnx につないでいます（\(attempt) 回目）"
         case .reconnecting(let attempt, let delay):
             "つなぎ直します（\(attempt) 回目、\(delay.formatted(.units(allowed: [.seconds], fractionalPart: .hide))) 後）"
         case .connected:

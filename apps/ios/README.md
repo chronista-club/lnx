@@ -30,7 +30,7 @@ mise run mac:test            # Mac 版の単体テスト（LnxCreareMacTests。�
 `.xcodeproj` は生成物。ターゲットや設定を変えるときは `project.yml` を編集して生成し直す。
 Xcode 上でファイルを追加した場合も、ディレクトリに置けば次の生成で拾われる。
 
-## LNX サーバとつなぐ
+## lnx サーバとつなぐ
 
 ```bash
 mise run server:run          # 別ターミナルで LNX サーバ（Mac、[::]:12730）

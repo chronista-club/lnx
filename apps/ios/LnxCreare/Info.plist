@@ -8,6 +8,6 @@
 		<string>_lnx._udp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>同じネットワークにいる LNX サーバを見つけてつなぐために使います。</string>
+	<string>同じネットワークにいる lnx サーバを見つけてつなぐために使います。</string>
 </dict>
 </plist>
