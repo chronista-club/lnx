@@ -69,6 +69,8 @@ async fn main() -> Result<()> {
     // 止める合図は最初に受け口を作る（待ち受けの前に届いても、落ちずに畳む）
     let mut sigterm = signal(SignalKind::terminate())?;
     let mut sigint = signal(SignalKind::interrupt())?;
+    // SIGUSR1 は Bonjour の作り直し（試験と、名乗りに答えなくなったときの当座の手当て。design 01）
+    let mut sigusr1 = signal(SignalKind::user_defined1())?;
 
     // 証明書と設定の置き場（server:run も常駐も同じ既定の置き場）
     let state_dir = cli
@@ -145,7 +147,7 @@ async fn main() -> Result<()> {
 
     // 名乗りは両方の待ち受けを確保してから。確保できずに落ちるプロセスが同じ名前で名乗ると、落ちるときの goodbye で
     // 動いている本物の記録を LAN から消す（KeepAlive の下では 10 秒おきに繰り返す。design 01）
-    let _advertiser = if cli.no_mdns {
+    let advertiser = if cli.no_mdns {
         None
     } else {
         match Advertiser::start(&name, bound.port(), serve::VERSION) {
@@ -164,6 +166,13 @@ async fn main() -> Result<()> {
         tokio::select! {
             _ = sigterm.recv() => break Some("SIGTERM"),
             _ = sigint.recv() => break Some("SIGINT"),
+            _ = sigusr1.recv() => match &advertiser {
+                Some(advertiser) => {
+                    info!("SIGUSR1 を受けたので Bonjour を作り直す");
+                    advertiser.rebuild_now();
+                }
+                None => info!("SIGUSR1 を受けたが、Bonjour で名乗っていない（--no-mdns）"),
+            },
             _ = watch.tick() => if listening.is_finished() { break None },
         }
     };
