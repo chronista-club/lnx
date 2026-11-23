@@ -447,6 +447,48 @@ struct LinkSupervisorTests {
         #expect(!supervisor.shouldSwitch(to: .host("192.168.234.1", port: 12730, name: "lnx-mac")))
     }
 
+    @Test("つながっている間は張り替えず、切れてつなぎ直しに入ったら張り替える")
+    func switchAfterDropFromConnected() async throws {
+        let transport = FakeTransport()
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = LinkSupervisor(
+            transport: transport,
+            pins: pins,
+            backoff: BackoffPolicy(base: .seconds(30), max: .seconds(30))
+        )
+        let wifi = LinkTarget.host("192.168.68.117", port: 12730, name: "lnx-mac")
+        let usb = LinkTarget.host("192.168.234.1", port: 12730, name: "lnx-mac")
+        supervisor.start(target: usb)
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+        #expect(!supervisor.shouldSwitch(to: wifi))
+
+        await transport.latestSession().drop()
+        try await eventually {
+            if case .reconnecting = supervisor.state { return true }
+            return false
+        }
+        #expect(supervisor.shouldSwitch(to: wifi))
+    }
+
+    @Test("つなぎ中（名乗りの応答待ち）は、同じサーバの別のアドレスに張り替える（消えたアドレスで刺さらない）")
+    func switchWhileConnecting() async throws {
+        let latch = Latch()
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let transport = FakeTransport(helloLatch: latch)
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.234.1", port: 12730, name: "lnx-mac"))
+        defer {
+            supervisor.stop()
+            latch.open(0)
+        }
+        try await eventually { await transport.connectCount == 1 }
+        #expect(supervisor.state == .connecting(attempt: 1))
+        #expect(supervisor.shouldSwitch(to: .host("192.168.68.117", port: 12730, name: "lnx-mac")))
+    }
+
     @Test("まだ何にもつないでいなければ、張り替える")
     func switchWhenNoTarget() {
         let supervisor = makeSupervisor(FakeTransport())
