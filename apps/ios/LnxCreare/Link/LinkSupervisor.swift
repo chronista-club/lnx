@@ -84,6 +84,13 @@ final class LinkSupervisor {
         return pins.certificate(for: name) != nil
     }
 
+    /// LAN の先へのつなぎ直しが続けて失敗している。経路が変わって（USB を抜いた、Wi-Fi が変わった）アドレスが
+    /// 古い恐れがあるので、RootView が Finder に解き直しを頼む（同じアドレスを叩き続けない。2026-11-23 の実機の例）
+    var needsFreshAddress: Bool {
+        guard case .host = target, case .reconnecting(let attempt, _) = state else { return false }
+        return attempt >= 2
+    }
+
     /// ペアリングを解除できるか（今の先が LAN のサーバ）
     var canUnpair: Bool {
         if case .host(_, _, _?) = target { return true }
@@ -189,12 +196,14 @@ final class LinkSupervisor {
     /// （`@MainActor` 付きの閉包を addTask に渡すと Swift 6 の isolation checker が解けない）
     private func run(_ session: any LnxSession, epoch: Int) async {
         let timeout = heartbeatTimeout
-        await withTaskGroup(of: Void.self) { group in
+        // 子のどれが先に終わったか（= 切れたと気づいた理由）を足跡に残す
+        await withTaskGroup(of: String.self) { group in
             group.addTask { [weak self] in
                 for await beat in await session.heartbeats() {
-                    guard let self else { return }
+                    guard let self else { return "見張りの持ち主が居ない" }
                     await self.record(beat, epoch: epoch)
                 }
+                return "心拍の流れが終わった"
             }
             group.addTask { [weak self] in
                 if let list = try? await session.listServers() {
@@ -203,20 +212,24 @@ final class LinkSupervisor {
                 for await servers in await session.registryChanges() {
                     await self?.update(servers: servers, epoch: epoch)
                 }
+                return "一覧の流れが終わった"
             }
             group.addTask {
                 await session.waitUntilDisconnected()
+                return "切断の知らせ（.disconnected）"
             }
             group.addTask { [weak self] in
                 // 無音の見張り。最初の心拍が来てから数え始める
                 while !Task.isCancelled {
-                    guard let self else { return }
+                    guard let self else { return "見張りの持ち主が居ない" }
                     let before = await self.heartbeatCount
-                    do { try await Task.sleep(for: timeout) } catch { return }
-                    if before > 0, await self.heartbeatCount == before { return }
+                    do { try await Task.sleep(for: timeout) } catch { return "見張りを止めた" }
+                    if before > 0, await self.heartbeatCount == before { return "心拍が \(timeout) 無い" }
                 }
+                return "見張りを止めた"
             }
-            await group.next()
+            let reason = await group.next() ?? "不明"
+            if isCurrent(epoch) { LinkLog.note("切れた: \(reason)") }
             group.cancelAll()
         }
         await session.close()
