@@ -394,7 +394,12 @@ struct LinkSupervisorTests {
     func noFreshAddressBeforeSecondFailure() async throws {
         let pins = MemoryPinStore()
         pins.save(Data([1]), for: "lnx-mac")
-        let once = makeSupervisor(FakeTransport(failures: 1), pins: pins)
+        // 待ちを長くして reconnecting(1) に留め、確かに観測する（10 ms だと見逃して不安定だった）
+        let once = LinkSupervisor(
+            transport: FakeTransport(failures: 1),
+            pins: pins,
+            backoff: BackoffPolicy(base: .seconds(30), max: .seconds(30))
+        )
         once.start(target: .host("192.168.0.2", port: 12730, name: "lnx-mac"))
         defer { once.stop() }
         try await eventually {
@@ -402,6 +407,7 @@ struct LinkSupervisorTests {
             return false
         }
         #expect(!once.needsFreshAddress)
+        once.reconnectNow()
         try await eventually { once.state == .connected(FakeSession.welcome) }
         #expect(!once.needsFreshAddress)
     }
