@@ -14,7 +14,7 @@ options:
 packages:
   club-unison:
     url: https://github.com/chronista-club/club-unison.git
-    exactVersion: 2.2.0
+    exactVersion: 2.3.0
 
 settings:
   base:
