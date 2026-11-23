@@ -16,8 +16,9 @@ Rust の workspace（`crates/`）と Apple のアプリ（`apps/ios`）を、**m
 | `mise run server:restart` | 常駐しているサーバを作り直して立て直す（build → 実行ファイルを写す → `kickstart -k`） |
 | `mise run server:logs` | 常駐しているサーバのログを追う（`~/Library/Logs/lnx-server.log`） |
 | `mise run server:status` | 常駐の様子（launchd の状態、pid、待ち受け、ログの最後） |
+| `mise run server:ask [名前]` | Bonjour の名乗りに答えているかを、NIC ごとに IPv4 / IPv6 で直接問う（既定は常駐の名乗り）。問うだけで、サーバには何も書かない |
 | `mise run server:uninstall` | 常駐をやめる（`bootout` → plist を消す。実行ファイル・ログ・設定は残す） |
-| `mise run server:test [args]` | `cargo test -p lnx-server`（実 QUIC の往復を含む）と、常駐タスクの組み立てのテスト（Ruby）。引数はそのまま cargo test へ |
+| `mise run server:test [args]` | `cargo test -p lnx-server`（実 QUIC の往復を含む）と、`tasks/_lib/test` の Ruby のテスト（常駐タスクの組み立て、`server:ask` の問いの組み立て）。引数はそのまま cargo test へ |
 | `mise run ios:gen` | `apps/ios/project.yml` から `LnxCreare.xcodeproj` を生成（XcodeGen） |
 | `mise run ios:test` | Swift Testing の単体テスト + UI テスト（既定は iPad シミュレータ） |
 | `mise run ios:run` | シミュレータを起こし、ビルド → インストール → 起動 |
@@ -204,7 +205,9 @@ UDID は `xcrun devicectl list devices` で見る。「LNX を探しています
 | UI テストが skip される | LNX サーバが居ない。`mise run server:run` を立ててから `mise run ios:test` |
 | Hello の応答が decode できず timeout | `lnx.kdl` と `LnxProtocol.swift` がズレている。codegen は無いので手で揃える（design 01） |
 | Bonjour で名乗らない | `--no-mdns` を付けていないか確認し、`dns-sd -B _lnx._udp` で見る。広告に失敗しても警告を出して続行する |
-| 同じ Mac の `dns-sd -L` / `-G` で、lo0 など一部の NIC にしか出ない | 同じ Mac の mDNSResponder は、どれか 1 つの NIC の答えが新しいうちは他の NIC で問い直さないので、キャッシュの見え方だけで欠けることがある。名乗っているかは別の端末（iPad など）か、en0 から直接問って確かめる |
+| 同じ Mac の `dns-sd -L` / `-G` で、lo0 など一部の NIC にしか出ない | 同じ Mac の mDNSResponder は、どれか 1 つの NIC の答えが新しいうちは他の NIC で問い直さないので、キャッシュの見え方だけで欠けることがある。名乗っているかは別の端末（iPad など）か、`mise run server:ask` で NIC ごとに直接問って確かめる |
+| `server:ask` で IPv4 だけ、lo0 → en0 の順に「答えない」（IPv6 は答える） | 消えた IPv4 で multicast から抜けた巻き添え（design 01「事故のときログで何を見るか」の (b)。iPad の USB を抜いたときに出やすい）。サーバは 5 秒静かになってから自分で作り直す（ログに `mdns: Bonjour を作り直した`）。今すぐなら `kill -USR1 <pid>`、それでも戻らなければ「再起動」/ `server:restart` |
+| `server:ask` が「問えない（No route to host）」 | 問う側の失敗。端末のアプリ（VP など）のローカルネットワークの許可が判定し直されている間に出る（VP の daemon を再起動した直後など）。少し置いて問い直す |
 | `server:run` が「LaunchAgent で常駐している」と言って止まる | 常駐中（`server:status`）。作り直すなら `server:restart`、端末で回すなら先に `server:uninstall` |
 | 常駐させたのに iPad が Wi-Fi で見つけない | lnx-server 自身のローカルネットワークの許可を確かめる（上の「常駐させる」）。`server:logs` に `bonjour: … を広告` が出ているかも見る |
 | `server:*` が「Mac 版 lnx creare（メニューバー）が SMAppService で常駐させている」と言って止まる | 同じラベルを Mac 版が載せている（`launchctl print` の `managed_by` が ServiceManagement）。開始・停止・再起動はメニューから。端末で回したいときはメニューで止めてから |
@@ -217,6 +220,7 @@ UDID は `xcrun devicectl list devices` で見る。「LNX を探しています
 
 ## Status log
 
+- 2026-11-23: `server:ask`（NIC ごとに IPv4 / IPv6 で名乗りを直接問う）を足した。`server:test` は `tasks/_lib/test` の Ruby のテストをすべて回す
 - 2026-11-05: Mac 版のメニューバーから lnx-server を常駐させる（SMAppService）。`mac:install` と `mac:test` を足した。
   同梱の中身と署名（`codesign --verify --deep --strict`）、メニューの項目と読み上げ名（System Events）を確認。この Mac での登録の通し（開始・停止・再起動・kill -9・`server:*` の守り）は design 01 の Status log
 - 2026-11-04: Mac 版のメニューバーに同梱する準備。サーバに `--log-file`（`~/` を自分で展開）と、`--config` 無しのときの

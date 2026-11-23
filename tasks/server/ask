@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#MISE description="Bonjour の名乗りに答えているかを、NIC ごとに IPv4 / IPv6 で直接問う（既定は常駐の名乗り。引数で名前を変える）"
+
+# 同じ Mac の dns-sd は mDNSResponder のキャッシュの見え方で当てにならないので、サーバの生の応答を見る。
+# 読み方は docs/design/01-lnx-server-link.md「事故のときログで何を見るか」
+require_relative "../_lib/lnx"
+require_relative "../_lib/agent"
+require_relative "../_lib/mdns_ask"
+
+config = File.join(Dir.home, Lnx::Agent::SUPPORT_DIR, "lnx-server.toml")
+name = ARGV[0] || ENV["LNX_SERVER_NAME"] || Lnx::MdnsAsk.name_from_config(config) || "lnx-mac"
+service = "#{name}._lnx._udp.local."
+nics = Lnx::MdnsAsk.interfaces
+puts "#{service} を NIC ごとに直接問う（legacy unicast、それぞれ 2 秒待つ）"
+
+# NIC と IP の種類ごとに並べて問う（全部で 2 秒ほど）
+answers = nics.flat_map do |nic|
+  [[:ipv4, nic.ipv4], [:ipv6, nic.ipv6_index]].map do |family, present|
+    Thread.new do
+      next [nic.name, family, nil] unless present
+
+      got = family == :ipv4 ? Lnx::MdnsAsk.ask_v4(service, nic) : Lnx::MdnsAsk.ask_v6(service, nic)
+      [nic.name, family, got]
+    rescue SystemCallError, SocketError => e
+      [nic.name, family, e.message]
+    end
+  end
+end.map(&:value)
+
+cell = lambda do |got|
+  case got
+  when nil then "—（アドレス無し）"
+  when String then "問えない（#{got}）"
+  when [] then "答えない"
+  else "答える #{got.join(', ')}"
+  end
+end
+# 端末の幅で揃える（全角は 2 桁）
+pad = lambda do |text, cols|
+  used = text.each_char.map { |c| c.bytesize == 1 ? 1 : 2 }.sum
+  text + " " * [cols - used, 0].max
+end
+width = nics.map { |n| n.name.size }.max.to_i + 2
+puts pad.call("NIC", width) + pad.call("IPv4", 40) + "IPv6"
+nics.each do |nic|
+  v4 = answers.find { |n, f, _| n == nic.name && f == :ipv4 }[2]
+  v6 = answers.find { |n, f, _| n == nic.name && f == :ipv6 }[2]
+  puts pad.call(nic.name, width) + pad.call(cell.call(v4), 40) + cell.call(v6)
+end
+if answers.any? { |_, _, got| got.is_a?(String) }
+  puts "問えない（No route to host）は、問う側（この端末のアプリ）にローカルネットワークの許可が無いか、まだ判定中のことが多い（design 01）"
+end

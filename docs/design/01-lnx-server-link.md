@@ -97,6 +97,25 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   `Advertiser` の drop は goodbye（TTL 0）の取り下げを最大 1 秒待ち、mdns-sd が +120ms に予約する再送が出るまで 200ms 置いてから、
   daemon の停止をまた最大 1 秒待つ（待たずにプロセスが抜けると送られず、幽霊が残る。shutdown は再送の予約を捨てる）。
   ログは端末でなければ色の制御文字を入れない（常駐のログはファイル）。試験は `tests/shutdown.rs`（実プロセスにシグナルを送る）
+- Bonjour の作り直し: mdns-sd の daemon は専用のスレッド（`mdns-keeper`）が持ち、出来事をログに出し、IPv4 の `IpDel` を受けたら daemon を作り直して名乗り直す
+  （消えた IPv4 で multicast から抜けると XNU が別の NIC の membership を外し、mdns-sd は気づかない。「事故のときログで何を見るか」の (b)）。
+  いつ作り直すかは純粋な `RebuildPlan`（試験は `tests/advertise.rs`）:
+  - 引き金は IPv4 の `IpDel` だけ（IPv6 は index で抜けるので巻き添えが無い）
+  - 最後の引き金から 5 秒（`REBUILD_QUIET`、mdns-sd の IP check と同じ間）静かになってから。USB を一度抜くと bridge100 / en9 / anri0 が同時に消えるので、続けて来る `IpDel` を一回にまとめる
+  - 作り直し同士は 30 秒（`REBUILD_MIN_GAP`）空ける。作れなかったときも 30 秒おいて試し直す（NIC がばたついても嵐にしない）
+  - daemon が思いがけず止まっていたら（出来事の受け口が閉じる）、5 秒おいて作り直す
+  - SIGUSR1 は間を待たずにすぐ作り直す（試験と、名乗りに答えなくなったときの当座の手当て）
+
+  作り直しの順は、新しい daemon を作る → 古いほうを shutdown（goodbye が出る）→ 新しいほうで probe を飛ばしてすぐ名乗る。
+  ただし一度でも改名（NameChange）していたら、作り直しでも probe する。mdns-sd が名前のぶつかりを見るのは probe 中の名前だけで、改名の結果も daemon ごとに持つ。
+  probe を飛ばすと元の名前に戻り、LAN にいる同じ名前の相手の記録を cache-flush で押しのける（同じ名前の試験用サーバを 2 つ立てて確かめた。作り直した側は `(2)` に改名し直し、元の名前は相手の port のまま）
+  このときは probe → ぶつかって改名 → 新しい名前でもう一度 probe となり、名乗るまで 1.5 秒ほどかかり得る。goodbye の 1 秒より遅いので、`(2)` の記録は LAN のキャッシュからいったん消えて戻る見込み（相手を押しのけないことと引き換え）
+  goodbye を受けた側は記録を 1 秒後に消すので、それより先にアナウンスが届けば消えない。2026-11-23 に別名（`lnx-rebuild-check`、12748 / 12749）で SIGUSR1 を 5 回試した結果:
+  - アナウンスは goodbye の 2〜3 ms 後に出た
+  - 同じ Mac の `dns-sd -B` に Rmv は一度も出ず、消えたのは SIGTERM の後だけ
+  - en0 から 0.2 秒おきに直接問うと、入れ替わりの瞬間に送った 1 問だけ答えが無かった（5 回中 1 回。次の問いには答えた）
+
+  残る隙は、Wi-Fi で最初のアナウンスだけが落ちたとき。mdns-sd の 2 度目のアナウンスは約 1.1 秒後で、1 秒の期限より遅い。iPad のキャッシュからは 0.1 秒ほど消えてすぐ戻る見込み（未確認）
 - 常駐: この Mac では launchd のユーザー LaunchAgent（`club.chronista.lnx-server`、`RunAtLoad` + `KeepAlive`）。
   `tasks/_lib/agent.rb` が plist を組み、`server:install` / `restart` / `logs` / `status` / `uninstall` が出し入れする（guide 01）。
   証明書は `server:run` と同じ既定の置き場を使う（pin を外さない）。実行ファイルは `~/.local/share/lnx-server/bin` へ写したものを指し、
@@ -170,15 +189,18 @@ mise run ios:run         # ビルド → シミュレータへインストール
   mdns-sd の出来事を `mdns:` で始まる行で出す（`advertise::describe_event`）。立ち上がりに、名乗った NIC ごとの `mdns: 名乗った <名前>（<ホスト>:<NIC>）` が出る
 - **直接問う:** 同じ Mac の `dns-sd -L` / `-G` は mDNSResponder のキャッシュの見え方で、当てにならない。
   NIC ごとに legacy unicast（エフェメラルな port から 224.0.0.251 / ff02::fb へ SRV を問う）で、IPv4 と IPv6 を別々に問う。
-  道具（`ask.py` / `ask6.py`）は今は `/tmp/lnx-mdns-diag` にあるだけ（残すならタスクにする）
+  `mise run server:ask [名前]`（既定は常駐の名乗り。`tasks/_lib/mdns_ask.rb`）。問い合わせを送るだけで、サーバには何も書かない。
+  「問えない（No route to host）」は問う側の失敗で、端末のアプリ（VP など）のローカルネットワークの許可が判定し直されている間に出る
+  （2026-11-23、VP の daemon を再起動した直後の約 20 秒）。少し置いて問い直す
 
 | 形 | NIC ごとに問った結果 | ログ |
 |---|---|---|
 | (a) ローカルネットワークの許可 | lo0 は答え、LAN 側（en0 など）は IPv4 も IPv6 も答えない | `mdns:` の出来事が無いまま黙る。常駐の初めての起動では、判定がつくまでの数秒だけ起きる |
-| (b) XNU の巻き添え | IPv4 だけ、join の早い NIC から順に答えない（lo0 → en0 → …）。IPv6 は答える | その前に `mdns: アドレスが消えた <IPv4>（IPv4）`（warn）。bridge100（iPad の USB）の抜き差しで起きやすい |
-| (ii) 改名 | 元の名前で問うと、その NIC だけ答えない（改名後の名前なら答える） | `mdns: 名前がぶつかって改名した <元> → <新>（<RR>、<NIC>）`（warn） |
+| (b) XNU の巻き添え | IPv4 だけ、join の早い NIC から順に答えない（lo0 → en0 → …）。IPv6 は答える | その前に `mdns: アドレスが消えた <IPv4>（IPv4）`（warn）。bridge100（iPad の USB）の抜き差しで起きやすい。5 秒後に `mdns: Bonjour を作り直した`（warn）が出て戻る |
+| (ii) 改名 | 元の名前で問うと、その NIC だけ答えない（改名後の名前なら答える） | `mdns: 名前がぶつかって改名した <元> → <新>（<RR>、<NIC>）`（warn）。作り直しのあとにも同じ行が出る（probe し直して改名し直す） |
 
-- **戻し方:** いまはサーバを立て直すしかない（Mac 版のメニュー「再起動」、`server:restart`）。根を断つ直し（IPv4 の IpDel を受けたら ServiceDaemon を作り直す / mdns-sd で消えたアドレスで leave しない）は未決
+- **戻し方:** (b) はサーバが自分で作り直す（上の「Bonjour の作り直し」）。手で今すぐ作り直すなら `kill -USR1 <pid>`（ログに `SIGUSR1 を受けたので Bonjour を作り直す`）。
+  それでも戻らなければサーバを立て直す（Mac 版のメニュー「再起動」、`server:restart`）。mdns-sd 側の直し（消えたアドレスで leave しない）は上流に報告した（keepsimple1/mdns-sd#557）
 - **深く追うとき:** `RUST_LOG=info,mdns_sd=debug` で mdns-sd の中のログがそのまま出る（受けた packet ごとに出るので常駐には多すぎる。Mac 版では plist の EnvironmentVariables）
 - `get_metrics()` の定期の debug 出力は入れていない。上の 3 つは出来事で見分けられるため。要るなら間隔をここに書いてから足す
 
@@ -217,11 +239,16 @@ mise run ios:run         # ビルド → シミュレータへインストール
   次に起きたら、常駐のログ（`server:logs`）と時刻で突き合わせる
 - 2026-11-06 20:1x に Mac 版の常駐（pid 26369）で同じ形が生きたまま出た。IPv4 は en0 と lo0 が答えず bridge100 だけ答え、IPv6 は en0 と lo0 が答えた。
   (b) の形そのもの（(a) なら lo0 は塞がれず、en0 の IPv6 も塞がれる）。引き金は bridge100 の IPv4 が 2 回消えたこととみられるが、unified log が残っておらず時刻は不明
+- 2026-11-23 の実機確認で、A の前の常駐（pid 729）は iPad の USB を一度抜いただけで lo0 と en0 の IPv4 が両方答えなくなった（IPv6 は答える）。
+  system log では、13:56:25 に anri0・en9・bridge100 が同時に外れていた（13:52 に付いたもの）。mdns-sd は消えた NIC ごとに最後の IPv4 で抜けるので、
+  bridge100 のほかにも IPv4 を持つ NIC があれば、一度抜いただけで巻き添えが 2 つ出る（en9 / anri0 の IPv4 は外れた後で確かめられず、推定）。11/6 の「2 回」もこれだった見込み
 
 ## Status log
 
+- 2026-11-23: IPv4 の IpDel を受けたら Bonjour を作り直す（A、mako の GO）。`RebuildPlan`（5 秒静かになってから・作り直し同士は 30 秒・SIGUSR1 はすぐ）。
+  作り直しで記録が消えないことを別名で試した（goodbye の 2〜3 ms 後にアナウンス、`dns-sd -B` に Rmv 無し）。NIC ごとに直接問う `server:ask` を足した。
+  mdns-sd の leave の件は上流に報告（keepsimple1/mdns-sd#557）
 - 2026-11-23: club-unison 2.3.0 に上げた（ios lane の報告 3 件の修正入り）。`disconnect()` しても UDP ソケットが 1 本ずつ残っていたのが止まった（再現パッケージで 2.2.0: 5 回で 5 本 → 2.3.0: 0 本、macOS）。待ちが cancel に応じ、相手からの切断で `connectionEvents` に `.disconnected` が出る（`waitUntilDisconnected` が実物でも戻る）。iOS 実機での確認は未
-
 - 2026-11-06: mdns-sd の出来事をログに出す（G、mako の GO）。Advertiser が monitor() を受ける専用スレッドを持ち、IpAdd / IpDel / NameChange / Error / Announce を `mdns:` の行で出す
   （IPv4 の IpDel と NameChange と Error は warn、Respond は出さない）。「事故のときログで何を見るか」を足した
 - 2026-11-05: 守り（外のプロセスが待ち受けを握っていたら「開始」「再起動」を出さない）をこの Mac で実測。常駐を「停止」して端末と同じ `server:run`（pid 9028）を立てると、
