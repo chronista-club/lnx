@@ -162,6 +162,26 @@ mise run ios:run         # ビルド → シミュレータへインストール
 切り替わり戻ることを見る（サーバが居なければ skip。`mise run server:run` を立ててから `mise run ios:test`）。
 シミュレータの端末は `LNX_IOS_SIM` と `LNX_IOS_OS` で選ぶ（同名の端末が runtime ごとにあるため）。
 
+## 事故のときログで何を見るか
+
+「iPad が LNX を見つけない / 解決が時間切れ」のとき、サーバが LAN 側で名乗りに答えているかを、ログと直接の問い合わせで切り分ける。
+
+- **ログ:** 常駐（Mac 版のメニュー、`server:install`）は `~/Library/Logs/lnx-server.log`（`mise run server:logs`）。
+  mdns-sd の出来事を `mdns:` で始まる行で出す（`advertise::describe_event`）。立ち上がりに、名乗った NIC ごとの `mdns: 名乗った <名前>（<ホスト>:<NIC>）` が出る
+- **直接問う:** 同じ Mac の `dns-sd -L` / `-G` は mDNSResponder のキャッシュの見え方で、当てにならない。
+  NIC ごとに legacy unicast（エフェメラルな port から 224.0.0.251 / ff02::fb へ SRV を問う）で、IPv4 と IPv6 を別々に問う。
+  道具（`ask.py` / `ask6.py`）は今は `/tmp/lnx-mdns-diag` にあるだけ（残すならタスクにする）
+
+| 形 | NIC ごとに問った結果 | ログ |
+|---|---|---|
+| (a) ローカルネットワークの許可 | lo0 は答え、LAN 側（en0 など）は IPv4 も IPv6 も答えない | `mdns:` の出来事が無いまま黙る。常駐の初めての起動では、判定がつくまでの数秒だけ起きる |
+| (b) XNU の巻き添え | IPv4 だけ、join の早い NIC から順に答えない（lo0 → en0 → …）。IPv6 は答える | その前に `mdns: アドレスが消えた <IPv4>（IPv4）`（warn）。bridge100（iPad の USB）の抜き差しで起きやすい |
+| (ii) 改名 | 元の名前で問うと、その NIC だけ答えない（改名後の名前なら答える） | `mdns: 名前がぶつかって改名した <元> → <新>（<RR>、<NIC>）`（warn） |
+
+- **戻し方:** いまはサーバを立て直すしかない（Mac 版のメニュー「再起動」、`server:restart`）。根を断つ直し（IPv4 の IpDel を受けたら ServiceDaemon を作り直す / mdns-sd で消えたアドレスで leave しない）は未決
+- **深く追うとき:** `RUST_LOG=info,mdns_sd=debug` で mdns-sd の中のログがそのまま出る（受けた packet ごとに出るので常駐には多すぎる。Mac 版では plist の EnvironmentVariables）
+- `get_metrics()` の定期の debug 出力は入れていない。上の 3 つは出来事で見分けられるため。要るなら間隔をここに書いてから足す
+
 ## やってはいけない
 
 - **手元用の listener を `[::]` や LAN のアドレスに bind しない。** ペアリング URL（= pin する証明書）を誰にでも渡すことになる。`serve::loopback_only` が起動時に断る
@@ -197,9 +217,13 @@ mise run ios:run         # ビルド → シミュレータへインストール
   (a) 07:08 に VP と Claude のセッションが立ち上がり直し、サーバの許可の持ち主（親のアプリ）が消えた。常駐ならこの筋は起きない。
   (b) mdns-sd が消えたアドレスで multicast から抜け、XNU が別の NIC の membership を外す（カーネルの挙動は実験で確認済み）。
   次に起きたら、常駐のログ（`server:logs`）と時刻で突き合わせる
+- 2026-11-06 20:1x に Mac 版の常駐（pid 26369）で同じ形が生きたまま出た。IPv4 は en0 と lo0 が答えず bridge100 だけ答え、IPv6 は en0 と lo0 が答えた。
+  (b) の形そのもの（(a) なら lo0 は塞がれず、en0 の IPv6 も塞がれる）。引き金は bridge100 の IPv4 が 2 回消えたこととみられるが、unified log が残っておらず時刻は不明
 
 ## Status log
 
+- 2026-11-06: mdns-sd の出来事をログに出す（G、mako の GO）。Advertiser が monitor() を受ける専用スレッドを持ち、IpAdd / IpDel / NameChange / Error / Announce を `mdns:` の行で出す
+  （IPv4 の IpDel と NameChange と Error は warn、Respond は出さない）。「事故のときログで何を見るか」を足した
 - 2026-11-05: 守り（外のプロセスが待ち受けを握っていたら「開始」「再起動」を出さない）をこの Mac で実測。常駐を「停止」して端末と同じ `server:run`（pid 9028）を立てると、
   メニューは「lnx-server（pid 9028）が待ち受けを握っています」「端末の mise run server:run なら Ctrl-C で止めてから「開始」」になり、「開始」は出なかった。
   止めてから「開始」で常駐に戻した。そのあいだ lnx-mac を名乗ったのは常に一つ。アプリが前面にいるとステータス項目は Accessibility に出ない（System Events の最後のメニューバーがアプリ本体のものになる）
