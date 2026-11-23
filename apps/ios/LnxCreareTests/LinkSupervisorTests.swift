@@ -412,6 +412,47 @@ struct LinkSupervisorTests {
         #expect(!once.needsFreshAddress)
     }
 
+    @Test("つながっている間は、同じサーバの別のアドレスに張り替えない（Wi-Fi と USB を行き来しない。2026-11-23 の実機）")
+    func noSwitchToSameServerWhileConnected() async throws {
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        pins.save(Data([2]), for: "lnx-pi")
+        let supervisor = makeSupervisor(FakeTransport(), pins: pins)
+        supervisor.start(target: .host("192.168.68.117", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually { supervisor.state == .connected(FakeSession.welcome) }
+
+        #expect(!supervisor.shouldSwitch(to: .host("192.168.234.1", port: 12730, name: "lnx-mac")))
+        #expect(!supervisor.shouldSwitch(to: .host("192.168.68.117", port: 12730, name: "lnx-mac")))
+        // 別のサーバへは今までどおり
+        #expect(supervisor.shouldSwitch(to: .host("192.168.68.20", port: 12730, name: "lnx-pi")))
+    }
+
+    @Test("つなぎ直し中は、同じサーバの別のアドレスに張り替える（経路が変わった）")
+    func switchToSameServerWhileReconnecting() async throws {
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = LinkSupervisor(
+            transport: FakeTransport(failures: 100),
+            pins: pins,
+            backoff: BackoffPolicy(base: .seconds(30), max: .seconds(30))
+        )
+        supervisor.start(target: .host("192.168.234.1", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+        try await eventually {
+            if case .reconnecting = supervisor.state { return true }
+            return false
+        }
+        #expect(supervisor.shouldSwitch(to: .host("192.168.68.117", port: 12730, name: "lnx-mac")))
+        #expect(!supervisor.shouldSwitch(to: .host("192.168.234.1", port: 12730, name: "lnx-mac")))
+    }
+
+    @Test("まだ何にもつないでいなければ、張り替える")
+    func switchWhenNoTarget() {
+        let supervisor = makeSupervisor(FakeTransport())
+        #expect(supervisor.shouldSwitch(to: .localDaemon(port: 1)))
+    }
+
     @Test("stop で idle に戻り、以後つなぎ直さない")
     func stopGoesIdle() async throws {
         let transport = FakeTransport()
