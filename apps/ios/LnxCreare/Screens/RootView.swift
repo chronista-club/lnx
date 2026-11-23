@@ -51,6 +51,8 @@ struct RootView: View {
     private func connectWhenFound() async {
         finder.start()
         while !Task.isCancelled {
+            // LAN の先へのつなぎ直しが続けて失敗していたら、アドレスを解き直してもらう（経路が変わった恐れ）
+            if supervisor.needsFreshAddress { finder.refresh() }
             if let target = finder.preferred(pins: pins, current: supervisor.target) {
                 if supervisor.target != target {
                     supervisor.start(target: target)

@@ -358,6 +358,38 @@ struct LinkSupervisorTests {
         #expect(supervisor.heartbeat == nil)
     }
 
+    @Test("LAN の先へのつなぎ直しが 2 回続けて失敗したら、アドレスを解き直してほしいと言う")
+    func needsFreshAddressAfterRepeatedFailures() async throws {
+        let transport = FakeTransport(failures: 100)
+        let pins = MemoryPinStore()
+        pins.save(Data([1]), for: "lnx-mac")
+        let supervisor = makeSupervisor(transport, pins: pins)
+        supervisor.start(target: .host("192.168.234.1", port: 12730, name: "lnx-mac"))
+        defer { supervisor.stop() }
+
+        #expect(!supervisor.needsFreshAddress)
+        try await eventually { supervisor.needsFreshAddress }
+        #expect(await transport.connectCount >= 2)
+    }
+
+    @Test("同じ機械の先や、つながっているときは解き直しを求めない")
+    func noFreshAddressForLocalOrConnected() async throws {
+        let failing = makeSupervisor(FakeTransport(failures: 100))
+        failing.start(target: .localDaemon(port: 1))
+        defer { failing.stop() }
+        try await eventually {
+            if case .reconnecting(let attempt, _) = failing.state { return attempt >= 3 }
+            return false
+        }
+        #expect(!failing.needsFreshAddress)
+
+        let ok = makeSupervisor(FakeTransport())
+        ok.start(target: .localDaemon(port: 1))
+        defer { ok.stop() }
+        try await eventually { ok.state == .connected(FakeSession.welcome) }
+        #expect(!ok.needsFreshAddress)
+    }
+
     @Test("stop で idle に戻り、以後つなぎ直さない")
     func stopGoesIdle() async throws {
         let transport = FakeTransport()

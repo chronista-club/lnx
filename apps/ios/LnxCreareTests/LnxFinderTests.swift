@@ -88,4 +88,18 @@ struct LnxFinderTests {
         #expect(!ledger.contains(svcA))
         #expect(ledger.contains(svcB))
     }
+
+    // MARK: - 解き直し
+
+    @Test("Bonjour が変わったら、解けている先も解き直す（同じ名前のまま IP だけ変わる。USB を抜いた実例 2026-11-23）")
+    func reResolvesResolvedOnChange() {
+        // svcA は解決済み（帳簿にある）、svcB は解決中
+        let toResolve = LnxFinder.endpointsToResolve(advertised: [svcA, svcB], resolving: [svcB])
+        #expect(toResolve == [svcA])
+    }
+
+    @Test("解決中の先は二重に解かない")
+    func doesNotDoubleResolve() {
+        #expect(LnxFinder.endpointsToResolve(advertised: [svcA], resolving: [svcA]).isEmpty)
+    }
 }

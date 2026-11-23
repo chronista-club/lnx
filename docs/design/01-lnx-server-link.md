@@ -47,6 +47,7 @@ graph LR
 | iPad 側の接続 | **club-unison の Swift client**（Rust / UniFFI は使わない） | SDK があり配布実績もある。Rust コアは音の段で |
 | 再接続 | **アプリが持つ**（Unison の client は意図的に auto-reconnect しない） | 倍々の間（0.5 秒 → 上限 10 秒）。心拍が止まったら切れたとみなす |
 | 信頼 | サーバは保存した自己署名（起動ごとに作り直さない）。アプリは同じ機械（localhost）なら `skipVerify`、LAN のサーバは **QR でペアリング**した leaf 証明書に `TrustPolicy.pinned` | TOFU（初回を信頼）は club-unison に証明書を取り出す口が無い。ビルド時の同梱はサーバが増えると破綻する（裁定 2026-11-04、`mem_1Cgghdxbp4bGRPyQccDFDn`） |
+| 経路が変わったとき | Bonjour の結果が変わるたび、広告中の先を**全部解き直す**（解けている先も）。LAN の先へのつなぎ直しが 2 回続けて失敗したら、Finder に解き直しを頼む（`needsFreshAddress` → `refresh()`、3 秒に一度まで）。前のアドレスは新しいのが解けるまで残す | iPad の USB を抜いたら、Bonjour の名前は残ったまま USB 側のアドレスだけが消え、アプリは消えたアドレスに 21 回つなぎ続けた（2026-11-23 の実機） |
 | 音 | この区切りでは出さない | lnx-engine の接続は次 |
 
 ### 「常時接続」の iOS での意味
@@ -158,7 +159,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   無音の見張りは**最初の心拍が来てから**数え始める（`unison mock` のように心拍を出さない相手を切らない）
 - `BackoffPolicy`: 0.5 秒から倍々、上限 10 秒
 - `LnxFinder`: 実機は Bonjour（`NWBrowser` の `.bonjourWithTXTRecord` → UDP の "接続" で host:port に解く）。見つけた先は `.host(address, port:, name: TXT の name、無ければインスタンス名)`。
-  解けた先は service ごとの帳簿（`FoundTargets`）に載せ、Bonjour から消えた service の先は忘れる。解決が 5 秒で決まらない・失敗したら、広告が残っている間は IPv4 / IPv6 を交互に試し直す。browser が失敗したら作り直す。
+  解けた先は service ごとの帳簿（`FoundTargets`）に載せ、Bonjour から消えた service の先は忘れる。browse の結果が変わるたびに、解けている先も解き直す（経路が変わるとアドレスが変わる）。解決が 5 秒で決まらない・失敗したら、広告が残っている間は IPv4 / IPv6 を交互に試し直す。browser が失敗したら作り直す。
   実機はペアリング済みの先を優先し（LAN に別の `_lnx._udp` が居ても縛られない）、無ければ先頭（IPv4 が前）。
   シミュレータと Mac は常に `[::1]:12730`（カメラで QR を読めず、同じ機械のサーバで足りる。Mac から別の LNX へつなぐのは次）
 - `ScreenRoute.resolve(state, selection)`: つながるまで `connecting`、つながれば `lnxHome`、選べば `remote(server)`、ペアリングが要れば `pairing(serverName)`
@@ -226,7 +227,6 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 - 経由型（iPad は LNX と 1 本だけ、LNX が中継）は Unison の Hub 層の仕事。LNX で先行実装してよい
 - registry の生きた供給源（VP daemon の `registry.list`、Ladyland の fieldd）、Pi 配置、音（lnx-engine）は次の区切り
-- サーバが同じ service のまま IP だけ変えた（browse の変化が来ない）ときは、解き直さない。つなぎ直しが続くときに解き直す道は次
 - QR のカメラ読み取りは iPad（iPad13,16）の実機で確認済み（2026-11-04）。iPhone は未
 - Bonjour 探索は iPhone 16 Pro と iPad（iPad13,16）の実機で確認済み（2026-11-04）。解決は IPv4 を優先し、だめなら IPv6（scope つき）
 - macOS のローカルネットワークの許可は、端末から立てたサーバでは端末のアプリ（VP など）に、常駐（LaunchAgent）では lnx-server 自身に掛かる。
@@ -245,6 +245,7 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 ## Status log
 
+- 2026-11-23: iPad 実機で club-unison 2.3.0 を確かめた（USB を抜く）。切断には約 6 秒で気づいたが、Bonjour の名前が残ったままアドレスだけ消えたのを解き直さず、消えた USB 側のアドレスに 21 回つなぎ続けた。Bonjour の変化と 2 回続けての失敗で解き直すように直し、切断の理由（心拍の流れの終わり / `.disconnected` / 心拍の無音）を足跡に出す
 - 2026-11-23: IPv4 の IpDel を受けたら Bonjour を作り直す（A、mako の GO）。`RebuildPlan`（5 秒静かになってから・作り直し同士は 30 秒・SIGUSR1 はすぐ）。
   作り直しで記録が消えないことを別名で試した（goodbye の 2〜3 ms 後にアナウンス、`dns-sd -B` に Rmv 無し）。NIC ごとに直接問う `server:ask` を足した。
   mdns-sd の leave の件は上流に報告（keepsimple1/mdns-sd#557）
