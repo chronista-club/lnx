@@ -1,4 +1,4 @@
-# 01. LNX サーバと lnx creare の常時接続
+# 01. lnx サーバと lnx creare の常時接続
 
 > **Status**: Draft（Status log 参照）
 > **Related**: [spec 01](../spec/01-core-concept.md)（場の同期）、[spec 02](../spec/02-creare.md)（統合のハブ）、[design 02](02-architecture.md)（全体の構成）、`mem_1Cgfoo741LiQbchNsvJrY6`（起票・裁定）

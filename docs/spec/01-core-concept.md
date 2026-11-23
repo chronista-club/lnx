@@ -1,7 +1,7 @@
 # 01. lnx の本質 — すべての人のための creare
 
 > **Status**: Active（Status log 参照）
-> **Related**: [spec 02](02-creare.md)（lnx creare — 入り口）、[design 01](../design/01-lnx-server-link.md)（場の同期の最初の実装）、[design 02](../design/02-architecture.md)（全体の構成）
+> **Related**: [spec 02](02-creare.md)（lnx creare — 入り口）、[design 01](../design/01-lnx-server-link.md)（場の同期の最初の実装）、[design 02](../design/02-architecture.md)（全体の構成）、`mem_1ChKHcAuXn7Yfo9mtEoTpm`（名前と表記の起票・裁定）
 > **対象**: プロジェクト全体（`crates/`, `apps/`）
 
 ## Abstract
@@ -15,12 +15,14 @@ Audio / Visual の**リアルタイム表現**のためのツールで、モッ�
 ## 名前と表記
 
 - **lnx（リンクス）。** 読みは links（つなぐもの）に通じ、今の役割に合う。lnx creare が lnx サーバに常時つながり、
-  そこから場の同期や、ほかの機器（VP daemon、Ladyland）への経路が伸びる（design 01 / 02）
+  そこから場の同期や、ほかの機器（VP daemon、Ladyland）への経路を伸ばしていく（今つながっているのは creare と server の間だけ。design 01 / 02）
 - **画面と文書では小文字の lnx と書く。** 大文字だけの「LNX」は Linux と読まれやすいので、単独では使わない（裁定 2026-11-23、起票 `mem_1ChKHcAuXn7Yfo9mtEoTpm`）。
   文書の初出には読みを添える（lnx（リンクス））。既にある文書の本文の「LNX」はまとめて置き換えず、見出しと初出から直す。
   アプリの画面の文字列と権限の説明文は、Mac のテスト `NamingTests`（`mise run mac:test`）が見張る
 - **識別子は変えない。** Bonjour の種類 `_lnx._udp`、ペアリング URL の `lnx://`、bundle id `club.chronista.lnx.creare`、
-  証明書と設定の置き場・launchd のラベル `club.chronista.lnx-server`、crate 名 `lnx-*`、環境変数 `LNX_*`、型名（`LnxCreare`、`LnxFinder` など）。
+  Keychain の pin の service `club.chronista.lnx.creare.pin`、Unison の namespace `club.chronista.lnx`、
+  証明書と設定の置き場・launchd のラベル `club.chronista.lnx-server`、crate 名 `lnx-*`、環境変数 `LNX_*`、
+  ターゲット名 `LnxCreare`（`LnxCreare.app` の名前）、型名（`LnxFinder`、`LnxDefaults` など）。
   変えると、ペアリングのし直しや常駐の入れ直しになる
 - 標語 **Low-Latency, High-Quality, Human-Friendly** は名前の説明ではなく、音と映像の質を語る言葉として残す
 
@@ -165,10 +167,10 @@ XR 空間での没入型パフォーマンス）、個人的な探求（自分�
 
 ## Status log
 
-- 2026-11-23: 名前の見せ方を決めた（裁定 mako「いいね。GO」、idea `mem_1ChKHPQeQX8MGazuQCo4gP`）。冒頭で「lnx（リンクス）は、機器と場をつなぐもの」と定義し、
-  「名前と表記」を足した。画面の大文字「LNX」単独は「lnx」に（Mac 版のメニュー、接続・ペアリングの画面、権限の説明文）。識別子は変えない
 - 2025-11-05: `spec/01-core-concept/SPEC.md` v1.0.0（status: stable）。「すべての人のための creare ツール」を定義、
   LNX-visualizer → LNX-creare のリネームを反映、creare の語源を明記
 - 2026-11-04: SDG の骨格（Abstract / Motivation / Scope / Requirements）で `docs/spec/01-core-concept.md` に移設。
   stable → Active。内容は保ち、frontmatter と未作成の spec（`02-architecture/real-time.md` ほか）への参照を落とした。
   全体像の図を簡素化し、場の同期の最初の実装である lnx-server を足した
+- 2026-11-23: 名前の見せ方を決めた（裁定 mako「いいね。GO」、idea `mem_1ChKHPQeQX8MGazuQCo4gP`）。冒頭で「lnx（リンクス）は、機器と場をつなぐもの」と定義し、
+  「名前と表記」を足した。画面の大文字「LNX」単独は「lnx」に（Mac 版のメニュー、接続・ペアリングの画面、権限の説明文）。識別子は変えない

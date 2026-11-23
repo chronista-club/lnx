@@ -1,4 +1,4 @@
-# 02. LNX の構成 — Unison の上に載せる
+# 02. lnx の構成 — Unison の上に載せる
 
 > **Status**: Draft（Status log 参照）
 > **Related**: [spec 01](../spec/01-core-concept.md)（場の同期）、[spec 02](../spec/02-creare.md)（統合のハブ、UI の方針）、[design 01](01-lnx-server-link.md)（最初の実装）、[archive/ARCHITECTURE.md](../archive/ARCHITECTURE.md)（前身、Deprecated）

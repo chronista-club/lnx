@@ -31,7 +31,16 @@ struct NamingTests {
         text.range(of: #"(?<![A-Za-z0-9_])LNX(?![A-Za-z0-9_])"#, options: .regularExpression) != nil
     }
 
-    @Test("画面に出る文字列（アプリのソースの文字列リテラル）に大文字の LNX 単独が無い")
+    /// Swift のソースで、大文字の LNX 単独を含む行の番号（1 始まり）。コメントの行（// と ///）は画面に出ないので見ない。
+    /// 文字列リテラルを抜き出さずに行全体を見る（補間の中の文字列や複数行の文字列も拾える。識別子は Lnx・LNX_ で外れる）
+    static func violations(inSwiftSource source: String) -> [Int] {
+        source.split(separator: "\n", omittingEmptySubsequences: false).enumerated().compactMap { index, line in
+            let isComment = line.trimmingCharacters(in: .whitespaces).hasPrefix("//")
+            return !isComment && standaloneLNX(in: String(line)) ? index + 1 : nil
+        }
+    }
+
+    @Test("画面に出る文字列（アプリのソースのコメント以外）に大文字の LNX 単独が無い")
     func sourceStrings() throws {
         let root = Self.appsIOS.appending(path: "LnxCreare")
         let files = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
@@ -40,13 +49,8 @@ struct NamingTests {
         #expect(!files.isEmpty)
         var found: [String] = []
         for file in files {
-            for (index, line) in try String(contentsOf: file, encoding: .utf8).split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                // コメントは画面に出ない
-                let code = line.trimmingCharacters(in: .whitespaces).hasPrefix("//") ? "" : String(line)
-                for literal in code.matches(of: #/"(?:[^"\\]|\\.)*"/#) where Self.standaloneLNX(in: String(literal.output)) {
-                    found.append("\(file.lastPathComponent):\(index + 1) \(literal.output)")
-                }
-            }
+            let source = try String(contentsOf: file, encoding: .utf8)
+            found += Self.violations(inSwiftSource: source).map { "\(file.lastPathComponent):\($0)" }
         }
         #expect(found.isEmpty, "\(found.joined(separator: "\n"))")
     }
@@ -61,13 +65,33 @@ struct NamingTests {
         #expect(found.isEmpty, "\(found.joined(separator: "\n"))")
     }
 
-    @Test("識別子は判定から外れる（型名・Bonjour の種類・URL・bundle id）")
+    @Test("識別子は判定から外れる（型名・Bonjour の種類・URL・bundle id、大文字でも前後に英数字や _ が付くもの）")
     func identifiersAreNotFlagged() {
         #expect(!Self.standaloneLNX(in: "LnxDefaults"))
         #expect(!Self.standaloneLNX(in: "_lnx._udp"))
         #expect(!Self.standaloneLNX(in: "lnx://pair?v=1"))
         #expect(!Self.standaloneLNX(in: "club.chronista.lnx.creare"))
+        // 前後を見る条件を試す（ただの "LNX" の検索ならここで引っかかる）
+        #expect(!Self.standaloneLNX(in: "LNX_SERVER_ADDR"))
+        #expect(!Self.standaloneLNX(in: "LNXKit"))
+        #expect(!Self.standaloneLNX(in: "MyLNX"))
+        #expect(!Self.standaloneLNX(in: "LNX2"))
         #expect(Self.standaloneLNX(in: "LNX を探しています"))
         #expect(Self.standaloneLNX(in: "この Mac の LNX（手元用）"))
+    }
+
+    @Test("ソースの走査は、補間の中の文字列と複数行の文字列も拾い、コメントは見ない")
+    func scansWholeLines() {
+        let source = #"""
+            Text("接続先: \(name ?? "LNX")")
+            let message = """
+                LNX を探しています
+                """
+            // LNX の画面（コメントは画面に出ない）
+            /// LNX サーバの見出し
+            let defaults = LnxDefaults.port
+            let env = "LNX_SERVER_ADDR"
+            """#
+        #expect(Self.violations(inSwiftSource: source) == [1, 3])
     }
 }

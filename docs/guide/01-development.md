@@ -58,7 +58,7 @@ cargo run -p lnx-cli -- --help
 cargo run -p lnx-cli -- status
 ```
 
-### LNX サーバ
+### lnx サーバ
 
 ```bash
 mise run server:run                               # 既定: example.toml の一覧つき
