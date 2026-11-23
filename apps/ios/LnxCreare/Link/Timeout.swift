@@ -1,11 +1,11 @@
 import Foundation
 import Synchronization
 
-/// 期限つき await（超えたら LinkTimeout）。
+/// 期限つき await（超えたら LinkTimeout）。各呼び出しに、club-unison の既定（request 30 秒）より短い期限を付ける。
 ///
-/// club-unison の待ちは cancel に応じない（continuation を待つだけ）。`withThrowingTaskGroup` で組むと、
-/// 期限が来ても子が終わるまで戻れず、設計の「timeout なしで await しない」が崩れる（deep レビュー P3-1）。
-/// だから処理と期限を構造化しない Task で競わせ、先に終わった方で一度だけ戻る。外からの cancel でもすぐ戻る。
+/// 処理と期限を構造化しない Task で競わせ、先に終わった方で一度だけ戻る。外からの cancel でもすぐ戻る。
+/// （club-unison 2.2 までは待ちが cancel に応じず、`withThrowingTaskGroup` だと期限が来ても子が終わるまで
+/// 戻れなかった（deep レビュー P3-1）。2.3.0 は応じるが、cancel に応じない処理でも期限を守れるこの形を残す）
 /// 戻ったあとに処理が遅れて成功したら、その値を `onLateSuccess` に渡す（接続を閉じ忘れない）
 func withTimeout<T: Sendable>(
     seconds: Double,
