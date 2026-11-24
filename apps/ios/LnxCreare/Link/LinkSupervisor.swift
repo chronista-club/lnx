@@ -91,6 +91,16 @@ final class LinkSupervisor {
         return attempt >= 2
     }
 
+    /// 見つかった先へ張り替えるか。つながっていて健全な間は、同じサーバ（名前が同じ）の別のアドレスには張り替えない。
+    /// Wi-Fi と USB の両方があると、Bonjour の変化で解き直すたびに解けるアドレスが入れ替わり、つながったまま
+    /// 経路を行き来していた（2026-11-23 の実機、4 秒で 2 回）。張り替えるのはつなぎ直しに入ってから
+    func shouldSwitch(to candidate: LinkTarget) -> Bool {
+        guard let target else { return true }
+        if candidate == target { return false }
+        if case .connected = state, LnxFinder.isSameServer(candidate, target) { return false }
+        return true
+    }
+
     /// ペアリングを解除できるか（今の先が LAN のサーバ）
     var canUnpair: Bool {
         if case .host(_, _, _?) = target { return true }

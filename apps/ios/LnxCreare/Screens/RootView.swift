@@ -54,7 +54,7 @@ struct RootView: View {
             // LAN の先へのつなぎ直しが続けて失敗していたら、アドレスを解き直してもらう（経路が変わった恐れ）
             if supervisor.needsFreshAddress { finder.refresh() }
             if let target = finder.preferred(pins: pins, current: supervisor.target) {
-                if supervisor.target != target {
+                if supervisor.shouldSwitch(to: target) {
                     supervisor.start(target: target)
                 } else if supervisor.state == .idle {
                     // 窓が消えて戻った（onDisappear で stop 済み）。先は同じでも、つなぎ直す
