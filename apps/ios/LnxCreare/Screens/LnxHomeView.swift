@@ -106,10 +106,13 @@ struct LnxHomeView: View {
         return "ペアリングを解除しますか"
     }
 
-    private var heartbeatLine: String {
-        guard let beat = supervisor.heartbeat else { return "心拍を待っています" }
+    private var heartbeatLine: String { Self.heartbeatText(supervisor.heartbeat) }
+
+    /// heartbeat の表記。訳語の「心拍」ではなく、見慣れた heartbeat と書く（mako の依頼 2026-11-24）
+    static func heartbeatText(_ beat: Heartbeat?) -> String {
+        guard let beat else { return "heartbeat を待っています" }
         let seconds = beat.uptimeMs / 1000
-        return "心拍 #\(beat.seq) · 起動から \(seconds / 60) 分 \(seconds % 60) 秒"
+        return "heartbeat #\(beat.seq) · 起動から \(seconds / 60) 分 \(seconds % 60) 秒"
     }
 
     @ViewBuilder
