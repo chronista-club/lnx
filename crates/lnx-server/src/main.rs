@@ -1,22 +1,32 @@
-//! lnx-server — 起動して待ち受ける（常駐プロセスの本体）
+//! lnx-server — 起動して待ち受ける（常駐 Signal Hub + Router の本体）
 use std::io::IsTerminal;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
 use anyhow::Result;
 use clap::Parser;
 use tokio::signal::unix::{SignalKind, signal};
 use tracing::{info, warn};
 
+use lnx_protocol::Broker;
 use lnx_server::advertise::Advertiser;
 use lnx_server::config::{self, ServerConfig};
+use lnx_server::gear::{
+    inventory::PROFILES,
+    runtime::Runtime,
+    service::Service as GearService,
+    settings::{SettingsStore, atomic_write},
+};
 use lnx_server::identity::{self, ServerIdentity};
 use lnx_server::{DEFAULT_LOCAL_ADDR, DEFAULT_PORT, log_file, serve};
 
 #[derive(Parser, Debug)]
 #[command(
     name = "lnx-server",
-    about = "LNX サーバ — lnx creare が常時つなぐ窓口（Unison / QUIC）"
+    about = "lnx サーバ — Signal Hub + Router（Unison / QUIC、Gear 管理）"
 )]
 struct Cli {
     /// 待ち受けアドレス（UDP / QUIC）
@@ -32,7 +42,7 @@ struct Cli {
     /// Bonjour で名乗らない
     #[arg(long)]
     no_mdns: bool,
-    /// 証明書と鍵の置き場（既定は ~/Library/Application Support/club.chronista.lnx-server）。
+    /// 証明書と設定・endpoint.json の置き場（既定は ~/Library/Application Support/club.chronista.lnx-server）。
     /// 消すと次の起動で作り直し、アプリはペアリングし直しになる
     #[arg(long, env = "LNX_SERVER_STATE")]
     state_dir: Option<PathBuf>,
@@ -82,7 +92,6 @@ async fn main() -> Result<()> {
     let mut cfg = match &cli.config {
         Some(path) => ServerConfig::load(path)?,
         None => {
-            // 作るときの名乗りは、--name があればそれ（一度 --name lnx-mac で立てたら、あとで外しても lnx-mac のまま）
             let default = || {
                 cli.name
                     .clone()
@@ -145,8 +154,97 @@ async fn main() -> Result<()> {
     let bound = listening.local_addr();
     info!("{bound} で待ち受け");
 
-    // 名乗りは両方の待ち受けを確保してから。確保できずに落ちるプロセスが同じ名前で名乗ると、落ちるときの goodbye で
-    // 動いている本物の記録を LAN から消す（KeepAlive の下では 10 秒おきに繰り返す。design 01）
+    // Gear Runtime（どのアプリがどの Gear を使うか）を立ち上げ、state_dir に endpoint.json を書く
+    lnx_server::gear::trace::refresh(&state_dir);
+    let mut broker = Broker::new(uuid::Uuid::new_v4().to_string());
+    for (profile_id, gear_name) in PROFILES {
+        broker.add_gear(profile_id, profile_id, false);
+        broker.gears.get_mut(*profile_id).expect("registered").name = (*gear_name).into();
+    }
+    let gear_runtime = Runtime::new(broker, SettingsStore::new(&state_dir))?;
+    let gear_service = GearService::start(gear_runtime).await?;
+    atomic_write(
+        &state_dir,
+        "endpoint.json",
+        &serde_json::to_vec_pretty(&gear_service.endpoint)?,
+    )?;
+    info!(
+        "Gear Hub（loopback）: 127.0.0.1:{} / [::1]:{}",
+        gear_service.endpoint.port, gear_service.endpoint.port
+    );
+
+    let running = Arc::new(AtomicBool::new(true));
+    let worker_running = running.clone();
+    let shared = gear_service.runtime.clone();
+    let trace_dir = state_dir.clone();
+    #[cfg(target_os = "macos")]
+    {
+        let setups = gear_service.runtime.clone();
+        let setup_running = running.clone();
+        let backup_dir = state_dir.join("roto-backup");
+        std::thread::Builder::new()
+            .name("roto-setup".into())
+            .spawn(move || {
+                while setup_running.load(Ordering::Acquire) {
+                    let job = setups
+                        .lock()
+                        .expect("runtime mutex poisoned")
+                        .next_setup_job();
+                    if let Some(job) = job {
+                        use lnx_server::gear::runtime::SetupAction;
+                        let result = match &job.action {
+                            SetupAction::Select => {
+                                lnx_server::gear::roto_admin::select_setup(job.setup)
+                            }
+                            SetupAction::Apply(desired) => lnx_server::gear::roto_admin::apply_setup(
+                                job.setup,
+                                desired,
+                                &backup_dir,
+                            )
+                            .map(|a| {
+                                info!(
+                                    "{}: setup {} written: {} op(s), port open {} ms, {} requests, backup {}",
+                                    job.gear_id,
+                                    job.setup,
+                                    a.ops,
+                                    a.port_open_ms,
+                                    a.requests,
+                                    a.backup.display()
+                                );
+                            }),
+                        }
+                        .map_err(|e| e.to_string());
+                        setups
+                            .lock()
+                            .expect("runtime mutex poisoned")
+                            .finish_setup_job(&job, result);
+                    } else {
+                        std::thread::sleep(std::time::Duration::from_millis(50));
+                    }
+                }
+            })?;
+    }
+    let worker = std::thread::spawn(move || {
+        #[cfg(target_os = "macos")]
+        {
+            let mut native = lnx_server::gear::native::NativeRuntime::new(shared);
+            let mut ticks: u32 = 0;
+            while worker_running.load(Ordering::Acquire) {
+                native.poll();
+                ticks = ticks.wrapping_add(1);
+                if ticks.is_multiple_of(20) {
+                    lnx_server::gear::trace::refresh(&trace_dir);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = (worker_running, shared, trace_dir);
+        }
+    });
+
+    // 名乗りは待ち受けを確保してから
     let advertiser = if cli.no_mdns {
         None
     } else {
@@ -159,8 +257,7 @@ async fn main() -> Result<()> {
         }
     };
 
-    // ここで待つ（常駐の本体）。launchd（bootout / unregister / kickstart -k）は SIGTERM、端末の Ctrl-C は SIGINT で止める。
-    // どちらも畳んで抜け、Advertiser の drop で Bonjour の goodbye を出す（落ちると幽霊が残る）
+    // 常駐の本体
     let mut watch = tokio::time::interval(LISTEN_WATCH);
     let signal = loop {
         tokio::select! {
@@ -176,6 +273,12 @@ async fn main() -> Result<()> {
             _ = watch.tick() => if listening.is_finished() { break None },
         }
     };
+
+    running.store(false, Ordering::Release);
+    let _ = tokio::task::spawn_blocking(move || worker.join()).await;
+    let _ = gear_service.shutdown().await;
+    let _ = std::fs::remove_file(state_dir.join("endpoint.json"));
+
     match signal {
         Some(signal) => {
             info!("{signal} を受けたので止める");
@@ -185,8 +288,6 @@ async fn main() -> Result<()> {
                 Err(_) => warn!("待ち受けを {SHUTDOWN_WAIT:?} で畳めない（そのまま抜ける）"),
             }
         }
-        // 待ち受けが自分で終わった（endpoint の driver が受信のエラーで落ちた等）。club-unison はこのとき Ok を返すので、
-        // 結果に関わらず非 0 で抜ける。exit 0 だと Mac 版の KeepAlive = { SuccessfulExit = false } が立て直さない
         None => {
             let result = listening.shutdown().await;
             anyhow::bail!(
@@ -203,8 +304,7 @@ const LISTEN_WATCH: std::time::Duration = std::time::Duration::from_secs(1);
 /// 止める合図のあと、待ち受けを畳むのを待つ上限（launchd の止める待ちより十分短く）
 const SHUTDOWN_WAIT: std::time::Duration = std::time::Duration::from_secs(2);
 
-/// この機械の名前（既定の名乗りの元）。macOS は LocalHostName（Bonjour の名前で、ネットワークで変わらない）、
-/// 取れなければ hostname
+/// この機械の名前（既定の名乗りの元）
 fn local_host_name() -> Option<String> {
     #[cfg(target_os = "macos")]
     if let Ok(out) = std::process::Command::new("scutil")
