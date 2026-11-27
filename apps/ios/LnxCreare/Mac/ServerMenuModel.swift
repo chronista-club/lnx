@@ -43,14 +43,60 @@ final class ServerMenuModel {
     private(set) var phase: ServerPhase = .off
     private(set) var lastError: String?
     private(set) var busy = false
+    private(set) var gearRows: [GearRow] = []
+    private(set) var gearSummary = GearSummary(present: 0, releasingStuck: 0, errors: 0)
+    private(set) var gearServiceVersion: String?
+    private(set) var tracing = GearTrace.isOn()
 
     @ObservationIgnored private let residency: any ServerResidency
+    @ObservationIgnored private let gearProbe: any GearProbing
     @ObservationIgnored private let pause: @MainActor (Duration) async -> Void
     @ObservationIgnored private var watching: Task<Void, Never>?
 
-    init(residency: any ServerResidency, pause: @escaping @MainActor (Duration) async -> Void = { try? await Task.sleep(for: $0) }) {
+    init(
+        residency: any ServerResidency,
+        gearProbe: any GearProbing = NoopGearProbe(),
+        pause: @escaping @MainActor (Duration) async -> Void = { try? await Task.sleep(for: $0) }
+    ) {
         self.residency = residency
+        self.gearProbe = gearProbe
         self.pause = pause
+    }
+
+    var gearSummaryLine: String? {
+        guard phase.isRunning else { return nil }
+        var parts = ["Gear: \(gearSummary.present) 台接続"]
+        if gearSummary.errors > 0 {
+            parts.append("エラー \(gearSummary.errors) 件")
+        }
+        if gearSummary.releasingStuck > 0 {
+            parts.append("引き継ぎ待ち \(gearSummary.releasingStuck) 件")
+        }
+        return parts.joined(separator: " / ")
+    }
+
+    func startTrace() {
+        do {
+            try GearTrace.start()
+            tracing = GearTrace.isOn()
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func stopTrace() {
+        do {
+            try GearTrace.stop()
+            tracing = GearTrace.isOn()
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func closeProbe() async {
+        await gearProbe.close()
     }
 
     /// アイコンが今を表すよう、見張り続ける（launchctl print を数秒おきに。常駐が走っていないときは lsof も）
@@ -74,6 +120,18 @@ final class ServerMenuModel {
         phase = ServerPhase.resolve(
             registration: registration, job: job, legacyInstalled: residency.legacyInstalled(), listeners: listeners
         )
+        tracing = GearTrace.isOn()
+        if phase.isRunning {
+            let probed = await gearProbe.probe()
+            gearRows = gearStatusRows(probed.gears)
+            gearSummary = probed.summary
+            gearServiceVersion = probed.serviceVersion
+        } else {
+            await gearProbe.close()
+            gearRows = []
+            gearSummary = GearSummary(present: 0, releasingStuck: 0, errors: 0)
+            gearServiceVersion = nil
+        }
     }
 
     func start() async {

@@ -114,6 +114,9 @@ Mac 版 lnx creare は lnx-server を `.app` に同梱し、メニューバー�
 | 開始 | `SMAppService.agent(plistName:).register()`。すぐ立ち上がり、ログイン時にも立ち上がる。「システム設定 › 一般 › ログイン項目」に lnx creare の名前で載る。launchd の外のプロセス（端末の `server:run` など）が 12730 / 12731 を握っていれば出さずに案内する（「再起動」も同じ。握られたまま常駐させると KeepAlive で落ち続ける） |
 | 停止 | `unregister()`。launchd が SIGTERM を送り、サーバは goodbye を出して畳む。ログイン時にも立ち上がらない |
 | 再起動 | 解除 → 前のプロセスが launchd から消えるのを待つ（最大 5 秒）→ 登録。同梱の lnx-server を作り直したあとはこれで入れ替える（SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある）） |
+| Gear ステータスを開く | `endpoint.json` から `gear` channel に接続し、認識されているすべての Gear（メーカー・モデル・担当アプリ・握っているアプリ・phase・SETUP 番号や注意）を表で一覧する窓を開く |
+| ログとトレースを開く | `~/Library/Logs/lnx-server.log` を追尾する窓を開く。「流れ」（通常の info / warn ログ）と「MIDI トレース」（向き・Gear・app・判定・種類・バイト列の表）の 2 タブで絞り込み・追従・消去ができる |
+| MIDI トレースを開始 / 止める | `~/Library/Application Support/club.chronista.lnx-server/trace` フラグを置き消しし、`lnx-server` を再起動せずに MIDI トレースの記録をオン／オフする |
 | ログを開く | `~/Library/Logs/lnx-server.log`（lnx-server が `--log-file` で自分で書く。`server:logs` と同じ場所） |
 | iPad をペアリング… | 今の QR の画面を別の窓で。サーバが動いているときだけ |
 | lnx creare の窓を開く | 主の窓（Mac は 1 つだけ）を前に出す |

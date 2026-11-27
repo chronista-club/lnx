@@ -4,13 +4,27 @@ import SwiftUI
 @main
 struct LnxCreareApp: App {
     #if os(macOS)
-    /// メニューバーの LNX サーバ（同梱の lnx-server を SMAppService で常駐させる）
+    /// メニューバーの lnx サーバ（同梱の lnx-server を SMAppService で常駐させ、Gear の状態とログを見張る）
     @State private var server: ServerMenuModel
+    @State private var gearLogs = GearLogViewModel()
 
     init() {
-        let server = ServerMenuModel(residency: BundledServer())
+        let probe = GearProbe()
+        let server = ServerMenuModel(residency: BundledServer(), gearProbe: probe)
         server.startWatching()
         _server = State(initialValue: server)
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil,
+            queue: nil
+        ) { _ in
+            let done = DispatchSemaphore(value: 0)
+            Task.detached {
+                await probe.close()
+                done.signal()
+            }
+            _ = done.wait(timeout: .now() + 1.0)
+        }
     }
     #endif
 
@@ -25,8 +39,16 @@ struct LnxCreareApp: App {
             PairingWindow()
         }
         .windowResizability(.contentSize)
+        Window("lnx — Gear ステータス", id: LnxWindow.gearStatus) {
+            GearStatusWindow(model: server)
+        }
+        .defaultSize(width: 920, height: 480)
+        Window("lnx — ログとトレース", id: LnxWindow.gearLog) {
+            GearLogWindow(server: server, vm: gearLogs)
+        }
+        .defaultSize(width: 980, height: 520)
         MenuBarExtra {
-            LnxMenu(model: server)
+            LnxMenu(model: server, logs: gearLogs)
         } label: {
             LnxMenuBarIcon(running: server.phase.isRunning)
         }
