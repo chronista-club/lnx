@@ -49,7 +49,7 @@ apps/ios/
 │   ├── App/LnxCreareApp.swift  # エントリポイント
 │   ├── Link/                   # LNX への常時接続（LinkSupervisor、UnisonLnxTransport、LnxFinder、LnxProtocol、ペアリングと pin: PairingCode・PinStore・LinkTrust）
 │   ├── Screens/                # 画面（RootView、Connecting、Pairing、QRScanner、LnxHome、RemoteServer、ScreenRoute）
-│   ├── Mac/                    # Mac 版だけ: メニューバーの LNX と、同梱 lnx-server の常駐（SMAppService）
+│   ├── Mac/                    # Mac 版だけ: メニューバーの lnx、同梱 lnx-server の常駐（SMAppService）、Gear ステータス一覧、MIDI トレース、ログ window
 │   ├── Model/AppInfo.swift     # 表示名・タグライン・版
 │   └── Resources/Assets.xcassets
 ├── LnxCreareTests/             # 単体テスト（Swift Testing）

@@ -11,7 +11,7 @@ public final class Client: Sendable {
     }
 
     public static var defaultEndpointURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
+        URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).appendingPathComponent(
             "Library/Application Support/club.chronista.lnx-server/endpoint.json"
         )
     }
