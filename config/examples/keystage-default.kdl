@@ -1,13 +1,13 @@
-// midistage profile — Keystage default
+// lnx gear profile — Keystage default
 //
 // reference: KORG Keystage MIDI Implementation v1.00 (2023.8.31)
 // docs: ~/repos/cplp-sound-system/docs/midi/Keystage/Keystage_MIDIimp.txt
 //
-// この example は v0-alpha の `midistage init` で生成される template の参考形。
+// この example は Keystage 向けの標準設定テンプレートの参考形。
 // 実際の defaults 値は KORG 公式 docs の TABLE 1 / TABLE 2 から決定する。
 
 meta {
-    device "keystage"
+    gear "keystage"
     model "Keystage-49"  // or "Keystage-61"
     profile-version 1
 }

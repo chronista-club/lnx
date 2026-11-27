@@ -53,6 +53,11 @@ struct GearStatusWindow: View {
                         .help(row.id)
                     }
                     .width(min: 180, ideal: 230)
+                    TableColumn("接続") { row in
+                        Text(row.presence)
+                            .foregroundStyle(row.tone == .quiet ? .secondary : .primary)
+                    }
+                    .width(min: 85, ideal: 100)
                     TableColumn("担当") { row in GearAppLabel(name: row.assignment) }
                         .width(min: 90, ideal: 120)
                     TableColumn("握っている") { row in GearAppLabel(name: row.holder) }
@@ -76,7 +81,7 @@ struct GearStatusWindow: View {
             }
         }
         .padding(16)
-        .frame(minWidth: 680, minHeight: 340, alignment: .topLeading)
+        .frame(minWidth: 740, minHeight: 340, alignment: .topLeading)
     }
 }
 

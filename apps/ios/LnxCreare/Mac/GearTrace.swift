@@ -1,5 +1,4 @@
 #if os(macOS)
-import AppKit
 import Foundation
 
 // MIDI トレース（開発用）のオン／オフ。lnx-server は <state_dir>/trace の有無を毎秒見て切り替える。
@@ -20,8 +19,10 @@ enum GearTrace {
     }
 
     static func stop() throws {
-        if isOn() {
+        do {
             try FileManager.default.removeItem(at: flagURL)
+        } catch let error as CocoaError where error.code == .fileNoSuchFile {
+            // 既に消えていればそのまま成功とする
         }
     }
 }

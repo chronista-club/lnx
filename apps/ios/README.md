@@ -75,7 +75,5 @@ apps/ios/
 
 ## 次にやること
 
-1. **Rust コアの接続** — `crates/lnx-engine` は `staticlib` と cbindgen のヘッダを既に出している。
-   iOS 向けにクロスビルドして xcframework にし、spec どおり UniFFI で Swift の型を生成する
-2. **「Open and Create」の最初の一歩** — マイク入力 → FFT → 画面が動く、までを 3 秒以内に
-3. **macOS / visionOS** — `project.yml` の `supportedDestinations` で同じコードベースに足す
+1. **「Open and Create」の最初の一歩** — 入力シグナル / Gear イベントと 3D 机配置（`GearDeskView`）の連動
+2. **visionOS** — `project.yml` の `supportedDestinations` で同じコードベースに足す

@@ -35,21 +35,27 @@ struct NoopGearProbe: GearProbing {
     func close() async {}
 }
 
-/// lnx-server の endpoint.json を読んで gear channel に接続し、観察専用で Snapshot を引く
+/// lnx-server の endpoint.json を読んで gear channel に接続し、観察専用で Snapshot を引く。
+/// close() で現在の接続を閉じても、後にサーバが立ち上がれば probe() で再接続できる。
 actor GearProbe: GearProbing {
     private var releasingSince: [String: Date] = [:]
     private var client: Client?
     private var connecting: Task<(Client, Snapshot), Error>?
-    private var closed = false
     let stuckAfter: TimeInterval = 5
 
     func close() async {
-        closed = true
         connecting?.cancel()
+        connecting = nil
+        releasingSince.removeAll()
         await drop()
     }
 
     private func drop(only: Client? = nil) async {
+        if only == nil {
+            connecting?.cancel()
+            connecting = nil
+        }
+        releasingSince.removeAll()
         guard let stale = client, only == nil || only === stale else { return }
         client = nil
         await stale.close()
@@ -67,20 +73,20 @@ actor GearProbe: GearProbing {
         connecting = task
         defer { if connecting == task { connecting = nil } }
         let (connected, first) = try await task.value
-        if closed {
-            if connecting == task {
-                connecting = nil
-                await connected.close()
-            }
+        if Task.isCancelled {
+            await connected.close()
             throw CancellationError()
         }
-        if client == nil { client = connected }
-        return (connected, first)
+        if client == nil {
+            client = connected
+        } else if client !== connected {
+            await connected.close()
+        }
+        return (client ?? connected, first)
     }
 
     func probe() async -> GearProbeResult {
         let url = Client.defaultEndpointURL
-        guard !closed else { return .empty }
         guard FileManager.default.fileExists(atPath: url.path) else {
             await drop()
             return .empty
@@ -93,13 +99,14 @@ actor GearProbe: GearProbing {
             } else {
                 snapshot = try await connect(url).1
             }
-            let summary = summarize(snapshot)
+            let now = Date()
+            let summary = summarize(snapshot, now: now)
             return GearProbeResult(
                 connected: true,
                 serviceVersion: snapshot.service?.version,
                 serviceExecutable: snapshot.service?.executable,
                 summary: summary,
-                gears: facts(snapshot)
+                gears: facts(snapshot, now: now)
             )
         } catch {
             if let using { await drop(only: using) }
@@ -113,11 +120,14 @@ actor GearProbe: GearProbing {
     }
 
     private func hasAsset(_ id: String) -> Bool {
-        let dist = gearAssetDir().appending(path: "\(id).usdz")
+        let dir = gearAssetDir()
+        let dist = dir.appending(path: "\(id).usdz")
         if FileManager.default.fileExists(atPath: dist.path) { return true }
         if Bundle.main.url(forResource: id, withExtension: "usdz") != nil { return true }
-        if let entry = GearCatalog.entry(for: id) { return entry.hasModel3D }
-        return !FileManager.default.fileExists(atPath: gearAssetDir().path)
+        if FileManager.default.fileExists(atPath: dir.path) {
+            return false
+        }
+        return GearCatalog.entry(for: id)?.hasModel3D ?? false
     }
 
     private func makerModel(_ id: String) -> (String?, String?) {
@@ -134,9 +144,8 @@ actor GearProbe: GearProbing {
         return (nil, nil)
     }
 
-    private func facts(_ snapshot: Snapshot) -> [GearFacts] {
-        let now = Date()
-        return snapshot.gears.map { g in
+    private func facts(_ snapshot: Snapshot, now: Date) -> [GearFacts] {
+        snapshot.gears.map { g in
             let stuck = g.phase == "releasing"
                 && releasingSince[g.gearID].map { now.timeIntervalSince($0) > stuckAfter } == true
             let mm = makerModel(g.profileID)
@@ -162,8 +171,7 @@ actor GearProbe: GearProbing {
         }
     }
 
-    private func summarize(_ snapshot: Snapshot) -> GearSummary {
-        let now = Date()
+    private func summarize(_ snapshot: Snapshot, now: Date) -> GearSummary {
         var stuck = 0
         var errors = 0
         var present = 0

@@ -18,12 +18,7 @@ struct LnxCreareApp: App {
             object: nil,
             queue: nil
         ) { _ in
-            let done = DispatchSemaphore(value: 0)
-            Task.detached {
-                await probe.close()
-                done.signal()
-            }
-            _ = done.wait(timeout: .now() + 1.0)
+            Task { await probe.close() }
         }
     }
     #endif

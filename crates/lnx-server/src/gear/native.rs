@@ -485,7 +485,10 @@ impl Drop for NativeBridge {
             .expect("finalizers mutex poisoned")
             .is_empty();
         if needs_finalization && let Err(error) = self.finish_release(&self.runtime) {
-            tracing::error!(device = %self.fence.gear_id, %error, "device finalization failed during close");
+            tracing::error!(
+                "{}: device finalization failed during close: {error}",
+                self.fence.gear_id
+            );
         }
     }
 }
@@ -656,7 +659,7 @@ impl NativeRuntime {
                         let message = error.to_string();
                         let mut r = self.runtime.lock().expect("runtime mutex poisoned");
                         if r.driver_errors.get(&state.gear_id) != Some(&message) {
-                            tracing::warn!(gear = %state.gear_id, "MIDI bridge open failed: {message}");
+                            tracing::warn!("{}: MIDI bridge open failed: {message}", state.gear_id);
                             r.driver_errors.insert(state.gear_id, message);
                         }
                     }

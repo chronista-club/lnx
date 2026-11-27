@@ -15,6 +15,33 @@ pub struct Client {
 }
 
 impl Client {
+    /// macOS / Unix の既定 endpoint.json パス（`~/Library/Application Support/club.chronista.lnx-server/endpoint.json`）
+    pub fn default_endpoint_path() -> Option<std::path::PathBuf> {
+        std::env::var_os("HOME").map(|home| {
+            std::path::PathBuf::from(home)
+                .join("Library/Application Support/club.chronista.lnx-server/endpoint.json")
+        })
+    }
+
+    /// 既定の endpoint.json を読み込む。
+    pub fn load_default_endpoint() -> anyhow::Result<Endpoint> {
+        let path = Self::default_endpoint_path()
+            .ok_or_else(|| anyhow::anyhow!("HOME environment variable is not set"))?;
+        Self::load_endpoint(&path)
+    }
+
+    /// 指定パスの endpoint.json を読み込む。
+    pub fn load_endpoint(path: &std::path::Path) -> anyhow::Result<Endpoint> {
+        let bytes = std::fs::read(path)?;
+        Ok(serde_json::from_slice(&bytes)?)
+    }
+
+    /// 既定の endpoint.json から接続する。
+    pub async fn connect_default(hello: Hello) -> anyhow::Result<(Self, Snapshot)> {
+        let endpoint = Self::load_default_endpoint()?;
+        Self::connect(&endpoint, hello).await
+    }
+
     /// 版違いの常駐サービスを停止・上書きしない。再接続と UI はアプリの責務。
     pub async fn connect(
         endpoint: &Endpoint,
@@ -41,7 +68,7 @@ impl Client {
         )
         .await
         {
-            Ok(Ok(channel)) => channel.with_request_timeout(std::time::Duration::from_secs(3)),
+            Ok(Ok(channel)) => channel.with_request_timeout(std::time::Duration::from_secs(10)),
             Ok(Err(error)) => {
                 let _ = transport.disconnect().await;
                 return Err(error.into());
@@ -72,9 +99,10 @@ impl Client {
         self.request("SetEnabled", request).await
     }
 
-    /// SysEx は物理ドライバの completion まで待つ。
+    /// SysEx は物理ドライバの completion まで待つ（最大 128 KiB を考慮して 10 秒）。
     pub async fn send_midi(&self, request: &SendMidi) -> anyhow::Result<Snapshot> {
-        self.request("SendMidi", request).await
+        self.request_with_timeout("SendMidi", request, std::time::Duration::from_secs(10))
+            .await
     }
 
     pub async fn present(&self, request: &Present) -> anyhow::Result<Snapshot> {
@@ -122,7 +150,18 @@ impl Client {
         method: &str,
         request: &T,
     ) -> anyhow::Result<Snapshot> {
-        let reply: Reply = self.channel.request(method, request).await?;
+        self.request_with_timeout(method, request, std::time::Duration::from_secs(3))
+            .await
+    }
+
+    async fn request_with_timeout<T: serde::Serialize>(
+        &self,
+        method: &str,
+        request: &T,
+        timeout: std::time::Duration,
+    ) -> anyhow::Result<Snapshot> {
+        let reply: Reply =
+            tokio::time::timeout(timeout, self.channel.request(method, request)).await??;
         if let Some(error) = reply.error {
             return Err(RemoteError {
                 code: error.code,

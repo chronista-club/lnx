@@ -1,4 +1,4 @@
-"""全高を仕様値に合わせる（docs/design/04 §7）。Blender の中で 1 機種ずつ回す。
+"""全高を仕様値に合わせる（docs/design/03-gear-and-desk.md）。Blender の中で 1 機種ずつ回す。
 
     Blender --background gear/<id>/<id>.blend --python gear/polish_height.py -- [--save]
 

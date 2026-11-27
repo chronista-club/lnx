@@ -9,7 +9,7 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-/// trace の記録先（tracing の target）。通常のログとはファイルを分ける
+/// trace の記録先（tracing の target）。Mac 版 lnx creare のログ window がこの target で「流れ」と「MIDI トレース」を振り分ける
 pub const TARGET: &str = "lnx_trace";
 
 static ENABLED: AtomicBool = AtomicBool::new(false);
@@ -47,8 +47,8 @@ pub fn refresh(state_dir: &Path) -> bool {
 }
 
 // 以下は記録点ごとの 1 行。呼ぶ側が `enabled()` を見てから呼ぶ（オフのときは関数呼び出しもしない）。
-// 行の形は app のログ window が読む契約（logging.rs の contract テストと
-// apps/menubar/Tests/MenuModelTests/Fixtures/log-contract.trace.log で固定）
+// 行の形は Mac 版 lnx creare のログ window（GearLogLines.swift）が読む契約（logging.rs の contract テストと
+// apps/ios/LnxCreareMacTests/GearLogLinesTests.swift で固定）
 
 /// トレースの開始・停止の区切り行
 #[cold]

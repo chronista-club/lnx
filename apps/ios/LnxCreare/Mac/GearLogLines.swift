@@ -4,7 +4,7 @@ import Foundation
 // lnx-server のログ（~/Library/Logs/lnx-server.log）を「流れ」と「MIDI トレース」に分けて読む純粋計算層（[calculations]）。
 // 行の形（tracing の fmt、ANSI なし）:
 //   2026-11-27T06:32:11.558367Z  INFO lnx_server::gear::runtime: keystage: plugged in
-//   2026-11-27T14:36:49.093712Z  INFO FWD | B7 4F 1F dir="dev→app" device=lpd8 app=vp port=LPD8 mk2 kind="cc"
+//   2026-11-27T14:36:49.093712Z  INFO lnx_trace: FWD | B7 4F 1F dir="dev→app" device=lpd8 app=vp port=LPD8 mk2 kind="cc"
 
 enum GearLogLevel: String, Sendable, Equatable {
     case trace = "TRACE"
@@ -37,6 +37,15 @@ struct GearTraceRow: Sendable, Equatable, Identifiable {
 
 private let knownTraceKeys = ["dir", "device", "gear", "app", "port", "kind", "via", "token"]
 
+private func isTargetToken(_ candidate: Substring) -> Bool {
+    guard !candidate.isEmpty else { return false }
+    // `lnx_trace` のような単一 target 名、または `lnx_server::gear::runtime` のように `::` を含む target 名を認識する
+    guard candidate == "lnx_trace" || candidate.contains("::") else { return false }
+    return candidate.unicodeScalars.allSatisfy { scalar in
+        CharacterSet.alphanumerics.contains(scalar) || scalar == "_" || scalar == ":"
+    }
+}
+
 func parseGearLogLine(_ raw: String, id: Int) -> GearLogLine? {
     let parts = raw.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
     guard parts.count == 2, let time = parseGearLogTime(String(parts[0])) else { return nil }
@@ -48,10 +57,7 @@ func parseGearLogLine(_ raw: String, id: Int) -> GearLogLine? {
     var body = String(levelAndRest[1])
 
     var target: String?
-    if let colon = body.range(of: ": "),
-       body[..<colon.lowerBound].contains("::"),
-       !body[..<colon.lowerBound].contains(" ")
-    {
+    if let colon = body.range(of: ": "), isTargetToken(body[..<colon.lowerBound]) {
         target = String(body[..<colon.lowerBound])
         body = String(body[colon.upperBound...])
     }
@@ -114,11 +120,18 @@ func isGearLibraryNoise(_ line: GearLogLine) -> Bool {
     line.target?.hasPrefix("unison") == true
 }
 
-/// トレース行か（単一の lnx-server.log に「流れ」と「トレース」が同居していても判別できる）
+/// トレース行か（target があれば `lnx_trace` のみ、target 無しの旧 fixture 行では INFO かつトレース固有構文のみ）。
+/// WARN / ERROR の障害ログがトレース行に誤分類されて「流れ」タブから消えるのを防ぐ。
 func isGearTraceLine(_ line: GearLogLine) -> Bool {
-    if line.target == "lnx_trace" { return true }
+    if let target = line.target {
+        return target == "lnx_trace"
+    }
+    guard line.level == .info else { return false }
     if line.message.hasPrefix("---- MIDI trace ") { return true }
-    if line.fields["device"] != nil || line.fields["gear"] != nil || line.fields["dir"] != nil || line.fields["token"] != nil {
+    if line.fields["dir"] != nil { return true }
+    if line.message.hasPrefix("OPEN bridge") || line.message.hasPrefix("CLOSE bridge")
+        || line.message.hasPrefix("OVERFLOW queue full")
+    {
         return true
     }
     return false
@@ -150,6 +163,7 @@ func gearLogMatches(_ line: GearLogLine, query: String) -> Bool {
 }
 
 struct GearLineSplitter: Sendable {
+    static let maxPendingBytes = 1_048_576
     private var pending = Data()
 
     init() {}
@@ -164,7 +178,12 @@ struct GearLineSplitter: Sendable {
             }
             start = pending.index(after: newline)
         }
-        pending = Data(pending[start...])
+        if start > pending.startIndex {
+            pending = Data(pending[start...])
+        }
+        if pending.count > Self.maxPendingBytes {
+            pending.removeFirst(pending.count - Self.maxPendingBytes)
+        }
         return lines
     }
 

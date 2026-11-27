@@ -1,11 +1,11 @@
-"""意味の層（`gear/<id>/gear.json`）から見た目の層（`<id>.blend`）を初回生成する組み立て役（docs/design/04）。
+"""意味の層（`gear/<id>/gear.json`）から見た目の層（`<id>.blend`）を初回生成する組み立て役（docs/design/03-gear-and-desk.md）。
 
 Ladyland の `Gear/gear_build.py` から移した（2026-10-14）。書き出し（USDZ / GLB）は build.py の仕事。
 元の由来
 （2026-10-05、mako「同様に、LPD8 と、Korg Keystage、ROTO-Control も詳細モデリングを
 blend で出来ないかな？」「FGDP-50 も」「Numa Compact X SE も」）。
 
-nanoKONTROL2 は `nanokontrol.py` が個別に組む（先に作ったもの）。それ以外はここ。
+nanoKONTROL2 は `nanokontrol_build.py` が個別に組む（先に作ったもの）。それ以外はここ。
 機材ごとの違いは JSON の数字だけにする — 形と材質は部品の種類（kind）で決まる。
 
 JSON（単位 mm、座標はアプリと同じ: 機材の中心が原点、x = 右 +、z = 手前 +）:

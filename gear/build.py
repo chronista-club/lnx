@@ -1,4 +1,4 @@
-"""見た目の層（`gear/<id>/<id>.blend`）から配布物を書き出す（docs/design/04）。
+"""見た目の層（`gear/<id>/<id>.blend`）から配布物を書き出す（docs/design/03-gear-and-desk.md）。
 
     /Applications/Blender.app/Contents/MacOS/Blender --background --python gear/build.py -- \
         [--output DIR] [--only id,id] [--commit SHA]
@@ -32,10 +32,16 @@ def args():
     out, only, commit = DEFAULT_OUT, None, None
     i = 0
     while i < len(argv):
+        if argv[i] in ("--output", "--only", "--commit") and i + 1 >= len(argv):
+            raise SystemExit(f"missing value for {argv[i]}")
         if argv[i] == "--output":
             out = argv[i + 1]; i += 2
         elif argv[i] == "--only":
-            only = argv[i + 1].split(","); i += 2
+            only = [x for x in argv[i + 1].split(",") if x]
+            unknown = [x for x in only if x not in gearlib.GEAR_IDS]
+            if not only or unknown:
+                raise SystemExit(f"invalid --only gear id(s): {unknown or argv[i + 1]}")
+            i += 2
         elif argv[i] == "--commit":
             commit = argv[i + 1]; i += 2
         else:

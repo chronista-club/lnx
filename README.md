@@ -33,7 +33,7 @@ lnx/
 └── docs/                    # ドキュメント（spec / design / guide / archive）
 ```
 
-文書の索引は [docs/README.md](docs/README.md)（[spec 01](docs/spec/01-core-concept.md)、[spec 02](docs/spec/02-creare.md)、[design 01](docs/design/01-lnx-server-link.md)、[design 02](docs/design/02-architecture.md)、[guide 01](docs/guide/01-development.md)）。
+文書の索引は [docs/README.md](docs/README.md)（[spec 01](docs/spec/01-core-concept.md)、[spec 02](docs/spec/02-creare.md)、[design 01](docs/design/01-lnx-server-link.md)、[design 02](docs/design/02-architecture.md)、[design 03](docs/design/03-gear-and-desk.md)、[guide 01](docs/guide/01-development.md)）。
 
 ## セットアップと使い方
 

@@ -128,6 +128,11 @@ enum DeskKdlError: LocalizedError, Equatable {
 
 /// config/examples/desk-*.kdl の机スキーマを解釈する純粋パーサ
 enum DeskKdlParser {
+    private static func parseFiniteDouble(_ s: String) -> Double? {
+        guard let v = Double(s), v.isFinite, abs(v) <= 1_000_000 else { return nil }
+        return v
+    }
+
     static func parse(_ source: String) throws -> DeskLayout {
         var deskName: String?
         var footprint = DeskFootprint(centerX: 0, centerZ: 0, width: 1800, depth: 1200)
@@ -138,30 +143,37 @@ enum DeskKdlParser {
         for rawLine in source.split(separator: "\n", omittingEmptySubsequences: false) {
             let line = stripLineComment(String(rawLine)).trimmingCharacters(in: .whitespacesAndNewlines)
             if line.isEmpty || line == "}" { continue }
-            let tokens = tokenize(line)
+            let tokens = try tokenize(line)
             guard let head = tokens.first else { continue }
             switch head {
             case "desk":
                 guard tokens.count >= 2 else { throw DeskKdlError.missingDeskHeader }
-                deskName = unquote(tokens[1])
+                let name = unquote(tokens[1])
+                guard !name.isEmpty else { throw DeskKdlError.missingDeskHeader }
+                deskName = name
             case "footprint":
                 let props = parseProps(Array(tokens.dropFirst()))
                 guard let center = props["center"], center.count == 2,
-                      let cx = Double(center[0]), let cz = Double(center[1]),
+                      let cx = parseFiniteDouble(center[0]), let cz = parseFiniteDouble(center[1]),
                       let size = props["size"], size.count == 2,
-                      let w = Double(size[0]), let d = Double(size[1])
+                      let w = parseFiniteDouble(size[0]), let d = parseFiniteDouble(size[1]),
+                      w > 0, d > 0
                 else { throw DeskKdlError.invalidNode(line) }
                 footprint = DeskFootprint(centerX: cx, centerZ: cz, width: w, depth: d)
             case "surface":
                 guard tokens.count >= 2 else { throw DeskKdlError.invalidNode(line) }
                 let sid = unquote(tokens[1])
                 let props = parseProps(Array(tokens.dropFirst(2)))
-                guard let center = props["center"], center.count == 2,
-                      let cx = Double(center[0]), let cz = Double(center[1]),
+                guard !sid.isEmpty,
+                      let center = props["center"], center.count == 2,
+                      let cx = parseFiniteDouble(center[0]), let cz = parseFiniteDouble(center[1]),
                       let size = props["size"], size.count == 2,
-                      let w = Double(size[0]), let d = Double(size[1]),
-                      let elevStr = props["elevation"]?.first, let elev = Double(elevStr),
-                      let thickStr = props["thickness"]?.first, let thick = Double(thickStr)
+                      let w = parseFiniteDouble(size[0]), let d = parseFiniteDouble(size[1]),
+                      w > 0, d > 0,
+                      let elevStr = props["elevation"]?.first, props["elevation"]?.count == 1,
+                      let elev = parseFiniteDouble(elevStr),
+                      let thickStr = props["thickness"]?.first, props["thickness"]?.count == 1,
+                      let thick = parseFiniteDouble(thickStr), thick >= 0
                 else { throw DeskKdlError.invalidNode(line) }
                 surfaces.append(
                     DeskSurface(
@@ -173,19 +185,31 @@ enum DeskKdlParser {
                 guard tokens.count >= 2 else { throw DeskKdlError.invalidNode(line) }
                 let gid = unquote(tokens[1])
                 let props = parseProps(Array(tokens.dropFirst(2)))
-                guard let surf = props["surface"]?.first.map(unquote),
+                guard !gid.isEmpty,
+                      let surf = props["surface"]?.first.map(unquote), props["surface"]?.count == 1,
+                      !surf.isEmpty,
                       let pos = props["pos"], pos.count == 2,
-                      let px = Double(pos[0]), let pz = Double(pos[1])
+                      let px = parseFiniteDouble(pos[0]), let pz = parseFiniteDouble(pos[1])
                 else { throw DeskKdlError.invalidNode(line) }
-                let yaw = props["yaw"]?.first.flatMap(Double.init) ?? 0
+                let yaw: Double
+                if let yawVals = props["yaw"] {
+                    guard yawVals.count == 1, let parsedYaw = parseFiniteDouble(yawVals[0]) else {
+                        throw DeskKdlError.invalidNode(line)
+                    }
+                    yaw = parsedYaw
+                } else {
+                    yaw = 0
+                }
                 gears.append(DeskGearPlacement(id: gid, surface: surf, posX: px, posZ: pz, yaw: yaw))
             case "anchor":
                 guard tokens.count >= 2 else { throw DeskKdlError.invalidNode(line) }
                 let aid = unquote(tokens[1])
                 let props = parseProps(Array(tokens.dropFirst(2)))
-                guard let surf = props["surface"]?.first.map(unquote),
+                guard !aid.isEmpty,
+                      let surf = props["surface"]?.first.map(unquote), props["surface"]?.count == 1,
+                      !surf.isEmpty,
                       let pos = props["pos"], pos.count == 2,
-                      let px = Double(pos[0]), let pz = Double(pos[1])
+                      let px = parseFiniteDouble(pos[0]), let pz = parseFiniteDouble(pos[1])
                 else { throw DeskKdlError.invalidNode(line) }
                 anchors.append(DeskAnchor(id: aid, surface: surf, posX: px, posZ: pz))
             default:
@@ -217,7 +241,7 @@ enum DeskKdlParser {
         return line
     }
 
-    private static func tokenize(_ line: String) -> [String] {
+    private static func tokenize(_ line: String) throws -> [String] {
         var tokens: [String] = []
         var current = ""
         var inQuotes = false
@@ -225,7 +249,7 @@ enum DeskKdlParser {
             if ch == "\"" {
                 inQuotes.toggle()
                 current.append(ch)
-            } else if !inQuotes && (ch == " " || ch == "\t" || ch == "{") {
+            } else if !inQuotes && (ch == " " || ch == "\t" || ch == "{" || ch == "}") {
                 if !current.isEmpty {
                     tokens.append(current)
                     current = ""
@@ -233,6 +257,9 @@ enum DeskKdlParser {
             } else {
                 current.append(ch)
             }
+        }
+        if inQuotes {
+            throw DeskKdlError.invalidNode(line)
         }
         if !current.isEmpty { tokens.append(current) }
         return tokens
@@ -305,7 +332,7 @@ enum DeskPresets {
         }
         """
 
-    static var home: DeskLayout { try! DeskKdlParser.parse(homeKDL) }
-    static var studio: DeskLayout { try! DeskKdlParser.parse(studioKDL) }
-    static var all: [DeskLayout] { [home, studio] }
+    static let home: DeskLayout = try! DeskKdlParser.parse(homeKDL)
+    static let studio: DeskLayout = try! DeskKdlParser.parse(studioKDL)
+    static let all: [DeskLayout] = [home, studio]
 }

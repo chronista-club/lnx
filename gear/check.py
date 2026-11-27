@@ -1,4 +1,4 @@
-"""両層の契約を機械で守る（docs/design/04）。CI と、.blend を手で磨いたあとに回す。
+"""両層の契約を機械で守る（docs/design/03-gear-and-desk.md）。CI と、.blend を手で磨いたあとに回す。
 
     /Applications/Blender.app/Contents/MacOS/Blender --background --python gear/check.py -- [--only id,id]
 
@@ -34,13 +34,15 @@ def descendants(root):
 
 def bbox_mm(objs):
     lo = Vector((1e9, 1e9, 1e9)); hi = Vector((-1e9, -1e9, -1e9))
+    found = False
     for o in objs:
         if o.type != "MESH":
             continue
+        found = True
         for c in o.bound_box:
             w = o.matrix_world @ Vector(c)
             lo = Vector(map(min, lo, w)); hi = Vector(map(max, hi, w))
-    return (hi - lo) * 1000  # m → mm。Blender: x 幅、y 奥行き、z 高さ
+    return (hi - lo) * 1000 if found else Vector((0.0, 0.0, 0.0))  # m → mm。Blender: x 幅、y 奥行き、z 高さ
 
 
 def check(gid):
@@ -74,7 +76,19 @@ def check(gid):
 
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    ids = argv[argv.index("--only") + 1].split(",") if "--only" in argv else gearlib.GEAR_IDS
+    ids = gearlib.GEAR_IDS
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--only":
+            if i + 1 >= len(argv):
+                raise SystemExit("missing value for --only")
+            ids = [x for x in argv[i + 1].split(",") if x]
+            unknown = [x for x in ids if x not in gearlib.GEAR_IDS]
+            if not ids or unknown:
+                raise SystemExit(f"invalid --only gear id(s): {unknown or argv[i + 1]}")
+            i += 2
+        else:
+            raise SystemExit(f"unknown arg {argv[i]}")
     bad = []
     for gid in ids:
         p = check(gid)
