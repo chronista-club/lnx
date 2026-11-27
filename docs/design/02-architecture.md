@@ -92,7 +92,7 @@ graph TB
 ### Rust workspace（`Cargo.toml`）
 
 - `[workspace]` の 4 member: `crates/lnx-protocol`, `crates/lnx-gear`, `crates/lnx-client`, `crates/lnx-server`
-- `workspace.package` は version `0.1.0-alpha3`、edition 2024、license `MIT OR Apache-2.0`
+- `workspace.package` は version `0.2.0`、edition 2024、license `MIT OR Apache-2.0`
 - `workspace.dependencies`: `libc`、`tokio`、`serde`、`serde_json`、`toml`
 - profile: release は `opt-level 3` / LTO / `codegen-units 1` / `panic = abort`
 
