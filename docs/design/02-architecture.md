@@ -20,7 +20,7 @@ spec 01 の「場の同期」と spec 02 の「統合のハブ」を、Rust の 
 | **lnx-cli** | `crates/lnx-cli` | `lnx` コマンド（start / stop / status / audio / midi / monitor / config / ui） | 骨格。サブコマンドは定義済みだがハンドラの大半は TODO で、表示は固定値 |
 | **lnx-creare**（Bevy） | `crates/lnx-creare` | ビジュアルの窓（Bevy 0.14） | 窓とテキストだけの骨格 |
 | **lnx-server** | `crates/lnx-server` | LNX サーバ。lnx creare が常時つなぐ窓口。session（名乗り・心拍）と registry（既知サーバの一覧）、Bonjour `_lnx._udp` で名乗る | 動く（design 01） |
-| **lnx creare**（Apple） | `apps/ios` | 入り口のアプリ。SwiftUI、iPad が主。一つのターゲットで iOS / macOS | 動く。接続・名乗り・心拍・一覧・画面切り替え |
+| **lnx creare**（Apple） | `apps/ios` | 入り口のアプリ。SwiftUI、iPad が主。一つのターゲットで iOS / macOS | 動く。接続・名乗り・heartbeat・一覧・画面切り替え |
 
 ### レイヤー
 

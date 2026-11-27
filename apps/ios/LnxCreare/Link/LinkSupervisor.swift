@@ -213,7 +213,7 @@ final class LinkSupervisor {
                     guard let self else { return "見張りの持ち主が居ない" }
                     await self.record(beat, epoch: epoch)
                 }
-                return "心拍の流れが終わった"
+                return "heartbeat の流れが終わった"
             }
             group.addTask { [weak self] in
                 if let list = try? await session.listServers() {
@@ -234,7 +234,7 @@ final class LinkSupervisor {
                     guard let self else { return "見張りの持ち主が居ない" }
                     let before = await self.heartbeatCount
                     do { try await Task.sleep(for: timeout) } catch { return "見張りを止めた" }
-                    if before > 0, await self.heartbeatCount == before { return "心拍が \(timeout) 無い" }
+                    if before > 0, await self.heartbeatCount == before { return "heartbeat が \(timeout) 無い" }
                 }
                 return "見張りを止めた"
             }

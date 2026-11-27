@@ -167,7 +167,7 @@ cd apps/ios && xcodegen generate && open LnxCreare.xcodeproj
 
 ```bash
 mise run server:run          # ターミナル 1
-mise run ios:run             # ターミナル 2 → 同じ Mac の LNX につながり、心拍が脈打つ
+mise run ios:run             # ターミナル 2 → 同じ Mac の LNX につながり、heartbeat が脈打つ
 mise run ios:test            # UI テストはサーバが居るときだけ走る（居なければ skip）
 ```
 

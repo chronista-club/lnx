@@ -34,7 +34,7 @@ Xcode 上でファイルを追加した場合も、ディレクトリに置け�
 
 ```bash
 mise run server:run          # 別ターミナルで LNX サーバ（Mac、[::]:12730）
-mise run ios:run             # シミュレータで起動 → localhost の LNX につながり、心拍が脈打つ
+mise run ios:run             # シミュレータで起動 → localhost の LNX につながり、heartbeat が脈打つ
 ```
 
 シミュレータは同じ Mac の `[::1]:12730` に直結する。実機は Bonjour（`_lnx._udp`）で探す（iPhone / iPad で確認済み 2026-11-04）。
