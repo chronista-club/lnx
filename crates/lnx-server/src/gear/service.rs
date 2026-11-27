@@ -23,7 +23,7 @@ impl Service {
             unreachable!()
         };
         let server = Arc::new(ProtocolServer::with_identity(
-            "midistage",
+            "lnx-gear",
             "1.0.0",
             "club.chronista.lnx",
         ));
@@ -345,11 +345,11 @@ fn dispatch(
                 // I/O adapter の in-flight 完了を別途確認するまで drained は呼ばない。
             }
             "SetGearSetups" => {
-                runtime.set_device_setups(session, &serde_json::from_value(payload)?)?
+                runtime.set_gear_setups(session, &serde_json::from_value(payload)?)?
             }
             "SelectSetup" => runtime.select_setup(session, &serde_json::from_value(payload)?)?,
             "ApplyGearSetup" => {
-                runtime.apply_device_setup(session, &serde_json::from_value(payload)?)?
+                runtime.apply_gear_setup(session, &serde_json::from_value(payload)?)?
             }
             "Present" => {
                 let request: Present = serde_json::from_value(payload)?;
@@ -376,6 +376,7 @@ fn dispatch(
             let reason = crate::gear::logging::printable(&reason.to_string());
             tracing::warn!("request {method} from {who} rejected: {reason}");
         }
+        runtime.plan_setup_switches();
         runtime.log_flow();
     }
     match result {

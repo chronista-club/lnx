@@ -18,7 +18,7 @@ use lnx_server::gear::{
     inventory::PROFILES,
     runtime::Runtime,
     service::Service as GearService,
-    settings::{SettingsStore, atomic_write},
+    settings::{RuntimeLock, SettingsStore, atomic_write},
 };
 use lnx_server::identity::{self, ServerIdentity};
 use lnx_server::{DEFAULT_LOCAL_ADDR, DEFAULT_PORT, log_file, serve};
@@ -89,6 +89,9 @@ async fn main() -> Result<()> {
         .or_else(identity::default_dir)
         .ok_or_else(|| anyhow::anyhow!("証明書の置き場を決められない（--state-dir で指定）"))?;
 
+    // 同一 state_dir の単一起動を保証する（endpoint.json や settings.json の競合を防ぐ）
+    let _runtime_lock = RuntimeLock::acquire(&state_dir)?;
+
     let mut cfg = match &cli.config {
         Some(path) => ServerConfig::load(path)?,
         None => {
@@ -136,7 +139,7 @@ async fn main() -> Result<()> {
     // 手元用: ループバックにだけ bind し、ペアリング URL を返す（Mac 版が QR を出す）
     serve::loopback_only(&cli.local_addr)?;
     let local = serve::build_local(&cfg.name, &id).await?;
-    let _local = Arc::new(local)
+    let local_listening = Arc::new(local)
         .listener(&cli.local_addr)
         .cert(id.cert_source())
         .spawn()
@@ -152,9 +155,9 @@ async fn main() -> Result<()> {
         .spawn()
         .await?;
     let bound = listening.local_addr();
-    info!("{bound} で待ち受け");
 
-    // Gear Runtime（どのアプリがどの Gear を使うか）を立ち上げ、state_dir に endpoint.json を書く
+    // Gear Runtime（どのアプリがどの Gear を使うか）を立ち上げ、state_dir に endpoint.json を書く。
+    // 「で待ち受け」を出す前に完了させることで、待ち受けログを見た側は即 endpoint.json を読める
     lnx_server::gear::trace::refresh(&state_dir);
     let mut broker = Broker::new(uuid::Uuid::new_v4().to_string());
     for (profile_id, gear_name) in PROFILES {
@@ -178,52 +181,62 @@ async fn main() -> Result<()> {
     let shared = gear_service.runtime.clone();
     let trace_dir = state_dir.clone();
     #[cfg(target_os = "macos")]
-    {
+    let setup_worker = {
+        // 最初の CoreMIDI 呼び出しより前に通知用 run loop スレッドを起こす
+        lnx_server::gear::native::start_notify_thread();
         let setups = gear_service.runtime.clone();
         let setup_running = running.clone();
         let backup_dir = state_dir.join("roto-backup");
-        std::thread::Builder::new()
-            .name("roto-setup".into())
-            .spawn(move || {
-                while setup_running.load(Ordering::Acquire) {
-                    let job = setups
-                        .lock()
-                        .expect("runtime mutex poisoned")
-                        .next_setup_job();
-                    if let Some(job) = job {
-                        use lnx_server::gear::runtime::SetupAction;
-                        let result = match &job.action {
-                            SetupAction::Select => {
-                                lnx_server::gear::roto_admin::select_setup(job.setup)
+        Some(
+            std::thread::Builder::new()
+                .name("roto-setup".into())
+                .spawn(move || {
+                    while setup_running.load(Ordering::Acquire) {
+                        let job = {
+                            let mut r = setups.lock().expect("runtime mutex poisoned");
+                            r.plan_setup_switches();
+                            r.next_setup_job()
+                        };
+                        if let Some(job) = job {
+                            use lnx_server::gear::runtime::SetupAction;
+                            let result = match &job.action {
+                                SetupAction::Select => {
+                                    lnx_server::gear::roto_admin::select_setup(job.setup)
+                                }
+                                SetupAction::Apply(desired) => {
+                                    lnx_server::gear::roto_admin::apply_setup(
+                                        job.setup,
+                                        desired,
+                                        &backup_dir,
+                                    )
+                                    .map(|a| {
+                                        info!(
+                                            "{}: setup {} written: {} op(s), port open {} ms, {} requests, backup {}",
+                                            job.gear_id,
+                                            job.setup,
+                                            a.ops,
+                                            a.port_open_ms,
+                                            a.requests,
+                                            a.backup.display()
+                                        );
+                                    })
+                                }
                             }
-                            SetupAction::Apply(desired) => lnx_server::gear::roto_admin::apply_setup(
-                                job.setup,
-                                desired,
-                                &backup_dir,
-                            )
-                            .map(|a| {
-                                info!(
-                                    "{}: setup {} written: {} op(s), port open {} ms, {} requests, backup {}",
-                                    job.gear_id,
-                                    job.setup,
-                                    a.ops,
-                                    a.port_open_ms,
-                                    a.requests,
-                                    a.backup.display()
-                                );
-                            }),
+                            .map_err(|e| e.to_string());
+                            setups
+                                .lock()
+                                .expect("runtime mutex poisoned")
+                                .finish_setup_job(&job, result);
+                        } else {
+                            std::thread::sleep(std::time::Duration::from_millis(50));
                         }
-                        .map_err(|e| e.to_string());
-                        setups
-                            .lock()
-                            .expect("runtime mutex poisoned")
-                            .finish_setup_job(&job, result);
-                    } else {
-                        std::thread::sleep(std::time::Duration::from_millis(50));
                     }
-                }
-            })?;
-    }
+                })?,
+        )
+    };
+    #[cfg(not(target_os = "macos"))]
+    let setup_worker: Option<std::thread::JoinHandle<()>> = None;
+
     let worker = std::thread::spawn(move || {
         #[cfg(target_os = "macos")]
         {
@@ -244,7 +257,9 @@ async fn main() -> Result<()> {
         }
     });
 
-    // 名乗りは待ち受けを確保してから
+    info!("{bound} で待ち受け");
+
+    // 名乗りはすべての待ち受けを確保してから
     let advertiser = if cli.no_mdns {
         None
     } else {
@@ -274,20 +289,29 @@ async fn main() -> Result<()> {
         }
     };
 
-    running.store(false, Ordering::Release);
-    let _ = tokio::task::spawn_blocking(move || worker.join()).await;
-    let _ = gear_service.shutdown().await;
+    if let Some(signal) = signal {
+        info!("{signal} を受けたので止める");
+    }
+
+    // 先に endpoint.json を消して新規接続を止め、Gear RPC を閉じてから worker / setup_worker の完了を待つ
     let _ = std::fs::remove_file(state_dir.join("endpoint.json"));
+    let _ = gear_service.shutdown().await;
+    running.store(false, Ordering::Release);
+    let _ = tokio::task::spawn_blocking(move || {
+        let _ = worker.join();
+        if let Some(setup_worker) = setup_worker {
+            let _ = setup_worker.join();
+        }
+    })
+    .await;
+    let _ = tokio::time::timeout(SHUTDOWN_WAIT, local_listening.shutdown()).await;
 
     match signal {
-        Some(signal) => {
-            info!("{signal} を受けたので止める");
-            match tokio::time::timeout(SHUTDOWN_WAIT, listening.shutdown()).await {
-                Ok(Ok(())) => {}
-                Ok(Err(e)) => warn!("待ち受けを畳むときのエラー: {e}"),
-                Err(_) => warn!("待ち受けを {SHUTDOWN_WAIT:?} で畳めない（そのまま抜ける）"),
-            }
-        }
+        Some(_) => match tokio::time::timeout(SHUTDOWN_WAIT, listening.shutdown()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => warn!("待ち受けを畳むときのエラー: {e}"),
+            Err(_) => warn!("待ち受けを {SHUTDOWN_WAIT:?} で畳めない（そのまま抜ける）"),
+        },
         None => {
             let result = listening.shutdown().await;
             anyhow::bail!(

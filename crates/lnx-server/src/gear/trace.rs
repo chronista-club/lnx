@@ -1,18 +1,16 @@
-//! MIDI トレース（開発用）。既定はオフ。オンのときだけ、MIDI の流れを 1 本の時系列で
-//! `~/Library/Logs/midistaged/trace.log.<日付>` に書く（mako 2026-10-13「通常は切って負荷かけないように
-//! しつつ、開発でちゃんとどこまで接続がきてるかを確認できるように」）。
+//! MIDI トレース（開発用）。既定はオフ。オンのときだけ、MIDI の流れを 1 本の時系列で記録する。
 //!
 //! - オン／オフは `<state_dir>/trace` の有無（再起動なしで切り替わる。メニューバーの app が置く・消す）。
-//!   環境変数 `MIDISTAGED_TRACE=1` でも強制的にオン
+//!   環境変数 `LNX_TRACE=1` でも強制的にオン
 //! - オフのときの負荷は 1 パケットあたり atomic の読み 1 回
-//! - 記録点: 機材→app（転送 / 拒否）、app→サービス（受理 / 溢れ）、サービス→機材（送信 / 古い lease で破棄 / 失敗）、
+//! - 記録点: Gear→app（転送 / 拒否）、app→サービス（受理 / 溢れ）、サービス→Gear（送信 / 古い lease で破棄 / 失敗）、
 //!   仮想ポートの開閉（lease の切り替え）
 
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// trace の記録先（tracing の target）。通常のログとはファイルを分ける
-pub const TARGET: &str = "midistage_trace";
+pub const TARGET: &str = "lnx_trace";
 
 static ENABLED: AtomicBool = AtomicBool::new(false);
 /// クロック（F8）と Active Sensing（FE）も記録するか。既定は省く（1 秒に数十行で埋もれるため）
@@ -37,7 +35,7 @@ pub fn is_noise(bytes: &[u8]) -> bool {
 /// フラグファイルに `realtime` と書けば、クロックと Active Sensing も記録する
 pub fn refresh(state_dir: &Path) -> bool {
     let flag = state_dir.join("trace");
-    let want = std::env::var_os("MIDISTAGED_TRACE").is_some_and(|v| v == "1") || flag.exists();
+    let want = std::env::var_os("LNX_TRACE").is_some_and(|v| v == "1") || flag.exists();
     let realtime = std::fs::read_to_string(&flag).is_ok_and(|s| s.contains("realtime"));
     REALTIME.store(realtime, Ordering::Relaxed);
     let was = ENABLED.swap(want, Ordering::Relaxed);
@@ -179,7 +177,7 @@ mod tests {
     fn flag_file_turns_trace_on_and_off_without_restart() {
         let dir = tempfile::tempdir().unwrap();
         // 環境変数での強制オンがこのテストを汚さないように
-        if std::env::var_os("MIDISTAGED_TRACE").is_some() {
+        if std::env::var_os("LNX_TRACE").is_some() {
             return;
         }
         refresh(dir.path());

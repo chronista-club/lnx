@@ -23,6 +23,12 @@ public final class NativeAccess: @unchecked Sendable {
         return true
     }
 
+    public func revoke(gearID: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        gears.removeAll { $0.gearID == gearID }
+    }
+
     public func revoke(profileID: String) {
         lock.lock()
         defer { lock.unlock() }

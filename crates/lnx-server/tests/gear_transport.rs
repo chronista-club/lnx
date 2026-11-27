@@ -421,3 +421,121 @@ async fn snapshot_reports_service_version_and_executable() {
     client.close().await.unwrap();
     service.shutdown().await.unwrap();
 }
+
+/// SetGearSetups / SetEnabled で ROTO の setup 自動切り替え（plan_setup_switches）が発火し、
+/// SelectSetup / ApplyGearSetup / Present も SDK から往復できることを検証する。
+#[tokio::test]
+async fn sdk_roto_setup_rpcs_and_auto_switch_plan_work_over_quic() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut broker = Broker::new("test-epoch");
+    broker.add_gear("roto", "roto", true);
+    let service = Service::start(Runtime::new(broker, SettingsStore::new(dir.path())).unwrap())
+        .await
+        .unwrap();
+    let (client, _) = lnx_client::Client::connect(&service.endpoint, hello(&service, "ladyland"))
+        .await
+        .unwrap();
+
+    // 1. SetGearSetups で ladyland 用の希望 setup=[3, 5] を登録
+    let snap = client
+        .set_gear_setups(&SetGearSetups {
+            gear_id: "roto".into(),
+            setups: vec![3, 5],
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        snap.gears[0].setup_owners.get("ladyland"),
+        Some(&vec![3, 5])
+    );
+
+    // 2. SetEnabled で roto を獲得すると、service::dispatch 内の plan_setup_switches() により
+    //    configuring == true かつ setup ジョブキューに Select(3) が積まれる
+    let snap = client
+        .set_enabled(&SetEnabled {
+            gear_id: "roto".into(),
+            enabled: true,
+            expected_revision: 0,
+            takeover: false,
+        })
+        .await
+        .unwrap();
+    assert!(
+        snap.gears[0].configuring,
+        "SetEnabled 直後に plan_setup_switches が動いて configuring になること"
+    );
+    let lease_token = snap.gears[0].state.lease.as_ref().unwrap().token.clone();
+
+    // 3. Present も SDK から往復でき、古い lease は stale_lease、現役 lease は adapter 境界まで到達する
+    let stale_present = client
+        .present(&Present {
+            gear_id: "roto".into(),
+            lease_token: "stale-token".into(),
+            controls: vec![],
+        })
+        .await
+        .unwrap_err();
+    assert!(stale_present.to_string().contains("stale_lease"));
+    let active_present = client
+        .present(&Present {
+            gear_id: "roto".into(),
+            lease_token: lease_token.clone(),
+            controls: vec![ControlPresentation {
+                id: "knob:1".into(),
+                name: Some("Cutoff".into()),
+                value: Some(64.0),
+                color: Some("amber".into()),
+            }],
+        })
+        .await
+        .unwrap_err();
+    assert!(
+        active_present
+            .to_string()
+            .contains("presentation adapter unavailable")
+    );
+
+    // 4. SelectSetup と ApplyGearSetup も RPC として受理され configuring になる
+    let snap = client
+        .select_setup(&SelectSetup {
+            gear_id: "roto".into(),
+            lease_token: lease_token.clone(),
+            setup: 5,
+        })
+        .await
+        .unwrap();
+    assert!(snap.gears[0].configuring);
+
+    let snap = client
+        .apply_gear_setup(&ApplyGearSetup {
+            gear_id: "roto".into(),
+            lease_token,
+            setup: 5,
+            content: SetupContent {
+                name: "LADYLAND".into(),
+                knobs: vec![KnobConfig {
+                    control: 0,
+                    mode: ControlMode::Cc7,
+                    channel: 1,
+                    param: 74,
+                    nrpn_address: 0,
+                    min: 0,
+                    max: 127,
+                    name: "CUTOFF".into(),
+                    color: 10,
+                    haptics: KnobHaptics::CentreIndent,
+                }],
+                switches: vec![],
+            },
+        })
+        .await
+        .unwrap();
+    assert!(snap.gears[0].configuring);
+    assert!(
+        service.runtime.lock().unwrap().next_setup_job().is_some(),
+        "setup_jobs にジョブが積まれていること"
+    );
+
+    client.close().await.unwrap();
+    service.shutdown().await.unwrap();
+}

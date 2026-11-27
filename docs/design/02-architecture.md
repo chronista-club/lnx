@@ -102,9 +102,9 @@ graph TB
 | `inventory.rs` | 物理ポートから既知の Gear（`roto`, `lpd8`, `nanokontrol`, `keystage`, `numa`, `minilab`, `fgdp`, `xtouch`, `l6max`, `zenith2`, **`maru`**）および未知の `generic:<name>` を識別する |
 | `runtime.rs` | `Broker` と保存設定（`settings.json`）、仮想ポート束縛（`NativeBinding`）、ROTO setup ジョブキューを統合管理する |
 | `service.rs` | Unison の `gear` channel（`schemas/gear.kdl`）を loopback（`[::1]` と `127.0.0.1` の同一ポート）で提供し、`Endpoint`（`endpoint.json`）を出す |
-| `native.rs`, `native_runtime.rs` | macOS CoreMIDI の read-only 列挙、active lease ごとの仮想 source / destination ブリッジ生成、SysEx 完了待ち送信、Keystage 接続モードの後始末 |
+| `native.rs`, `io_fence.rs` | macOS CoreMIDI の read-only 列挙と CFRunLoop notify スレッド、active lease ごとの仮想 source / destination（`Lnx/…`）ブリッジ生成、SysEx 完了待ち送信、Keystage 接続モードの後始末 |
 | `roto_admin.rs`, `roto_setup.rs` | ROTO-CONTROL の USB Serial admin ポートを介した setup 切り替えと差分書き込み（控え保存つき） |
-| `settings.rs`, `flow.rs`, `trace.rs` | 原子的な `settings.json` / `endpoint.json` 書き出し、状態変化の 1 行 info ログ、動的 ON/OFF 可能な MIDI トレース |
+| `settings.rs`, `flow.rs`, `trace.rs` | 原子的な `settings.json` / `endpoint.json` 書き出しと `RuntimeLock`、状態変化の 1 行 info ログ、動的 ON/OFF 可能な MIDI トレース（`lnx_trace` / `LNX_TRACE`） |
 
 ## Implementation
 

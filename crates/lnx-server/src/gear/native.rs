@@ -248,8 +248,8 @@ impl NativeBridge {
             .client_for_session(&lease.session_id)
             .unwrap_or("unknown")
             .to_owned();
-        let client = os(Client::new("Midistage"))?;
-        let output = os(client.output_port("Midistage physical output"))?;
+        let client = os(Client::new("Lnx"))?;
+        let output = os(client.output_port("Lnx physical output"))?;
         let fence = Arc::new(IoFence::new(gear_id.into(), lease.clone()));
         let (sender, receiver) = mpsc::sync_channel(256);
         let worker_runtime = runtime.clone();
@@ -283,7 +283,7 @@ impl NativeBridge {
         };
         for port in ports {
             let name = format!(
-                "Midistage/{}/{}/{} | {}",
+                "Lnx/{}/{}/{} | {}",
                 client_id, lease.token, port.uid, port.name
             );
             if port.input {
@@ -299,43 +299,42 @@ impl NativeBridge {
                 let input_fence = bridge.fence.clone();
                 let input_client = client_id.clone();
                 let input_port_name = port.name.clone();
-                let input =
-                    os(bridge
-                        .client
-                        .input_port("Midistage physical input", move |packets| {
-                            let permit = {
-                                let r = input_runtime.lock().expect("runtime mutex poisoned");
-                                input_fence.begin(&r.broker)
-                            };
-                            // 先に転送し、記録はその後（トレースで遅らせない。記録は結果を書く）
-                            let verdict = match permit {
-                                // 元の host timestamp / packet 境界をそのまま仮想 source に渡す。
-                                Ok(_permit) => match forward.received(packets) {
-                                    Ok(()) => Cow::Borrowed("FWD"),
-                                    Err(status) => {
-                                        fault(
-                                            &input_runtime,
-                                            &input_fence,
-                                            format!("MIDIReceived status {status}"),
-                                        );
-                                        Cow::Owned(format!("FAIL MIDIReceived status {status}"))
-                                    }
-                                },
-                                Err(_) => Cow::Borrowed("DROP no lease"),
-                            };
-                            if trace::enabled() {
-                                for packet in packets.iter().filter(|p| trace::keep(p.data())) {
-                                    trace::port_line(
-                                        "dev→app",
-                                        &input_fence.gear_id,
-                                        &input_client,
-                                        &input_port_name,
-                                        &verdict,
-                                        packet.data(),
+                let input = os(bridge
+                    .client
+                    .input_port("Lnx physical input", move |packets| {
+                        let permit = {
+                            let r = input_runtime.lock().expect("runtime mutex poisoned");
+                            input_fence.begin(&r.broker)
+                        };
+                        // 先に転送し、記録はその後（トレースで遅らせない。記録は結果を書く）
+                        let verdict = match permit {
+                            // 元の host timestamp / packet 境界をそのまま仮想 source に渡す。
+                            Ok(_permit) => match forward.received(packets) {
+                                Ok(()) => Cow::Borrowed("FWD"),
+                                Err(status) => {
+                                    fault(
+                                        &input_runtime,
+                                        &input_fence,
+                                        format!("MIDIReceived status {status}"),
                                     );
+                                    Cow::Owned(format!("FAIL MIDIReceived status {status}"))
                                 }
+                            },
+                            Err(_) => Cow::Borrowed("DROP no lease"),
+                        };
+                        if trace::enabled() {
+                            for packet in packets.iter().filter(|p| trace::keep(p.data())) {
+                                trace::port_line(
+                                    "dev→app",
+                                    &input_fence.gear_id,
+                                    &input_client,
+                                    &input_port_name,
+                                    &verdict,
+                                    packet.data(),
+                                );
                             }
-                        }))?;
+                        }
+                    }))?;
                 os(input.connect_source(&source))?;
                 bridge.inputs.push(input);
                 bridge.sources.push(virtual_source);
@@ -517,6 +516,7 @@ impl Drop for NativeRuntime {
 }
 impl NativeRuntime {
     pub fn new(runtime: Shared) -> Self {
+        start_notify_thread();
         Self {
             runtime,
             bridges: BTreeMap::new(),
@@ -537,6 +537,7 @@ impl NativeRuntime {
                 .collect();
             for id in disappeared {
                 let _ = r.broker.set_present(&id, false);
+                r.driver_errors.remove(&id);
             }
             for (id, device) in &found {
                 if !r.broker.gears.contains_key(id) {
@@ -652,21 +653,22 @@ impl NativeRuntime {
                         self.bridges.insert(state.gear_id, bridge);
                     }
                     Err(error) => {
-                        tracing::warn!(device = %state.gear_id, "MIDI bridge open failed: {error}");
-                        self.runtime
-                            .lock()
-                            .expect("runtime mutex poisoned")
-                            .driver_errors
-                            .insert(state.gear_id, error.to_string());
+                        let message = error.to_string();
+                        let mut r = self.runtime.lock().expect("runtime mutex poisoned");
+                        if r.driver_errors.get(&state.gear_id) != Some(&message) {
+                            tracing::warn!(gear = %state.gear_id, "MIDI bridge open failed: {message}");
+                            r.driver_errors.insert(state.gear_id, message);
+                        }
                     }
                 }
             }
         }
-        // 挿抜・引き継ぎ完了など、この poll で起きた状態の変化を info に
-        self.runtime
-            .lock()
-            .expect("runtime mutex poisoned")
-            .log_flow();
+        // 挿抜・引き継ぎ完了など、この poll で起きた状態の変化に対して setup 切り替えを積み、info に出す
+        {
+            let mut r = self.runtime.lock().expect("runtime mutex poisoned");
+            r.plan_setup_switches();
+            r.log_flow();
+        }
     }
 }
 
@@ -689,7 +691,7 @@ pub fn start_notify_thread() -> bool {
             .name("coremidi-notify".into())
             .spawn(move || {
                 // この client が通知の宛先。thread の寿命いっぱい持つ（drop すると宛先が消える）
-                let client = Client::new("Midistage notify");
+                let client = Client::new("Lnx notify");
                 let _ = ready.send(client.is_ok());
                 let Ok(_client) = client else { return };
                 loop {

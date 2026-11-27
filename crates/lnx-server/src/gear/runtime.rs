@@ -218,7 +218,7 @@ impl Runtime {
     /// setup の持ち主（client_id → setup）
     pub fn setup_owners(&self, gear_id: &str) -> BTreeMap<String, Vec<u8>> {
         self.saved
-            .device_setups
+            .gear_setups
             .get(gear_id)
             .map(|owners| {
                 owners
@@ -230,7 +230,7 @@ impl Runtime {
     }
 
     /// 自分の setup を登録する。空なら取り消し。他のアプリの setup は取れない
-    pub fn set_device_setups(
+    pub fn set_gear_setups(
         &mut self,
         session: &str,
         request: &lnx_protocol::wire::SetGearSetups,
@@ -262,7 +262,7 @@ impl Runtime {
         }
         let mut saved = self.saved.clone();
         let owners = saved
-            .device_setups
+            .gear_setups
             .entry(request.gear_id.clone())
             .or_default();
         if request.setups.is_empty() {
@@ -280,7 +280,7 @@ impl Runtime {
             );
         }
         if owners.is_empty() {
-            saved.device_setups.remove(&request.gear_id);
+            saved.gear_setups.remove(&request.gear_id);
         }
         self.store.save(&saved)?;
         self.saved = saved;
@@ -327,7 +327,7 @@ impl Runtime {
 
     /// setup の中身を書く（段 C）。lease を持つアプリが、自分の台帳の setup にだけ。
     /// 中身はここで検査して、壊れていれば受け付けない（列には積まない）
-    pub fn apply_device_setup(
+    pub fn apply_gear_setup(
         &mut self,
         session: &str,
         request: &lnx_protocol::wire::ApplyGearSetup,
@@ -378,7 +378,7 @@ impl Runtime {
             let Some(client) = self.broker.client_for_session(&lease.session_id) else {
                 continue;
             };
-            let Some(owned) = self.saved.device_setups.get(id).and_then(|o| o.get(client)) else {
+            let Some(owned) = self.saved.gear_setups.get(id).and_then(|o| o.get(client)) else {
                 continue;
             };
             let Some(setup) = owned.last.or_else(|| owned.setups.first().copied()) else {
@@ -448,7 +448,7 @@ impl Runtime {
                 );
                 let mut saved = self.saved.clone();
                 if let Some(owned) = saved
-                    .device_setups
+                    .gear_setups
                     .get_mut(&job.gear_id)
                     .and_then(|o| o.get_mut(&job.client_id))
                     && owned.last != Some(job.setup)
@@ -726,7 +726,7 @@ mod tests {
                 ]
                 .into(),
                 initialized_clients: Default::default(),
-                device_setups: Default::default(),
+                gear_setups: Default::default(),
             })
             .unwrap();
         let r = runtime(dir.path());
@@ -832,19 +832,19 @@ mod setup_tests {
         let mut r = runtime(dir.path());
         r.hello("l", &hello("ladyland")).unwrap();
         r.hello("v", &hello("vp")).unwrap();
-        r.set_device_setups("l", &setups("roto", &[0, 1, 2, 3]))
+        r.set_gear_setups("l", &setups("roto", &[0, 1, 2, 3]))
             .unwrap();
-        r.set_device_setups("v", &setups("roto", &[6])).unwrap();
+        r.set_gear_setups("v", &setups("roto", &[6])).unwrap();
         assert!(
-            r.set_device_setups("v", &setups("roto", &[3, 6])).is_err(),
+            r.set_gear_setups("v", &setups("roto", &[3, 6])).is_err(),
             "3 は ladyland のもの"
         );
         assert!(
-            r.set_device_setups("v", &setups("roto", &[64])).is_err(),
+            r.set_gear_setups("v", &setups("roto", &[64])).is_err(),
             "setup は 0〜63"
         );
         assert!(
-            r.set_device_setups("v", &setups("nano", &[0])).is_err(),
+            r.set_gear_setups("v", &setups("nano", &[0])).is_err(),
             "setup を持たない機材"
         );
         assert_eq!(r.setup_owners("roto")["vp"], vec![6]);
@@ -852,7 +852,7 @@ mod setup_tests {
         let again = runtime(dir.path());
         assert_eq!(again.setup_owners("roto")["ladyland"], vec![0, 1, 2, 3]);
         // 空で取り消し
-        r.set_device_setups("v", &setups("roto", &[])).unwrap();
+        r.set_gear_setups("v", &setups("roto", &[])).unwrap();
         assert!(!r.setup_owners("roto").contains_key("vp"));
     }
 
@@ -862,8 +862,8 @@ mod setup_tests {
         let mut r = runtime(dir.path());
         r.hello("l", &hello("ladyland")).unwrap();
         r.hello("v", &hello("vp")).unwrap();
-        r.set_device_setups("l", &setups("roto", &[2, 3])).unwrap();
-        r.set_device_setups("v", &setups("roto", &[6])).unwrap();
+        r.set_gear_setups("l", &setups("roto", &[2, 3])).unwrap();
+        r.set_gear_setups("v", &setups("roto", &[6])).unwrap();
 
         let ladyland = take(&mut r, "l", "roto");
         r.plan_setup_switches();
@@ -890,9 +890,9 @@ mod setup_tests {
         let mut r = runtime(dir.path());
         r.hello("l", &hello("ladyland")).unwrap();
         r.hello("v", &hello("vp")).unwrap();
-        r.set_device_setups("l", &setups("roto", &[0, 1, 2, 3]))
+        r.set_gear_setups("l", &setups("roto", &[0, 1, 2, 3]))
             .unwrap();
-        r.set_device_setups("v", &setups("roto", &[6])).unwrap();
+        r.set_gear_setups("v", &setups("roto", &[6])).unwrap();
         let token = take(&mut r, "l", "roto");
         r.plan_setup_switches();
         let first = r.next_setup_job().unwrap();
@@ -929,8 +929,8 @@ mod setup_tests {
         let mut r = runtime(dir.path());
         r.hello("l", &hello("ladyland")).unwrap();
         r.hello("v", &hello("vp")).unwrap();
-        r.set_device_setups("l", &setups("roto", &[2, 3])).unwrap();
-        r.set_device_setups("v", &setups("roto", &[6])).unwrap();
+        r.set_gear_setups("l", &setups("roto", &[2, 3])).unwrap();
+        r.set_gear_setups("v", &setups("roto", &[6])).unwrap();
         let token = take(&mut r, "l", "roto");
         let select = |setup, token: &str| SelectSetup {
             gear_id: "roto".into(),
@@ -958,7 +958,7 @@ mod setup_tests {
         let mut r = runtime(dir.path());
         r.hello("l", &hello("ladyland")).unwrap();
         r.hello("v", &hello("vp")).unwrap();
-        r.set_device_setups("l", &setups("roto", &[2])).unwrap();
+        r.set_gear_setups("l", &setups("roto", &[2])).unwrap();
         take(&mut r, "l", "roto");
         r.plan_setup_switches();
         // 切り替える前に vp が取った（vp は setup を登録していない）
@@ -975,7 +975,7 @@ mod setup_tests {
         let dir = tempfile::tempdir().unwrap();
         let mut r = runtime(dir.path());
         r.hello("l", &hello("ladyland")).unwrap();
-        r.set_device_setups("l", &setups("roto", &[2])).unwrap();
+        r.set_gear_setups("l", &setups("roto", &[2])).unwrap();
         take(&mut r, "l", "roto");
         r.plan_setup_switches();
         let job = r.next_setup_job().unwrap();
@@ -994,7 +994,7 @@ mod setup_tests {
         let dir = tempfile::tempdir().unwrap();
         let mut r = runtime(dir.path());
         r.hello("l", &hello("ladyland")).unwrap();
-        r.set_device_setups("l", &setups("roto", &[2, 3])).unwrap();
+        r.set_gear_setups("l", &setups("roto", &[2, 3])).unwrap();
         let token = take(&mut r, "l", "roto");
         r.plan_setup_switches();
         // まだ誰も列を取り出していない = 受け付けただけ。それでも configuring
@@ -1026,8 +1026,8 @@ mod setup_tests {
         let mut r = runtime(dir.path());
         r.hello("l", &hello("ladyland")).unwrap();
         r.hello("v", &hello("vp")).unwrap();
-        r.set_device_setups("l", &setups("roto", &[2, 3])).unwrap();
-        r.set_device_setups("v", &setups("roto", &[6])).unwrap();
+        r.set_gear_setups("l", &setups("roto", &[2, 3])).unwrap();
+        r.set_gear_setups("v", &setups("roto", &[6])).unwrap();
         let token = take(&mut r, "v", "roto");
         r.plan_setup_switches();
         let _ = r.next_setup_job().map(|j| r.finish_setup_job(&j, Ok(())));
@@ -1042,12 +1042,12 @@ mod setup_tests {
             ..Default::default()
         };
         assert!(
-            r.apply_device_setup("l", &apply(2, &token, ok.clone()))
+            r.apply_gear_setup("l", &apply(2, &token, ok.clone()))
                 .is_err(),
             "lease を持たない"
         );
         assert!(
-            r.apply_device_setup("v", &apply(3, &token, ok.clone()))
+            r.apply_gear_setup("v", &apply(3, &token, ok.clone()))
                 .is_err(),
             "ladyland の setup"
         );
@@ -1056,11 +1056,11 @@ mod setup_tests {
             ..Default::default()
         };
         assert!(
-            r.apply_device_setup("v", &apply(6, &token, bad)).is_err(),
+            r.apply_gear_setup("v", &apply(6, &token, bad)).is_err(),
             "壊れた中身は受け付けない"
         );
         assert!(!r.configuring.contains("roto"), "断ったものは列に積まない");
-        r.apply_device_setup("v", &apply(6, &token, ok)).unwrap();
+        r.apply_gear_setup("v", &apply(6, &token, ok)).unwrap();
         assert!(
             r.configuring.contains("roto"),
             "受け付けた瞬間から configuring"
@@ -1084,7 +1084,7 @@ mod setup_tests {
         take(&mut r, "v", "roto");
         r.plan_setup_switches();
         assert!(r.next_setup_job().is_none(), "まだ登録が無い");
-        r.set_device_setups("v", &setups("roto", &[6])).unwrap();
+        r.set_gear_setups("v", &setups("roto", &[6])).unwrap();
         r.plan_setup_switches();
         assert_eq!(r.next_setup_job().unwrap().setup, 6);
     }

@@ -12,12 +12,12 @@ pub struct SavedSettings {
     pub gears: BTreeMap<String, SavedGear>,
     #[serde(default)]
     pub initialized_clients: BTreeSet<String>,
-    /// 機材の setup の持ち主（design 06）。gear_id → client_id → 登録した setup
+    /// Gear の setup の持ち主。gear_id → client_id → 登録した setup
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub device_setups: BTreeMap<String, BTreeMap<String, ClientSetups>>,
+    pub gear_setups: BTreeMap<String, BTreeMap<String, ClientSetups>>,
 }
 
-/// あるアプリが機材に持つ setup（Roto 本体の保存枠の番号）
+/// あるアプリが Gear に持つ setup（Roto 本体の保存枠の番号）
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientSetups {
     pub setups: Vec<u8>,
@@ -36,29 +36,31 @@ pub struct SavedGear {
 pub struct SettingsStore {
     pub directory: PathBuf,
 }
+
 pub struct RuntimeLock {
     _file: std::fs::File,
 }
+
 impl RuntimeLock {
     pub fn acquire(directory: &Path) -> anyhow::Result<Self> {
         private_dir(directory)?;
         let mut options = std::fs::OpenOptions::new();
         options.read(true).write(true).create(true).truncate(false);
         let file = private_file(&mut options).open(directory.join("runtime.lock"))?;
-        // inode は削除しない。close で lock を解放し、全起動が同じ inode を使う。
-        // unix は flock(LOCK_EX | LOCK_NB)、Windows は LockFileEx（排他・即失敗）
         if let Err(error) = file.try_lock() {
-            anyhow::bail!("midistaged already running or lock unavailable: {error}");
+            anyhow::bail!("lnx-server already running or lock unavailable: {error}");
         }
         Ok(Self { _file: file })
     }
 }
+
 impl SettingsStore {
     pub fn new(directory: &Path) -> Self {
         Self {
             directory: directory.into(),
         }
     }
+
     pub fn load(&self) -> anyhow::Result<SavedSettings> {
         let path = self.directory.join("settings.json");
         let bytes = match std::fs::read(path) {
@@ -79,6 +81,7 @@ impl SettingsStore {
         );
         Ok(settings)
     }
+
     pub fn save(&self, settings: &SavedSettings) -> anyhow::Result<()> {
         anyhow::ensure!(settings.version == 1, "unsupported settings version");
         atomic_write(
@@ -109,8 +112,6 @@ pub fn atomic_write(directory: &Path, name: &str, bytes: &[u8]) -> anyhow::Resul
     result
 }
 
-// 自分だけが読める置き場。unix は 0700 / 0600。Windows は %LOCALAPPDATA% 配下の
-// ユーザーごとの ACL に任せ、追加の ACL は付けない（design 07）
 #[cfg(unix)]
 fn private_dir(directory: &Path) -> std::io::Result<()> {
     use std::os::unix::fs::PermissionsExt;
@@ -130,8 +131,6 @@ fn private_file(options: &mut std::fs::OpenOptions) -> &mut std::fs::OpenOptions
 fn private_file(options: &mut std::fs::OpenOptions) -> &mut std::fs::OpenOptions {
     options
 }
-// rename をディスクに残す。Windows はディレクトリを開いて fsync できない（NTFS の
-// rename は metadata の journal に乗る）
 #[cfg(unix)]
 fn sync_dir(directory: &Path) -> std::io::Result<()> {
     std::fs::File::open(directory)?.sync_all()
@@ -144,6 +143,7 @@ fn sync_dir(_directory: &Path) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn only_one_runtime_can_hold_a_directory_and_exit_releases_it() {
         let dir = tempfile::tempdir().unwrap();
@@ -152,6 +152,7 @@ mod tests {
         drop(first);
         assert!(RuntimeLock::acquire(dir.path()).is_ok());
     }
+
     #[test]
     fn saved_off_survives_reopening_without_runtime_lease() {
         let dir = tempfile::tempdir().unwrap();
@@ -171,11 +172,12 @@ mod tests {
                 },
             )]),
             initialized_clients: BTreeSet::new(),
-            device_setups: BTreeMap::new(),
+            gear_setups: BTreeMap::new(),
         };
         store.save(&settings).unwrap();
         assert_eq!(SettingsStore::new(dir.path()).load().unwrap(), settings);
     }
+
     #[test]
     fn corrupt_or_future_settings_fail_closed() {
         let dir = tempfile::tempdir().unwrap();

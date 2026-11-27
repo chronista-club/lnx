@@ -31,7 +31,7 @@ func swiftSDKConnectsToRustAndAcknowledgesOnlyAfterAppCleanup() async throws {
         endpointURL: endpoint, clientID: "swift-b", displayName: "Swift B", nativeMIDI: false
     )
     let enabled = try await a.setEnabled(gearID: "nano", enabled: true, expectedRevision: 0)
-    let token = try #require(enabled.gears.first?.lease?.token)
+    let token = try #require(enabled.gears.first { $0.gearID == "nano" }?.lease?.token)
     do {
         _ = try await a.sendMIDI(gearID: "nano", leaseToken: "old", portName: "output", bytes: [0x90, 60, 100])
         Issue.record("stale output was accepted")
@@ -53,15 +53,38 @@ func swiftSDKConnectsToRustAndAcknowledgesOnlyAfterAppCleanup() async throws {
         }
     }
     let pending = try await b.snapshot()
-    #expect(pending.gears[0].phase == "releasing")
+    #expect(pending.gears.first { $0.gearID == "nano" }?.phase == "releasing")
     _ = try await a.quiesced(gearID: "nano", leaseToken: token)
     var successor = try await b.snapshot()
     for _ in 0..<50 {
-        if successor.gears[0].phase == "active" { break }
+        if successor.gears.first(where: { $0.gearID == "nano" })?.phase == "active" { break }
         try await Task.sleep(for: .milliseconds(20))
         successor = try await b.snapshot()
     }
-    #expect(successor.owns(successor.gears[0]))
+    let nanoAfter = try #require(successor.gears.first { $0.gearID == "nano" })
+    #expect(successor.owns(nanoAfter))
+
+    // ROTO setup RPC 往復検証（setGearSetups → setEnabled → selectSetup → applyGearSetup）
+    _ = try await a.setGearSetups(gearID: "roto", setups: [6, 7])
+    let rotoEnabled = try await a.setEnabled(gearID: "roto", enabled: true, expectedRevision: 0)
+    let rotoLease = try #require(rotoEnabled.gears.first { $0.gearID == "roto" }?.lease?.token)
+    _ = try await a.selectSetup(gearID: "roto", leaseToken: rotoLease, setup: 7)
+    _ = try await a.applyGearSetup(
+        gearID: "roto",
+        leaseToken: rotoLease,
+        setup: 7,
+        content: SetupContent(name: "SwiftTest")
+    )
+    var rotoSettled = try await a.snapshot()
+    for _ in 0..<50 {
+        if rotoSettled.gears.first(where: { $0.gearID == "roto" })?.configuring == false { break }
+        try await Task.sleep(for: .milliseconds(20))
+        rotoSettled = try await a.snapshot()
+    }
+    let rotoFinal = try #require(rotoSettled.gears.first { $0.gearID == "roto" })
+    #expect(rotoFinal.configuring == false)
+    #expect(rotoFinal.currentSetup == 7)
+
     await a.close()
     await b.close()
 }

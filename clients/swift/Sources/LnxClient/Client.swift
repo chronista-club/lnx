@@ -34,6 +34,7 @@ public final class Client: Sendable {
         )
         do {
             let channel = try await deadline(
+                seconds: 3,
                 operation: { try await connection.openChannel(GearChannel()) },
                 onTimeout: { await connection.disconnect() }
             )
@@ -76,12 +77,22 @@ public final class Client: Sendable {
         try await request(QuiescedRequest(gearID: gearID, leaseToken: leaseToken))
     }
 
-    /// SysEx は物理ドライバの completion まで待つ。
+    /// SysEx は物理ドライバの completion まで待つ（最大 128 KiB の SysEx を考慮して 10 秒）。
     public func sendMIDI(
         gearID: String, leaseToken: String, portName: String, bytes: [UInt8]
     ) async throws -> Snapshot {
         try await request(
-            SendMIDIRequest(gearID: gearID, leaseToken: leaseToken, portName: portName, bytes: bytes)
+            SendMIDIRequest(gearID: gearID, leaseToken: leaseToken, portName: portName, bytes: bytes),
+            seconds: 10
+        )
+    }
+
+    /// Gear の表示（名前・値・色）を更新する。
+    public func present(
+        gearID: String, leaseToken: String, controls: [ControlPresentation]
+    ) async throws -> Snapshot {
+        try await request(
+            PresentRequest(gearID: gearID, leaseToken: leaseToken, controls: controls)
         )
     }
 
@@ -113,9 +124,10 @@ public final class Client: Sendable {
         await connection.disconnect()
     }
 
-    private func request<R: UnisonRequest & Sendable>(_ request: R) async throws -> Snapshot
+    private func request<R: UnisonRequest & Sendable>(_ request: R, seconds: Int = 3) async throws -> Snapshot
     where R.Response == Reply {
         let reply = try await Self.deadline(
+            seconds: seconds,
             operation: { try await self.channel.request(request) },
             onTimeout: { await self.close() }
         )
@@ -123,22 +135,19 @@ public final class Client: Sendable {
     }
 
     private static func deadline<T: Sendable>(
+        seconds: Int,
         operation: @escaping @Sendable () async throws -> T,
         onTimeout: @escaping @Sendable () async -> Void
     ) async throws -> T {
-        try await withTaskCancellationHandler {
-            try await withThrowingTaskGroup(of: T.self) { group in
-                group.addTask { try await operation() }
-                group.addTask {
-                    try await Task.sleep(for: .seconds(3))
-                    await onTimeout()
-                    throw ProtocolFailure(code: "timeout", message: "service response timed out")
-                }
-                defer { group.cancelAll() }
-                return try await group.next()!
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask { try await operation() }
+            group.addTask {
+                try await Task.sleep(for: .seconds(seconds))
+                await onTimeout()
+                throw ProtocolFailure(code: "timeout", message: "service response timed out")
             }
-        } onCancel: {
-            Task { await onTimeout() }
+            defer { group.cancelAll() }
+            return try await group.next()!
         }
     }
 }
@@ -198,6 +207,17 @@ private struct SendMIDIRequest: UnisonRequest, Sendable {
     var bytes: [UInt8]
     enum CodingKeys: String, CodingKey {
         case gearID = "gear_id", leaseToken = "lease_token", portName = "port_name", bytes
+    }
+}
+
+private struct PresentRequest: UnisonRequest, Sendable {
+    static let method = "Present"
+    typealias Response = Reply
+    var gearID: String
+    var leaseToken: String
+    var controls: [ControlPresentation]
+    enum CodingKeys: String, CodingKey {
+        case gearID = "gear_id", leaseToken = "lease_token", controls
     }
 }
 

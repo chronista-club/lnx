@@ -66,9 +66,43 @@ fn temp_state_dir(tag: &str) -> std::path::PathBuf {
 fn sigterm_で畳んで正常に抜ける() {
     let dir = temp_state_dir("term");
     let (mut child, _) = start_server(&dir);
+    let endpoint_path = dir.join("endpoint.json");
+    assert!(
+        endpoint_path.exists(),
+        "待ち受けログが出た時点で endpoint.json が書かれていること"
+    );
+    // 実プロセスの gear channel に接続し、maru を含む 11 種すべての PROFILES が登録されていることを確かめる
+    let endpoint: lnx_protocol::wire::Endpoint =
+        serde_json::from_slice(&std::fs::read(&endpoint_path).unwrap()).unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let (client, snapshot) = lnx_client::Client::connect(
+            &endpoint,
+            lnx_protocol::wire::Hello {
+                protocol_version: lnx_protocol::PROTOCOL_VERSION,
+                client_id: "shutdown-test".into(),
+                display_name: "Shutdown Test".into(),
+                auth_token: endpoint.auth_token.clone(),
+                native_midi: false,
+                initial_enabled_profiles: vec![],
+            },
+        )
+        .await
+        .expect("実プロセスの gear channel に接続できること");
+        assert!(
+            snapshot.gears.iter().any(|g| g.state.gear_id == "maru"),
+            "maru が PROFILES に含まれていること"
+        );
+        assert!(snapshot.gears.len() >= 11);
+        let _ = client.close().await;
+    });
     send("-TERM", &child);
     let status = wait_exit(&mut child, Duration::from_secs(5));
     assert!(status.success(), "SIGTERM で正常に抜けない: {status:?}");
+    assert!(
+        !endpoint_path.exists(),
+        "SIGTERM で畳んだあと endpoint.json が消えていること"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

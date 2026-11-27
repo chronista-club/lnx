@@ -1124,5 +1124,26 @@ pub mod maru {
             );
             assert_eq!(p.port_pattern(), "maru");
         }
+
+        #[test]
+        fn control_chars_negative_values_and_large_steps_stay_7bit_safe() {
+            let mut p = MaruProfile;
+            // slot 1 の TRACK と制御文字サニタイズ
+            let trk = p.project_track(1, "A\n\0\x7fB", Rgb::new(2, 4, 6), true);
+            assert_eq!(
+                body(&trk[0]),
+                &[CMD_TRACK, 1, 1, 2, 3, b'A', b'?', b'?', b'?', b'B']
+            );
+
+            // 負の値クランプと steps >= 128 の 7bit マスク
+            let mut spec = ParamSpec::continuous("Gain", -0.5);
+            spec.steps = 255;
+            let prm = p.learn_parameter(0, &spec);
+            assert_eq!(&body(&prm[0])[..6], &[CMD_PARAM, 0, 0, 0, 0, 0x7F]);
+            assert_eq!(
+                value_position(0, -1.0),
+                [&HDR[..], &[CMD_VALUE, 0, 0, 0, EOX]].concat()
+            );
+        }
     }
 }

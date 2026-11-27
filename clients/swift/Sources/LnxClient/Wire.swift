@@ -26,6 +26,31 @@ public struct Control: Codable, Sendable, Equatable {
     public var id: String
     public var kind: String
     public var outputs: [String]
+    public init(id: String, kind: String, outputs: [String] = []) {
+        self.id = id
+        self.kind = kind
+        self.outputs = outputs
+    }
+    enum CodingKeys: String, CodingKey { case id, kind, outputs }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.kind = try c.decode(String.self, forKey: .kind)
+        self.outputs = try c.decodeIfPresent([String].self, forKey: .outputs) ?? []
+    }
+}
+
+public struct ControlPresentation: Codable, Sendable, Equatable {
+    public var id: String
+    public var name: String?
+    public var value: Float?
+    public var color: String?
+    public init(id: String, name: String? = nil, value: Float? = nil, color: String? = nil) {
+        self.id = id
+        self.name = name
+        self.value = value
+        self.color = color
+    }
 }
 
 public struct NativePorts: Codable, Sendable, Equatable {
@@ -142,6 +167,20 @@ public struct KnobConfig: Codable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case control, mode, channel, param, nrpnAddress = "nrpn_address", min, max, name, color, haptics
     }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.control = try c.decode(Int.self, forKey: .control)
+        self.mode = try c.decode(ControlMode.self, forKey: .mode)
+        self.channel = try c.decode(Int.self, forKey: .channel)
+        self.param = try c.decodeIfPresent(Int.self, forKey: .param) ?? 0
+        self.nrpnAddress = try c.decodeIfPresent(Int.self, forKey: .nrpnAddress) ?? 0
+        self.min = try c.decodeIfPresent(Int.self, forKey: .min) ?? 0
+        self.max = try c.decode(Int.self, forKey: .max)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.color = try c.decode(Int.self, forKey: .color)
+        self.haptics = try c.decode(KnobHaptics.self, forKey: .haptics)
+    }
 }
 
 public struct SwitchConfig: Codable, Sendable, Equatable {
@@ -183,6 +222,23 @@ public struct SwitchConfig: Codable, Sendable, Equatable {
         case control, mode, channel, param, nrpnAddress = "nrpn_address", min, max, name, color
         case ledOn = "led_on", ledOff = "led_off", action, stepNames = "step_names"
     }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.control = try c.decode(Int.self, forKey: .control)
+        self.mode = try c.decode(ControlMode.self, forKey: .mode)
+        self.channel = try c.decode(Int.self, forKey: .channel)
+        self.param = try c.decodeIfPresent(Int.self, forKey: .param) ?? 0
+        self.nrpnAddress = try c.decodeIfPresent(Int.self, forKey: .nrpnAddress) ?? 0
+        self.min = try c.decodeIfPresent(Int.self, forKey: .min) ?? 0
+        self.max = try c.decode(Int.self, forKey: .max)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.color = try c.decode(Int.self, forKey: .color)
+        self.ledOn = try c.decode(Int.self, forKey: .ledOn)
+        self.ledOff = try c.decode(Int.self, forKey: .ledOff)
+        self.action = try c.decode(SwitchAction.self, forKey: .action)
+        self.stepNames = try c.decodeIfPresent([String].self, forKey: .stepNames) ?? []
+    }
 }
 
 public struct SetupContent: Codable, Sendable, Equatable {
@@ -193,6 +249,13 @@ public struct SetupContent: Codable, Sendable, Equatable {
         self.name = name
         self.knobs = knobs
         self.switches = switches
+    }
+    enum CodingKeys: String, CodingKey { case name, knobs, switches }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.knobs = try c.decodeIfPresent([KnobConfig].self, forKey: .knobs) ?? []
+        self.switches = try c.decodeIfPresent([SwitchConfig].self, forKey: .switches) ?? []
     }
 }
 
@@ -235,7 +298,7 @@ public struct ServiceEndpoint: Codable, Sendable {
     }
 }
 
-public struct ProtocolFailure: Codable, Sendable, Error, LocalizedError {
+public struct ProtocolFailure: Codable, Sendable, Error, LocalizedError, Equatable {
     public var code: String
     public var message: String
     public var errorDescription: String? { "\(code): \(message)" }
@@ -253,7 +316,7 @@ public struct Reply: Decodable, Sendable {
     }
 }
 
-public enum Event: Decodable, Sendable {
+public enum Event: Decodable, Sendable, Equatable {
     case state(Snapshot)
     case quiesce(gearID: String, profileID: String, leaseToken: String)
     case input(
