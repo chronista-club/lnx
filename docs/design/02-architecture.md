@@ -1,14 +1,16 @@
-# 02. lnx の構成 — Unison の上に載せる
+# 02. lnx の構成 — Unison の上に載せる Signal Hub + Routing
 
 > **Status**: Draft（Status log 参照）
-> **Related**: [spec 01](../spec/01-core-concept.md)（場の同期）、[spec 02](../spec/02-creare.md)（統合のハブ、UI の方針）、[design 01](01-lnx-server-link.md)（最初の実装）、[archive/ARCHITECTURE.md](../archive/ARCHITECTURE.md)（前身、Deprecated）
-> **対象**: `Cargo.toml`, `rust-toolchain.toml`, `crates/lnx-engine/`, `crates/lnx-cli/`, `crates/lnx-creare/`, `crates/lnx-server/`, `apps/ios/project.yml`
+> **Related**: [spec 01](../spec/01-core-concept.md)（機器と場をつなぐもの、場の同期）、[spec 02](../spec/02-creare.md)（統合のハブ、UI の方針）、[design 01](01-lnx-server-link.md)（最初の実装）、`mem_1ChTKAVaEY4JhcPwSuBqPc`（midistage・maru・lnx 統合構想 6 Steps）、`mem_1ChTKAxCNTrpAgXr4XM1Cc`（Step 1: 旧世代 3 crate 撤去）、[archive/ARCHITECTURE.md](../archive/ARCHITECTURE.md)（前身、Deprecated）
+> **対象**: `Cargo.toml`, `rust-toolchain.toml`, `crates/lnx-server/`, `apps/ios/project.yml`
 
 ## Abstract
 
-spec 01 の「場の同期」と spec 02 の「統合のハブ」を、Rust の workspace（4 crate）と Apple ネイティブアプリ（SwiftUI）で実装する。
+spec 01 の「機器と場をつなぐもの（links）」を、**外部機器シグナル（MIDI / USB Serial / Network QUIC 等）と場（Ladyland / Vantage Point 等）を双方向につなぐ Signal Hub + Routing（`lnx-server`）** および Apple ネイティブアプリ（**`lnx creare`、`apps/ios`**）として実装する。
 ノード間の通信は **Unison Protocol**（club-unison、QUIC、KDL スキーマ）に統一し、標準のネットワークライブラリを直接は使わない。
-最初に動いたのは「lnx creare が LNX サーバに常時つながる」（design 01、v0.1.0-alpha2）。音（lnx-engine）はまだどこにもつながっていない。
+
+これまで別リポジトリで進んでいた `midistage`（物理 MIDI 機材・`maru` の検出、lease 引き継ぎ、`Present` 投影、3D `gear/`、机配置 `desk.kdl`）を `lnx` に統合し、Mac 上の常駐デーモンを `lnx-server` 一本にする（`mem_1ChTKAVaEY4JhcPwSuBqPc`）。
+その第一歩（Step 1）として、どこにも繋がっていなかった旧世代の 3 crate（`lnx-engine`、`lnx-cli`、Bevy 版 `lnx-creare`）を撤去し、workspace を純化した。
 
 ## Architecture
 
@@ -16,114 +18,92 @@ spec 01 の「場の同期」と spec 02 の「統合のハブ」を、Rust の 
 
 | 構成要素 | 場所 | 役割 | 現状 |
 |---|---|---|---|
-| **lnx-engine** | `crates/lnx-engine` | オーディオエンジン。CPAL で入出力、ロックフリーのリングバッファ、AudioGraph、ビートマシン、エフェクト、レイテンシ計測。C ABI（cbindgen）も出す | 動く。`examples/` にビートマシンのデモ |
-| **lnx-cli** | `crates/lnx-cli` | `lnx` コマンド（start / stop / status / audio / midi / monitor / config / ui） | 骨格。サブコマンドは定義済みだがハンドラの大半は TODO で、表示は固定値 |
-| **lnx-creare**（Bevy） | `crates/lnx-creare` | ビジュアルの窓（Bevy 0.14） | 窓とテキストだけの骨格 |
-| **lnx-server** | `crates/lnx-server` | LNX サーバ。lnx creare が常時つなぐ窓口。session（名乗り・心拍）と registry（既知サーバの一覧）、Bonjour `_lnx._udp` で名乗る | 動く（design 01） |
-| **lnx creare**（Apple） | `apps/ios` | 入り口のアプリ。SwiftUI、iPad が主。一つのターゲットで iOS / macOS | 動く。接続・名乗り・heartbeat・一覧・画面切り替え |
+| **lnx-server** | `crates/lnx-server` | lnx サーバ（Signal Hub + Router）。lnx creare や各アプリが常時つなぐ窓口。session（名乗り・heartbeat）、registry（既知サーバの一覧）、pairing（QR ペアリング）、Bonjour `_lnx._udp` で名乗る | 動く（design 01）。Step 2〜3 で機材 Runtime（旧 `midistaged`）を統合予定 |
+| **lnx creare**（Apple） | `apps/ios` | 入り口のアプリ。SwiftUI、iPad が主。一つのターゲットで iOS / macOS。Mac 版はメニューバーから同梱の `lnx-server` を `SMAppService` で常駐管理する | 動く。接続・名乗り・heartbeat・ペアリング・一覧・画面切り替え |
 
-### レイヤー
+### Signal Hub + Routing の全体像（統合ターゲット）
 
 ```mermaid
 graph TB
-    subgraph App["Application — 人が触る面"]
-        Creare["lnx creare（apps/ios、SwiftUI）"]
-        CLI["lnx-cli"]
-        Bevy["lnx-creare（Bevy、骨格）"]
+    subgraph Apps["Application / Field — 場と人が触る面"]
+        Creare["lnx creare（apps/ios、SwiftUI: iPad / iPhone / macOS）"]
+        LL["Ladyland（音・演奏の場）"]
+        VP["Vantage Point（開発・Editor の場）"]
     end
-    subgraph Hub["Hub — 場の窓口"]
-        Server["lnx-server<br/>session / registry"]
+    subgraph Hub["Hub — Signal Hub + Routing"]
+        Server["lnx-server<br/>session / registry / pairing / stage（Step 2〜3 で統合）"]
     end
-    subgraph Proc["Processing — 音"]
-        Engine["lnx-engine<br/>AudioGraph / BeatMachine / effects / latency"]
-        Wavelet["ウェーブレット合成（構想、未実装）"]
+    subgraph Devices["External Devices — 外部機器レイヤー"]
+        Maru["maru（MARU01 / ESP32-S3 自作ハード）"]
+        MIDI["市販コントローラ（Keystage / ROTO / LPD8 / X-Touch 等）"]
     end
     subgraph Infra["Infrastructure"]
-        Unison["Unison Protocol<br/>club-unison 2.2、QUIC、KDL"]
+        Unison["Unison Protocol<br/>club-unison、QUIC、KDL"]
         Bonjour["Bonjour<br/>mdns-sd（Rust）/ NWBrowser（Swift）"]
-        CPAL["CPAL → CoreAudio ほか"]
     end
-    Creare ==>|"QUIC :12730（design 01）"| Server
+    Creare ==>|"QUIC :12730 / :12731（design 01）"| Server
+    LL -.->|"Step 3〜6 で lnx-server に統合"| Server
+    VP -.->|"Step 3〜6 で lnx-server に統合"| Server
+    Server -.->|"Step 3 で CoreMIDI / USB Serial 統合"| Maru
+    Server -.->|"Step 3 で CoreMIDI / USB Serial 統合"| MIDI
     Server --> Unison
     Server --> Bonjour
     Creare --> Bonjour
-    CLI -.->|"依存はあるが未接続"| Engine
-    Bevy -.->|"依存はあるが未接続"| Engine
-    Engine --> CPAL
-    Engine -.->|"次（音を場へ）"| Server
-    Wavelet -.-> Engine
 ```
+
+### 6 Steps の統合ロードマップ（`mem_1ChTKAVaEY4JhcPwSuBqPc`）
+
+| Step | 内容 | 状態 |
+|---|---|---|
+| **Step 1** | 未接続の旧 3 crate（`lnx-engine` / `lnx-cli` / Bevy `lnx-creare`）と未使用依存を撤去し workspace を純化 | **本変更で完了** |
+| **Step 2** | I/O なしの純粋層 `crates/lnx-protocol`（wire 型・Broker 状態機械）と `crates/lnx-profiles`（`maru`・ROTO・Keystage・LPD8・X-Touch 等の入力正規化と `Present` 投影）を導入 | 次 |
+| **Step 3** | `lnx-server` に機材 Runtime と `stage` channel を組み込み、`crates/lnx-client`（Rust SDK）と `clients/swift`（`LnxClient`）を追加 | 予定 |
+| **Step 4** | Mac 版 `LnxCreare.app` メニューバーに機材ステータス一覧・MIDI トレース・ログ表示を合流 | 予定 |
+| **Step 5** | 3D 機材資産（`gear/`）と机配置（`desk.kdl`）を `lnx` に合流し、Mac / iPad の `lnx creare` に展開 | 予定 |
+| **Step 6** | `Ladyland` と `VP` を `LnxClient` / `lnx-client` に繋ぎ替え、`midistage` をアーカイブ | 予定 |
 
 ### Unison をどう使うか
 
 - サーバ側は `club-unison`（crate 識別子は `unison`）の `ProtocolServer`。`with_identity(name, VERSION, "club.chronista.lnx")` → `enable_discovery(LNX_KDL)` → `register_channel`。スキーマ `crates/lnx-server/schemas/lnx.kdl` が正本で、バイナリに焼き込んで discovery で配る
-- アプリ側は club-unison の Swift package（`UnisonClient`、`exactVersion: 2.2.0`、`apps/ios/project.yml`）。Rust コアも UniFFI も使っていない
-- 待ち受けは UDP / QUIC の `[::]:12730`（旧 lnx-core の番号を受け継いだ）。証明書は dev の自己署名（`dev_localhost`）、アプリ側は `skipVerify`
-- 探索は Bonjour。Rust は `mdns-sd` で `_lnx._udp` を広告、Swift は `NWBrowser`。**Unison Node は使っていない**
-- `.claude/CLAUDE.md` の方針は Unison Protocol / Node / Runtime / Connect の 4 つを挙げるが、このリポジトリが依存しているのは Protocol（club-unison）だけ。Node / Runtime / Connect の採用は未決
+- アプリ側は club-unison の Swift package（`UnisonClient`、`apps/ios/project.yml`）
+- 待ち受けは UDP / QUIC の `[::]:12730`（本体）と `[::1]:12731`（手元用 pairing）。証明書は保存した自己署名（`cert.pem` / `key.pem`）、LAN の実機は QR ペアリングで leaf DER を pin（design 01）
+- 探索は Bonjour。Rust は `mdns-sd` で `_lnx._udp` を広告、Swift は `NWBrowser`
 
 ### 分岐の答え
 
 | 分岐 | 答え | 理由 |
 |---|---|---|
-| 言語 | コアは Rust、Apple の UI は Swift | 低遅延・ロックフリーの処理は Rust。UI は各プラットフォームの最適なもの（spec 02） |
-| ノード間通信 | Unison Protocol 一本 | tokio 等を直接ではなく Unison 経由にする（`.claude/CLAUDE.md`） |
-| Rust の版 | `rust-toolchain.toml` で 1.99.1 に固定。mise には rust を書かない | 裁定 2026-09-15「Rust toolchain は rustup 一本」（`mem_1Cf5RnR2KKVdmemBSpiU9A`）、1.99.1 は裁定 2026-11-04。club-unison 2.2 / club-kdl 0.14 の要求は 1.95 以上 |
-| サーバの場所 | まず Mac。Raspberry Pi は次 | design 01 |
+| 役割と境界 | **`midistage` と `lnx-server` を統合し、`lnx-server` を唯一の Signal Hub + Router にする**。`maru` は市販 MIDI 機材と同じ外部機器レイヤーに置く | `midistage` だと MIDI に縛られるが、実態は MIDI・USB Serial・Network QUIC のシグナルを束ねて Ladyland / VP へルーティングするハブであり、`lnx`（links）の本質そのもの（裁定 2026-11-27、`mem_1ChTKAVaEY4JhcPwSuBqPc`） |
+| 後方互換 | **旧 `midistage` 名や旧パスとの後方互換は持たず、あるべき姿（`lnx` の語彙と置き場）へ一直線に揃える** | 裁定 2026-11-27「後方互換なんて気にせず、あるべき姿に目指して、一直線でいこうよ」（`mem_1ChTKAVaEY4JhcPwSuBqPc`） |
+| 旧 3 crate | **`lnx-engine` / `lnx-cli` / Bevy `lnx-creare` は撤去** | どこにも繋がっておらず、音のエンジンは Ladyland 側にあるため Step 1 で撤去して workspace を軽くする（`mem_1ChTKAxCNTrpAgXr4XM1Cc`） |
+| 言語 | サーバ・プロトコル・プロファイルは Rust、Apple の UI は Swift（SwiftUI） | 低遅延の通信と純粋計算層は Rust、UI は Apple ネイティブ（`apps/ios`） |
+| ノード間通信 | Unison Protocol 一本 | tokio 等を直接ではなく Unison 経由にする |
+| Rust の版 | `rust-toolchain.toml` で 1.99.1 に固定。mise には rust を書かない | 裁定 2026-09-15「Rust toolchain は rustup 一本」（`mem_1Cf5RnR2KKVdmemBSpiU9A`）、1.99.1 は裁定 2026-11-04 |
 
 ## Data Model
 
 ### Rust workspace（`Cargo.toml`）
 
-- `[workspace]` の 4 member。`workspace.package` は version `0.1.0-alpha2`、edition 2024、license `MIT OR Apache-2.0`
-- 主な依存（`workspace.dependencies`）: `cpal` 0.16、`dasp`、`ringbuf` 0.4、`crossbeam-channel`、`atomic_float`、`hound`（WAV）、`midir` 0.9、`serde` / `toml`、`tokio`（sync, rt）。macOS では `coreaudio-rs` / `coreaudio-sys`。`grafton-ndi`（NDI 6）は lnx-engine の `ndi` feature で optional
-- `slint` 1.9 は宣言だけで、使う crate は無い。`midir` も依存にあるだけで、MIDI を読むコードはまだ無い（guide 02）
-- profile: release は `opt-level 3` / LTO / `codegen-units 1` / `panic = abort`。dev も `opt-level 2`（音のため）
-
-### lnx-engine の主な型（`crates/lnx-engine/src/lib.rs` の re-export）
-
-| 型 | 場所 | 役割 |
-|---|---|---|
-| `AudioEngine` | `engine.rs` | CPAL のストリームを持ち、`ControlMessage`（Start / Stop / サンプルレート / バッファ / デバイス選択）を crossbeam で受ける。既定 48000 Hz、256 サンプル、入出力それぞれ 8192 のリングバッファ |
-| `AudioGraph`, `NodeId`, `ConnectionId` | `graph.rs` | ノードと接続のグラフ。ファイル再生ノード、gain / pan / enabled |
-| `DeviceManager`, `AudioDevice` | `devices.rs` | 入出力デバイスの列挙と選択 |
-| `BeatMachine`, `DrumPad`, `SequencerPattern`, `TempoController` | `beatmachine.rs` | 16 パッド × 16 ステップ、BPM、swing、パターンの切り替え（README の「ビートマシン機能」） |
-| `AudioFilePlayer` ほか | `audio_file.rs` | WAV の読み込みと再生（hound） |
-| `LatencyMeter`, `LatencyTester` | `latency.rs` | 往復レイテンシの計測と統計 |
-| `AudioEffect`（Delay / Reverb / Compressor / BiquadFilter） | `effects.rs` | エフェクト |
-| `lnx_engine_*` | `ffi.rs` | C ABI。`crate-type = ["cdylib", "staticlib", "rlib"]`、cbindgen が `include/lnx_audio_engine.h` を生成 |
+- `[workspace]` の member は現在 `crates/lnx-server`（Step 2〜3 で `lnx-protocol`, `lnx-profiles`, `lnx-client` を追加予定）
+- `workspace.package` は version `0.1.0-alpha3`、edition 2024、license `MIT OR Apache-2.0`
+- `workspace.dependencies`: `libc`、`tokio`、`serde`、`serde_json`、`toml`
+- profile: release は `opt-level 3` / LTO / `codegen-units 1` / `panic = abort`
 
 ### 線上の形（wire）
 
-design 01 の Data Model に一本化する。channel `session`（Hello → Welcome、event Heartbeat）と `registry`（List → ServerList、event RegistryChanged）、
-`ServerEntry { id, name, kind, host, port }`。設定は TOML（`crates/lnx-server/lnx-server.example.toml`）。
+design 01 の Data Model に一本化する。channel `session`（Hello → Welcome、event Heartbeat）、`registry`（List → ServerList、event RegistryChanged）、手元用 `pairing`（Get → url / name / cert）。Step 2〜3 で機器管理の `stage` channel を統合する。
 
 ## Implementation
 
 - どこに何があるか: 上の表。ビルドと日々の回し方は [guide 01](../guide/01-development.md)
-- つながっているもの: lnx creare ⇄ lnx-server（QUIC、design 01）だけ
-- つながっていないもの
-  - lnx-engine ⇄ UI。`apps/ios/README.md` の「次にやること」は、`staticlib` + cbindgen のヘッダを iOS 向けにクロスビルドして xcframework にし、UniFFI で Swift の型を生成する案。未着手
-  - lnx-engine ⇄ lnx-server（音を場へ）。design 01 の未決
-  - lnx-cli → lnx-engine。依存はあるがハンドラが TODO。`lnx start --daemon` は ichimi 経由で起こす想定のコマンド文字列を印字するだけ
-- テスト: Rust は `cargo test`（lnx-server は実 QUIC の往復 `tests/link.rs` を含む）。Swift は Swift Testing の単体 + 実サーバ相手の UI テスト（design 01「テストは三層」）
-- CI: `.github/workflows` にあるのは Issue / PR の自動アサインだけ。ビルドとテストの CI は無い
+- つながっているもの: lnx creare ⇄ lnx-server（QUIC、design 01）
+- テスト: Rust は `cargo test`（lnx-server は実 QUIC の往復 `tests/link.rs` ほか）。Swift は Swift Testing の単体 + 実サーバ相手の UI テスト（design 01「テストは三層」）
 
 ## やってはいけない
 
 - **Rust の版を mise に書かない。** `rust-toolchain.toml` が正。cargo-edit 等の auto_install が rustc の版で止まった実例（2026-11-04、`.mise.toml` のコメント）
 - **前身の `ARCHITECTURE.md` のコード例を写さない。** `unison_protocol::ServiceBuilder` や `unison_node::NodeManager` は実在しない API。実物は club-unison の `ProtocolServer` / `ProtocolClient`（`crates/lnx-server/src/serve.rs`、`tests/link.rs`）
 - **スキーマ（`lnx.kdl`）を変えたら Swift の写し（`LnxProtocol.swift`）も同じ PR で。** codegen は無い（design 01）
-- **性能値を文書に書くときは測った証拠を添える。** README の「< 10ms 達成」「CPU < 5%」はリポジトリに計測の記録が無い（未確認）
-
-## 関連 / 未決
-
-- **UI 技術**: README は Slint、`crates/lnx-creare` は Bevy、spec 02 は Sycamore（Web）+ SwiftUI + MCP。現状動いているのは SwiftUI（`apps/ios`）。どれを本線にするかは決めていない。決まったら spec 02 の表とここを更新する
-- **Unison Node / Runtime / Connect**: `.claude/CLAUDE.md` の方針にあるが未使用。Unison に Hub 層ができたら経由型（中継）に載せ替える案は design 01
-- **ウェーブレット合成エンジン**（README の Phase 2、プロジェクト名の由来 "wavelet synthesize engine"）: 未実装。設計も無い
-- **MIDI**: `midir` は依存にあるだけ。機器の仕様と推奨設定は [guide 02](../guide/02-midi-devices.md)
-- **分散処理・自動スケーリング・Prometheus・Docker**（前身の ARCHITECTURE.md）: 実装も、やると決めた記録も無いので、この文書には載せない。原文は archive に残る
-- **レイテンシの目標**: spec 01（ライブで知覚できない < 10ms）、spec 02（音 → 映像 < 16ms）。実測の記録は無い
 
 ## Status log
 
@@ -131,3 +111,5 @@ design 01 の Data Model に一本化する。channel `session`（Hello → Welc
 - 2026-11-04: SDG の design として `02-architecture.md` に書き直し、Draft。v0.1.0-alpha2 の実装（lnx-server、apps/ios）に合わせ、
   実在しない API のコード例と、実装も裁定も無い節（分散処理 / 自動スケーリング / Prometheus / Docker）を落とした。
   前身は `docs/archive/ARCHITECTURE.md`（Deprecated）
+- 2026-11-27: `midistage`・`maru`・`lnx` の統合構想（6 Steps、裁定 `mem_1ChTKAVaEY4JhcPwSuBqPc`）に基づき、`lnx-server` を唯一の Signal Hub + Router とする方針を明記。
+  Step 1（`mem_1ChTKAxCNTrpAgXr4XM1Cc`）として、未接続の旧世代 3 crate（`lnx-engine`、`lnx-cli`、Bevy `lnx-creare`）と未使用の音声・GUI 依存を workspace から撤去した

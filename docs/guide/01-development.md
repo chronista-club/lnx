@@ -46,17 +46,6 @@ Rust の workspace（`crates/`）と Apple のアプリ（`apps/ios`）を、**m
 cargo build                 # workspace 全体
 cargo test                  # 全 crate のテスト
 cargo fmt && cargo clippy   # 整形と lint（commit 前）
-
-# lnx-engine のデモ。workspace は virtual manifest なので -p が要る
-cargo run -p lnx-engine --example beatmachine_demo               # ビートマシン
-cargo run -p lnx-engine --example beatmachine_demo_with_samples  # samples/ にテスト音源を作って鳴らす
-cargo run -p lnx-engine --example simple_tone_test               # エンジン経由でトーンを出す
-cargo run -p lnx-engine --example audio_debug_test               # エンジンの初期化と出力の確認
-cargo run -p lnx-engine --example raw_audio_test                 # エンジンを通さず CPAL を直に叩く
-
-# lnx コマンド。サブコマンドは揃っているがハンドラの大半は TODO で、表示は固定値
-cargo run -p lnx-cli -- --help
-cargo run -p lnx-cli -- status
 ```
 
 ### lnx サーバ
@@ -216,9 +205,10 @@ UDID は `xcrun devicectl list devices` で見る。「lnx を探しています
 | メニューバーが「server:install の常駐で動いています」/「…が入っています」と言って「開始」を出さない | `~/Library/LaunchAgents/club.chronista.lnx-server.plist` がある。`mise run server:uninstall` で外してから「開始」 |
 | Mac 版のビルドが「failed to run protoc」で止まる | 同梱の script は brew の `protoc` を `/opt/homebrew/bin` か `/usr/local/bin` に探す。`brew install protobuf` |
 | `mac:install` し直したのに、常駐しているサーバが古いまま | 走っているプロセスは前の実行ファイルのまま。メニューの「再起動」で入れ替える（SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある）） |
-| 音が出ない | `lnx audio list` は固定値を返すだけ（TODO）。`cargo run -p lnx-engine --example audio_debug_test` と `raw_audio_test` で出力デバイスを確かめる |
 
 ## Status log
+
+- 2026-11-27: Step 1（`mem_1ChTKAxCNTrpAgXr4XM1Cc`）で旧 `lnx-engine` / `lnx-cli` / Bevy `lnx-creare` を撤去したのに合わせ、Usage と Troubleshooting からそれらのコマンド記載を整理した
 
 - 2026-11-23: `server:ask`（NIC ごとに IPv4 / IPv6 で名乗りを直接問う）を足した。`server:test` は `tasks/_lib/test` の Ruby のテストをすべて回す
 - 2026-11-05: Mac 版のメニューバーから lnx-server を常駐させる（SMAppService）。`mac:install` と `mac:test` を足した。

@@ -1,305 +1,59 @@
 # lnx
 
-lnx - wavelet synthesize engine
+lnx（リンクス）— 機器と場をつなぐ Signal Hub + Routing と、ヴィジョンクリエイティブツール **lnx creare**。
 
 ## 概要
 
 lnx（リンクス）は、機器と場をつなぐもの。読みの「リンクス」は links（つなぐもの）に通じます。
-**Low-Latency, High-Quality, Human-Friendly** をモットーとした、audio/visual 表現のためのライブツールプロジェクトです。
+**Low-Latency, High-Quality, Human-Friendly** をモットーとした、リアルタイム表現と外部機器ルーティングのためのプロジェクトです。
 画面と文書では小文字の lnx と書きます（大文字の LNX は Linux と読まれやすいため。識別子は変えない。[spec 01](docs/spec/01-core-concept.md)「名前と表記」）。
 
-### ✅ 実装済み機能
+## アーキテクチャ
 
-#### オーディオエンジン（lnx-engine）
-- **低遅延オーディオ処理**: CPAL (Cross-Platform Audio Library) による実装
-- **リアルタイム音声処理**: ロックフリー設計で安定した音声出力
-- **クロスプラットフォーム対応**: macOS、Windows、Linux対応
-
-#### ビートマシン機能
-- **16パッドドラムサンプラー**
-  - 各パッド個別のボリューム調整
-  - ミュート/ソロ機能
-  - サンプル動的ロード
-- **16ステップシーケンサー**
-  - パターンベースのシーケンス
-  - リアルタイムパターン編集
-  - 最大8パターン保存可能
-- **テンポコントロール**
-  - BPM: 60-300
-  - リアルタイムBPM変更
-  - スイング機能（実装予定）
-- **オーディオファイル再生**
-  - WAV/AIFF形式対応
-  - モノラル/ステレオ自動判定
-  - mono-to-stereo変換対応
-
-### 🚧 開発中機能
-- ウェーブレット合成エンジン設計
-- MIDI機器連携
-- ビジュアライザー基盤
-
-## 技術スタック
-
-### 言語とフレームワーク
-- **Rust** 1.95 以上（開発は mise の 1.99）
-- **CPAL** 0.15+ - クロスプラットフォームオーディオ
-- **Slint** 1.9 - Rust製クロスプラットフォームGUIツールキット
-- **hound** - WAVファイル処理
-- **atomic_float** - ロックフリー浮動小数点演算
-- **ringbuf** - ロックフリーリングバッファ
-
-### 🔗 Unisonエコシステム統合
-- **Unison Protocol** - 分散システム間の高速通信プロトコル
-- **Unison Node** - 分散ノード管理とオーケストレーション
-- **Unison Runtime** - リアルタイム処理用ランタイム
-- **Unison Connect** - デバイス間接続と同期
-
-### アーキテクチャ
 ```
 lnx/
-├── Cargo.toml               # ワークスペース設定
+├── Cargo.toml               # Rust ワークスペース設定
 ├── crates/
-│   ├── lnx-engine/         # オーディオエンジンコア
-│   │   ├── src/
-│   │   │   ├── engine.rs      # メインエンジン
-│   │   │   ├── beatmachine.rs # ビートマシン実装
-│   │   │   ├── audio_file.rs  # オーディオファイル処理
-│   │   │   ├── devices.rs     # デバイス管理
-│   │   │   ├── graph.rs       # オーディオグラフ
-│   │   │   └── effects.rs     # エフェクト処理
-│   │   └── examples/
-│   │       ├── beatmachine_demo.rs
-│   │       └── beatmachine_demo_with_samples.rs
-│   ├── lnx-cli/            # CLIインターフェース
-│   ├── lnx-creare/         # ビジュアルクリエーター（計画中）
-│   └── lnx-server/         # lnx サーバ（Unison / QUIC、lnx creare が常時つなぐ窓口）
-└── apps/
-    └── ios/                # iOS アプリ「lnx creare」（SwiftUI + XcodeGen、メイン開発機は iPad）
+│   └── lnx-server/          # lnx サーバ（Unison / QUIC、Bonjour _lnx._udp、Signal Hub + Router）
+├── apps/
+│   └── ios/                 # iOS / macOS アプリ「lnx creare」（SwiftUI + XcodeGen）
+│                            #   iPad / iPhone: lnx-server へ常時接続する窓
+│                            #   Mac: メニューバー常駐管理（SMAppService）+ ペアリング QR
+├── tasks/                   # mise の開発タスク（Ruby）
+└── docs/                    # ドキュメント（spec / design / guide / archive）
 ```
 
-文書の索引は [docs/README.md](docs/README.md)（spec / design / guide / archive）。
+文書の索引は [docs/README.md](docs/README.md)（[spec 01](docs/spec/01-core-concept.md)、[spec 02](docs/spec/02-creare.md)、[design 01](docs/design/01-lnx-server-link.md)、[design 02](docs/design/02-architecture.md)、[guide 01](docs/guide/01-development.md)）。
 
-## セットアップ
+## セットアップと使い方
 
-### システム要件
-- **Rust**: 1.95 以降（club-unison の要求。mise が 1.99 を入れる）
-- **Cargo**: 最新版
-- **OS**: macOS 12+、Windows 10+、Ubuntu 20.04+
-- **メモリ**: 4GB RAM以上（推奨: 8GB以上）
-- **オーディオ**: 低遅延対応のオーディオインターフェース推奨
-
-### インストール
-
-```bash
-# リポジトリのクローン
-git clone https://github.com/chronista-club/lnx.git
-cd lnx
-
-# ビルド
-cargo build --release
-
-# テスト実行
-cargo test
-```
-
-### デモの実行
-
-```bash
-# ビートマシンデモ（サンプル音源付き）
-cargo run --example beatmachine_demo_with_samples
-
-# シンプルなビートマシンデモ
-cargo run --example beatmachine_demo
-```
+### 要件
+- **Rust**: 1.99.1（[`rust-toolchain.toml`](rust-toolchain.toml) で固定。rustup が自動で選ぶ）
+- **Xcode**: 27 以上（iOS / macOS の `lnx creare` ビルド用）
+- **mise**: タスク実行と `xcodegen` の管理（[`.mise.toml`](.mise.toml)）
 
 ### lnx サーバ
 
 ```bash
 mise run server:run          # この Mac で起動（[::]:12730、Bonjour _lnx._udp で名乗る）
-mise run server:test         # 実 QUIC の往復を含むテスト
+mise run server:test         # 実 QUIC の往復を含むテストと常駐タスクのテスト
 ```
 
-iPad の lnx creare はここへ常時つなぎ、名乗りと心拍を受け、知っているサーバの一覧から画面を切り替える。
+iPad の lnx creare はここへ常時つなぎ、名乗りと heartbeat を受け、知っているサーバの一覧から画面を切り替えます。
 設計は [docs/design/01-lnx-server-link.md](docs/design/01-lnx-server-link.md)。
 
-### iOS アプリ（lnx creare）
+### lnx creare（iOS / macOS）
 
 ```bash
-cd apps/ios
-xcodegen generate            # LnxCreare.xcodeproj を生成（git 管理外）
-open LnxCreare.xcodeproj     # Xcode で開く
-
-# コマンドラインから
-mise run ios:test            # テスト（既定は iPad シミュレータ）
-mise run ios:run             # シミュレータで起動（server:run と合わせて使う）
+mise run ios:test            # 単体テスト + UI テスト（既定は iPad シミュレータ）
+mise run ios:run             # iPad シミュレータで起動
+mise run mac:test            # Mac 版の単体テスト（メニューバー・同梱サーバ・表記検査）
+mise run mac:run             # Mac 版をビルドして起動
+mise run mac:install         # Mac 版を ~/Applications に入れて起動（メニューバーから lnx-server を常駐登録）
 ```
 
-詳細は [apps/ios/README.md](apps/ios/README.md)。タスクの実体は `tasks/` 以下の Ruby（`mise tasks ls`）。
-
-## 使用方法
-
-### CLIコマンド
-
-```bash
-# エンジン起動
-cargo run --bin lnx -- start
-
-# リアルタイムモニタリング
-cargo run --bin lnx -- monitor --realtime
-
-# デバイスリスト表示
-cargo run --bin lnx -- devices
-```
-
-### Rustライブラリとして使用
-
-```rust
-use lnx_engine::{AudioEngine, BeatMachine};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // エンジン初期化
-    let mut engine = AudioEngine::new()?;
-    
-    // ビートマシン作成
-    let beatmachine = BeatMachine::new();
-    
-    // サンプルロード
-    beatmachine.load_sample_to_pad(0, "kick.wav")?;
-    beatmachine.load_sample_to_pad(1, "snare.wav")?;
-    
-    // パターン設定
-    beatmachine.set_step(0, 0, true);  // Kick on beat 1
-    beatmachine.set_step(1, 4, true);  // Snare on beat 2
-    
-    // 再生開始
-    beatmachine.play();
-    engine.start()?;
-    
-    Ok(())
-}
-```
-
-## パフォーマンス
-
-### 現在達成している指標
-- **オーディオレイテンシ**: < 10ms (ASIO/CoreAudio)
-- **CPU使用率**: < 5% (ビートマシン再生時)
-- **メモリ使用量**: ~50MB (基本動作時)
-- **サンプルレート**: 44.1kHz / 48kHz / 96kHz対応
-
-### 最適化のポイント
-- ロックフリーアーキテクチャ採用
-- Atomic操作による同期
-- ゼロコピーオーディオ処理
-- SIMD命令の活用（一部実装済み）
-
-## ロードマップ
-
-### Phase 1: 基盤構築 ✅ 完了
-- [x] Rustプロジェクト構成
-- [x] CPALオーディオエンジン統合
-- [x] ビートマシン実装
-- [x] オーディオファイル再生
-- [x] ステレオ音声出力対応
-
-### Phase 2: ウェーブレット合成（現在）
-- [ ] ウェーブレット変換実装
-- [ ] リアルタイム合成エンジン
-- [ ] パラメータコントロール
-- [ ] プリセット管理
-
-### Phase 3: インターフェース
-- [ ] Slint GUIフレームワーク統合（進行中）
-- [x] iOS アプリ（lnx creare）のプロジェクト作成 — SwiftUI + XcodeGen、iPad をメイン開発機に
-- [ ] ビートマシンコントロールUI
-- [ ] MIDI 2.0対応
-- [ ] OSC通信
-- [ ] タッチコントロール対応
-
-### Phase 4: ビジュアル機能
-- [ ] リアルタイムスペクトラム表示
-- [ ] ウェーブレット係数可視化
-- [ ] 3Dビジュアライザー
-- [ ] シェーダーエフェクト
-
-### Phase 5: 拡張機能
-- [ ] VST3/AU プラグイン化
-- [ ] ネットワーク同期
-- [ ] AI支援機能
-- [ ] クラウド連携
-
-## トラブルシューティング
-
-### よくある問題と解決方法
-
-#### オーディオが出力されない
-```bash
-# デバイスリストを確認
-cargo run --bin lnx -- devices
-
-# デフォルトデバイスを変更
-export LNX_AUDIO_DEVICE="Your Device Name"
-```
-
-#### ビルドエラー
-```bash
-# 依存関係をクリーンアップ
-cargo clean
-cargo update
-cargo build
-```
-
-#### レイテンシが大きい
-- ASIOドライバー（Windows）またはCoreAudio（macOS）を使用
-- バッファサイズを調整: `LNX_BUFFER_SIZE=256`
-- リアルタイムカーネル使用（Linux）
-
-## コントリビューション
-
-プロジェクトへの貢献を歓迎します！
-
-### 開発環境セットアップ
-```bash
-# 開発用ツールインストール
-cargo install cargo-watch cargo-nextest
-
-# 開発モードで実行
-cargo watch -x run
-
-# テスト監視モード
-cargo watch -x nextest
-```
-
-### コーディング規約
-- `cargo fmt` でフォーマット
-- `cargo clippy` で警告チェック
-- 全ての公開APIにドキュメント記載
-- ユニットテスト追加必須
-
-### プルリクエスト手順
-1. フォーク & クローン
-2. フィーチャーブランチ作成: `git checkout -b feature/amazing-feature`
-3. 変更をコミット: `git commit -m 'Add amazing feature'`
-4. プッシュ: `git push origin feature/amazing-feature`
-5. プルリクエスト作成
+詳細は [apps/ios/README.md](apps/ios/README.md) および [docs/guide/01-development.md](docs/guide/01-development.md)。
 
 ## ライセンス
 
-MIT License (予定)
-
-## 謝辞
-
-- Rustオーディオコミュニティ
-- CPALプロジェクトコントリビューター
-- 全てのテスターとフィードバック提供者
-
-## お問い合わせ
-
-- GitHub Issues: [https://github.com/chronista-club/lnx/issues](https://github.com/chronista-club/lnx/issues)
-- Discord: [準備中]
-
----
-
-**lnx** - Build the wave, Feel the experience
-
-*Last updated: 2025-10-13*
+[MIT License](LICENSE-MIT) または [Apache License 2.0](LICENSE-APACHE)。
