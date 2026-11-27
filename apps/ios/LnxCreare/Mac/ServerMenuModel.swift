@@ -30,50 +30,119 @@ enum ServerMenuError: LocalizedError {
     }
 }
 
-/// メニューバーの LNX サーバ。開始 = 登録、停止 = 登録の解除（ログイン時にも立ち上がらない）、
-/// 再起動 = 解除 → 前のプロセスが消えるのを待つ → 登録（midistage の Residency と同じ形、mem_1Cfuxqjxy6HUi7p7ByQRY4）
+/// メニューバーの lnx サーバ。開始 = 登録、停止 = 登録の解除（ログイン時にも立ち上がらない）、
+/// 再起動 = 解除 → 前のプロセスが消えるのを待つ → 登録
 @MainActor
 @Observable
 final class ServerMenuModel {
-    /// 再起動で前のプロセスが消えるのを見る回数と間（最大 5 秒）。SMAppService の unregister は reap を待たないので、
-    /// 待たずに登録すると新しいサーバが port を取り合う。消えなければ登録して launchd に任せる
     static let reapChecks = 20
     static let reapInterval: Duration = .milliseconds(250)
 
     private(set) var phase: ServerPhase = .off
     private(set) var lastError: String?
     private(set) var busy = false
+    private(set) var gearRows: [GearRow] = []
+    private(set) var gearSummary = GearSummary(present: 0, releasingStuck: 0, errors: 0)
+    private(set) var gearServiceVersion: String?
+    private(set) var tracing = GearTrace.isOn()
 
     @ObservationIgnored private let residency: any ServerResidency
+    @ObservationIgnored private let gearProbe: any GearProbing
     @ObservationIgnored private let pause: @MainActor (Duration) async -> Void
     @ObservationIgnored private var watching: Task<Void, Never>?
+    @ObservationIgnored private var refreshGeneration: UInt64 = 0
 
-    init(residency: any ServerResidency, pause: @escaping @MainActor (Duration) async -> Void = { try? await Task.sleep(for: $0) }) {
+    init(
+        residency: any ServerResidency,
+        gearProbe: any GearProbing = NoopGearProbe(),
+        pause: @escaping @MainActor (Duration) async -> Void = { try? await Task.sleep(for: $0) }
+    ) {
         self.residency = residency
+        self.gearProbe = gearProbe
         self.pause = pause
     }
 
-    /// アイコンが今を表すよう、見張り続ける（launchctl print を数秒おきに。常駐が走っていないときは lsof も）
+    var gearSummaryLine: String? {
+        guard phase.isRunning else { return nil }
+        var parts = ["Gear: \(gearSummary.present) 台接続"]
+        if gearSummary.errors > 0 {
+            parts.append("エラー \(gearSummary.errors) 件")
+        }
+        if gearSummary.releasingStuck > 0 {
+            parts.append("引き継ぎ待ち \(gearSummary.releasingStuck) 件")
+        }
+        return parts.joined(separator: " / ")
+    }
+
+    func startTrace() {
+        do {
+            try GearTrace.start()
+            tracing = GearTrace.isOn()
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func stopTrace() {
+        do {
+            try GearTrace.stop()
+            tracing = GearTrace.isOn()
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func closeProbe() async {
+        await gearProbe.close()
+    }
+
     func startWatching(every interval: Duration = .seconds(2)) {
         guard watching == nil else { return }
         watching = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.refresh()
+                if self?.busy == false {
+                    await self?.refresh()
+                }
                 try? await Task.sleep(for: interval)
             }
         }
     }
 
     func refresh() async {
+        refreshGeneration &+= 1
+        let generation = refreshGeneration
         var job = await residency.job()
         let registration = residency.currentRegistration()
-        // 常駐が走っているあいだは、待ち受けを握っているのは常駐自身。見張りでは lsof を回さない
         let running = registration == .enabled && job?.isRunning == true
         let listeners = running ? [] : await residency.listeners()
         job = await rereadIfForeign(listeners, job: job)
-        phase = ServerPhase.resolve(
-            registration: registration, job: job, legacyInstalled: residency.legacyInstalled(), listeners: listeners
+        let nextPhase = ServerPhase.resolve(
+            registration: registration,
+            job: job,
+            legacyInstalled: residency.legacyInstalled(),
+            listeners: listeners
         )
+        let probed: GearProbeResult?
+        if nextPhase.isRunning {
+            probed = await gearProbe.probe()
+        } else {
+            await gearProbe.close()
+            probed = nil
+        }
+        guard generation == refreshGeneration else { return }
+        phase = nextPhase
+        tracing = GearTrace.isOn()
+        if let probed {
+            gearRows = gearStatusRows(probed.gears)
+            gearSummary = probed.summary
+            gearServiceVersion = probed.serviceVersion
+        } else {
+            gearRows = []
+            gearSummary = GearSummary(present: 0, releasingStuck: 0, errors: 0)
+            gearServiceVersion = nil
+        }
     }
 
     func start() async {
@@ -100,12 +169,10 @@ final class ServerMenuModel {
         }
     }
 
-    /// 同じラベルを二つ載せようとしない（server:install の常駐が先に居る）
     private func refuseLegacy() throws {
         if residency.legacyInstalled() { throw ServerMenuError.legacyInstalled }
     }
 
-    /// launchd の外のプロセスが待ち受けを握っているうちは登録しない（KeepAlive で落ち続ける。2026-11-05 の事故）
     private func refusePortTaken() async throws {
         let listeners = await residency.listeners()
         let job = await rereadIfForeign(listeners, job: await residency.job())
@@ -114,15 +181,11 @@ final class ServerMenuModel {
         }
     }
 
-    /// 外のものに見えたら launchd を読み直す。launchd を読んだあとに常駐が bind していることがある
-    /// （開始の直後、KeepAlive がちょうど起こし直したとき）。読み直せば常駐自身だと分かる
     private func rereadIfForeign(_ listeners: [PortListener], job: LaunchdJob?) async -> LaunchdJob? {
         PortListener.foreign(in: listeners, job: job) == nil ? job : await residency.job()
     }
 
-    /// 実行ファイルを入れ直したときも、これで新しい同梱版に入れ替える（SDK のヘッダは、実行ファイルを変えたら解除してから登録し直すよう求めている）
     private func reRegister() async throws {
-        // 未登録なら解除は失敗する（kSMErrorJobNotFound）。登録へ進む
         try? await residency.unregister()
         for check in 1...Self.reapChecks {
             guard let job = await residency.job(), job.isRunning else { break }
@@ -132,7 +195,9 @@ final class ServerMenuModel {
     }
 
     private func perform(_ action: @MainActor () async throws -> Void) async {
+        guard !busy else { return }
         busy = true
+        refreshGeneration &+= 1
         do {
             try await action()
             lastError = nil

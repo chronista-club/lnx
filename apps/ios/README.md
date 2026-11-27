@@ -30,11 +30,11 @@ mise run mac:test            # Mac 版の単体テスト（LnxCreareMacTests。�
 `.xcodeproj` は生成物。ターゲットや設定を変えるときは `project.yml` を編集して生成し直す。
 Xcode 上でファイルを追加した場合も、ディレクトリに置けば次の生成で拾われる。
 
-## LNX サーバとつなぐ
+## lnx サーバとつなぐ
 
 ```bash
 mise run server:run          # 別ターミナルで LNX サーバ（Mac、[::]:12730）
-mise run ios:run             # シミュレータで起動 → localhost の LNX につながり、心拍が脈打つ
+mise run ios:run             # シミュレータで起動 → localhost の LNX につながり、heartbeat が脈打つ
 ```
 
 シミュレータは同じ Mac の `[::1]:12730` に直結する。実機は Bonjour（`_lnx._udp`）で探す（iPhone / iPad で確認済み 2026-11-04）。
@@ -49,7 +49,7 @@ apps/ios/
 │   ├── App/LnxCreareApp.swift  # エントリポイント
 │   ├── Link/                   # LNX への常時接続（LinkSupervisor、UnisonLnxTransport、LnxFinder、LnxProtocol、ペアリングと pin: PairingCode・PinStore・LinkTrust）
 │   ├── Screens/                # 画面（RootView、Connecting、Pairing、QRScanner、LnxHome、RemoteServer、ScreenRoute）
-│   ├── Mac/                    # Mac 版だけ: メニューバーの LNX と、同梱 lnx-server の常駐（SMAppService）
+│   ├── Mac/                    # Mac 版だけ: メニューバーの lnx、同梱 lnx-server の常駐（SMAppService）、Gear ステータス一覧、MIDI トレース、ログ window
 │   ├── Model/AppInfo.swift     # 表示名・タグライン・版
 │   └── Resources/Assets.xcassets
 ├── LnxCreareTests/             # 単体テスト（Swift Testing）
@@ -75,7 +75,5 @@ apps/ios/
 
 ## 次にやること
 
-1. **Rust コアの接続** — `crates/lnx-engine` は `staticlib` と cbindgen のヘッダを既に出している。
-   iOS 向けにクロスビルドして xcframework にし、spec どおり UniFFI で Swift の型を生成する
-2. **「Open and Create」の最初の一歩** — マイク入力 → FFT → 画面が動く、までを 3 秒以内に
-3. **macOS / visionOS** — `project.yml` の `supportedDestinations` で同じコードベースに足す
+1. **「Open and Create」の最初の一歩** — 入力シグナル / Gear イベントと 3D 机配置（`GearDeskView`）の連動
+2. **visionOS** — `project.yml` の `supportedDestinations` で同じコードベースに足す

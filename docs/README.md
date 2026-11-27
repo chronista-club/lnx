@@ -1,4 +1,4 @@
-# LNX のドキュメント
+# lnx のドキュメント
 
 **spec**（What & Why）/ **design**（How）/ **guide**（Usage）の 3 層。番号で呼ぶ（「spec 01」「design 02」）。
 古いものは消さず [archive](archive/README.md) に Deprecated で残す。
@@ -13,22 +13,23 @@
 
 | 番号 | 文書 | Status | 一行 |
 |---|---|---|---|
-| 01 | [LNX の本質 — すべての人のための creare](spec/01-core-concept.md) | Active | Low-Latency / High-Quality / Human-Friendly の 3 本柱、creare と vision、場の同期、道具・楽器との自然な対話 |
+| 01 | [lnx の本質 — すべての人のための creare](spec/01-core-concept.md) | Active | lnx（リンクス）＝機器と場をつなぐもの、名前と表記（画面と文書は小文字の lnx、識別子は変えない）、Low-Latency / High-Quality / Human-Friendly の 3 本柱、creare と vision、場の同期、道具・楽器との自然な対話 |
 | 02 | [lnx creare — ヴィジョンクリエイティブツールの入り口](spec/02-creare.md) | Draft | "Open and Create"、3 つの役割と 5 つの原則、処理の流れ（構想）、UI の方針（未決）、ロードマップ |
 
 ## design — どう作るか
 
 | 番号 | 文書 | Status | 一行 |
 |---|---|---|---|
-| 01 | [LNX サーバと lnx creare の常時接続](design/01-lnx-server-link.md) | Draft | Unison / QUIC の 1 本の接続。session（名乗り・心拍）と registry（一覧）、再接続、Bonjour、テストの三層 |
-| 02 | [LNX の構成 — Unison の上に載せる](design/02-architecture.md) | Draft | 4 crate + Apple アプリの構成要素と現状、レイヤー、Unison の使い方、workspace と lnx-engine の型、未決（UI 技術ほか） |
+| 01 | [lnx サーバと lnx creare の常時接続](design/01-lnx-server-link.md) | Draft | Unison / QUIC の 1 本の接続。session（名乗り・心拍）と registry（一覧）、再接続、Bonjour、テストの三層 |
+| 02 | [lnx の構成 — Unison の上に載せる Signal Hub + Routing](design/02-architecture.md) | Draft | `lnx-server` + Apple アプリ（`lnx creare`）の構成要素と現状、Signal Hub + Routing 統合の 6 Steps、Unison の使い方 |
+| 03 | [Gear の 3D 資産と机配置（desk.kdl）](design/03-gear-and-desk.md) | Draft | 意味の層（`gear/<id>/gear.json`）と見た目の層（`<id>.blend`）、机配置スキーマ（`config/examples/desk-*.kdl`）、Mac / iPad での机配置表示 |
 
 ## guide — どう使うか
 
 | 番号 | 文書 | Status | 一行 |
 |---|---|---|---|
 | 01 | [開発の回し方](guide/01-development.md) | Draft | mise のタスク（server / ios / mac）、rust-toolchain.toml、XcodeGen、通しの動かし方、トラブルシューティング |
-| 02 | [MIDI 機器 — Korg Keystage 49 と Akai LPD8](guide/02-midi-devices.md) | Draft | 2 台の MIDI 仕様（ノート / CC / SysEx）と推奨設定。lnx 側の実装はまだ無い |
+| 02 | [MIDI 機器 — Korg Keystage 49 と Akai LPD8](guide/02-midi-devices.md) | Draft | 2 台の MIDI 仕様（ノート / CC / SysEx）と推奨設定。`crates/lnx-gear` と `crates/lnx-server/src/gear/` で認識・変換・ルーティングを実装 |
 
 ## archive
 

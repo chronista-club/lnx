@@ -14,7 +14,9 @@ options:
 packages:
   club-unison:
     url: https://github.com/chronista-club/club-unison.git
-    exactVersion: 2.2.0
+    exactVersion: 2.3.0
+  LnxClient:
+    path: ../../clients/swift
 
 settings:
   base:
@@ -22,7 +24,7 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     DEVELOPMENT_TEAM: 3EQKG4B352  # ANYCREATIVE, K.K.
     CODE_SIGN_STYLE: Automatic
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "0.2.0"
     CURRENT_PROJECT_VERSION: "1"
 
 targets:
@@ -37,6 +39,8 @@ targets:
     dependencies:
       - package: club-unison
         product: UnisonClient
+      - package: LnxClient
+        product: LnxClient
     # Mac 版だけ: lnx-server を .app に同梱し、LaunchAgent の plist を置く（SMAppService が登録する）。iOS では何もしない
     postBuildScripts:
       - name: lnx-server を同梱（macOS）
@@ -51,7 +55,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: lnx creare
         INFOPLIST_KEY_NSMicrophoneUsageDescription: 周囲の音をビジュアルに変えるために、マイクを使います。
-        INFOPLIST_KEY_NSCameraUsageDescription: LNX の画面に出ているペアリングの QR を読むために、カメラを使います。
+        INFOPLIST_KEY_NSCameraUsageDescription: lnx の画面に出ているペアリングの QR を読むために、カメラを使います。
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent

@@ -1,11 +1,12 @@
-//! lnx-server — LNX サーバ。lnx creare（iPad）が常時つなぐ窓口。
+//! lnx-server — LNX サーバ（Signal Hub + Router）。
 //!
 //! 通信は Unison Protocol（club-unison、QUIC）。スキーマは
-//! `schemas/lnx.kdl` が正で、バイナリに焼き込んで discovery で配る。
-//! 設計は `docs/design/01-lnx-server-link.md`。
+//! `schemas/lnx.kdl`・`schemas/lnx-local.kdl`・`schemas/gear.kdl` が正で、
+//! バイナリに焼き込んで discovery で配る。
 
 pub mod advertise;
 pub mod config;
+pub mod gear;
 pub mod heartbeat;
 pub mod identity;
 pub mod log_file;
@@ -17,6 +18,9 @@ pub const LNX_KDL: &str = include_str!("../schemas/lnx.kdl");
 
 /// 手元用（ループバックだけ）のプロトコル
 pub const LNX_LOCAL_KDL: &str = include_str!("../schemas/lnx-local.kdl");
+
+/// Gear 管理（ループバック）のプロトコル
+pub const LNX_GEAR_KDL: &str = include_str!("../schemas/gear.kdl");
 
 /// 既定の待ち受けポート（UDP / QUIC）。旧 lnx-core の 12730 を受け継いだ
 pub const DEFAULT_PORT: u16 = 12730;

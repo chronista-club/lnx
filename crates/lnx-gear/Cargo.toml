@@ -1,0 +1,12 @@
+[package]
+name = "lnx-gear"
+description = "lnx — Gear ごとの入力正規化・表示投影・設定変換（I/O なし）"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+sha1 = "0.11"

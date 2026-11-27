@@ -1,4 +1,4 @@
-# 01. LNX サーバと lnx creare の常時接続
+# 01. lnx サーバと lnx creare の常時接続
 
 > **Status**: Draft（Status log 参照）
 > **Related**: [spec 01](../spec/01-core-concept.md)（場の同期）、[spec 02](../spec/02-creare.md)（統合のハブ）、[design 02](02-architecture.md)（全体の構成）、`mem_1Cgfoo741LiQbchNsvJrY6`（起票・裁定）
@@ -47,6 +47,7 @@ graph LR
 | iPad 側の接続 | **club-unison の Swift client**（Rust / UniFFI は使わない） | SDK があり配布実績もある。Rust コアは音の段で |
 | 再接続 | **アプリが持つ**（Unison の client は意図的に auto-reconnect しない） | 倍々の間（0.5 秒 → 上限 10 秒）。心拍が止まったら切れたとみなす |
 | 信頼 | サーバは保存した自己署名（起動ごとに作り直さない）。アプリは同じ機械（localhost）なら `skipVerify`、LAN のサーバは **QR でペアリング**した leaf 証明書に `TrustPolicy.pinned` | TOFU（初回を信頼）は club-unison に証明書を取り出す口が無い。ビルド時の同梱はサーバが増えると破綻する（裁定 2026-11-04、`mem_1Cgghdxbp4bGRPyQccDFDn`） |
+| 経路が変わったとき | Bonjour の結果が変わるたび、広告中の先を**全部解き直す**（解けている先も）。LAN の先へのつなぎ直しが 2 回続けて失敗したら、Finder に解き直しを頼む（`needsFreshAddress` → `refresh()`、3 秒に一度まで）。前のアドレスは新しいのが解けるまで残す。今の先は名前で照合する（アドレスが変わっても別のサーバへ飛ばない）。つながっていて健全な間は、同じサーバ（名前）の別アドレスには張り替えない（`shouldSwitch`）。張り替えるのはつなぎ直しに入ってから。Wi-Fi と USB の両方があると、解き直すたびに解けるアドレスが入れ替わり、つながったまま経路を 4 秒で 2 回行き来した（2026-11-23） | iPad の USB を抜いたら、Bonjour の名前は残ったまま USB 側のアドレスだけが消え、アプリは消えたアドレスに 21 回つなぎ続けた（2026-11-23 の実機） |
 | 音 | この区切りでは出さない | lnx-engine の接続は次 |
 
 ### 「常時接続」の iOS での意味
@@ -97,6 +98,25 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   `Advertiser` の drop は goodbye（TTL 0）の取り下げを最大 1 秒待ち、mdns-sd が +120ms に予約する再送が出るまで 200ms 置いてから、
   daemon の停止をまた最大 1 秒待つ（待たずにプロセスが抜けると送られず、幽霊が残る。shutdown は再送の予約を捨てる）。
   ログは端末でなければ色の制御文字を入れない（常駐のログはファイル）。試験は `tests/shutdown.rs`（実プロセスにシグナルを送る）
+- Bonjour の作り直し: mdns-sd の daemon は専用のスレッド（`mdns-keeper`）が持ち、出来事をログに出し、IPv4 の `IpDel` を受けたら daemon を作り直して名乗り直す
+  （消えた IPv4 で multicast から抜けると XNU が別の NIC の membership を外し、mdns-sd は気づかない。「事故のときログで何を見るか」の (b)）。
+  いつ作り直すかは純粋な `RebuildPlan`（試験は `tests/advertise.rs`）:
+  - 引き金は IPv4 の `IpDel` だけ（IPv6 は index で抜けるので巻き添えが無い）
+  - 最後の引き金から 5 秒（`REBUILD_QUIET`、mdns-sd の IP check と同じ間）静かになってから。USB を差すと en9 の 169.254 と bridge100 の 192.168.234.1 が続けて出入りするので、続けて来る `IpDel` を一回にまとめる
+  - 作り直し同士は 30 秒（`REBUILD_MIN_GAP`）空ける。作れなかったときも 30 秒おいて試し直す（NIC がばたついても嵐にしない）
+  - daemon が思いがけず止まっていたら（出来事の受け口が閉じる）、5 秒おいて作り直す
+  - SIGUSR1 は間を待たずにすぐ作り直す（試験と、名乗りに答えなくなったときの当座の手当て）
+
+  作り直しの順は、新しい daemon を作る → 古いほうを shutdown（goodbye が出る）→ 新しいほうで probe を飛ばしてすぐ名乗る。
+  ただし一度でも改名（NameChange）していたら、作り直しでも probe する。mdns-sd が名前のぶつかりを見るのは probe 中の名前だけで、改名の結果も daemon ごとに持つ。
+  probe を飛ばすと元の名前に戻り、LAN にいる同じ名前の相手の記録を cache-flush で押しのける（同じ名前の試験用サーバを 2 つ立てて確かめた。作り直した側は `(2)` に改名し直し、元の名前は相手の port のまま）
+  このときは probe → ぶつかって改名 → 新しい名前でもう一度 probe となり、名乗るまで 1.5 秒ほどかかり得る。goodbye の 1 秒より遅いので、`(2)` の記録は LAN のキャッシュからいったん消えて戻る見込み（相手を押しのけないことと引き換え）
+  goodbye を受けた側は記録を 1 秒後に消すので、それより先にアナウンスが届けば消えない。2026-11-23 に別名（`lnx-rebuild-check`、12748 / 12749）で SIGUSR1 を 5 回試した結果:
+  - アナウンスは goodbye の 2〜3 ms 後に出た
+  - 同じ Mac の `dns-sd -B` に Rmv は一度も出ず、消えたのは SIGTERM の後だけ
+  - en0 から 0.2 秒おきに直接問うと、入れ替わりの瞬間に送った 1 問だけ答えが無かった（5 回中 1 回。次の問いには答えた）
+
+  残る隙は、Wi-Fi で最初のアナウンスだけが落ちたとき。mdns-sd の 2 度目のアナウンスは約 1.1 秒後で、1 秒の期限より遅い。iPad のキャッシュからは 0.1 秒ほど消えてすぐ戻る見込み（未確認）
 - 常駐: この Mac では launchd のユーザー LaunchAgent（`club.chronista.lnx-server`、`RunAtLoad` + `KeepAlive`）。
   `tasks/_lib/agent.rb` が plist を組み、`server:install` / `restart` / `logs` / `status` / `uninstall` が出し入れする（guide 01）。
   証明書は `server:run` と同じ既定の置き場を使う（pin を外さない）。実行ファイルは `~/.local/share/lnx-server/bin` へ写したものを指し、
@@ -126,7 +146,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
 ### アプリ（Swift、`apps/ios/LnxCreare/Link`）
 
 - `LnxTransport` / `LnxSession` が接続の抽象。実物は `UnisonLnxTransport`（connect / openChannel / request を**すべて timeout で包む**）、テストは `FakeTransport`
-- `withTimeout`（`Link/Timeout.swift`）: club-unison の待ちは cancel に応じないので、処理と期限を構造化しない Task で競わせ、先に終わった方で一度だけ戻る（`withThrowingTaskGroup` だと子が終わるまで戻れない）。外からの cancel でもすぐ戻る。遅れて成功した値は `onLateSuccess` へ（connect は接続を閉じる）
+- `withTimeout`（`Link/Timeout.swift`）: 各呼び出しに短い期限を付ける（connect 5 秒、openChannel / hello / List 3 秒。club-unison 2.3.0 の既定は request 30 秒・openChannel 5 秒で、心拍の見張りには長い）。処理と期限を構造化しない Task で競わせ、先に終わった方で一度だけ戻る。外からの cancel でもすぐ戻る。遅れて成功した値は `onLateSuccess` へ（connect は接続を閉じる）。club-unison 2.2 までは待ちが cancel に応じず、`withThrowingTaskGroup` だと期限で戻れなかったのがこの形の由来
 - `LinkTrust.decide(target, pins)`: localhost は `.connect(.skipVerify)`、ペアリング済みの LAN は `.connect(.pinned(der))`、未ペアリングは `.needsPairing(name)`。`PinStore` の実物は `CachedPinStore.shared`（Keychain の上の cache をアプリ全体で 1 つ。画面が 0.5 秒ごとに pin の有無を見るので、Keychain は名前ごとに一度だけ読む。窓ごとに作ると解除・ペアリングが他の窓に届かない）、テストは `MemoryPinStore`
 - `LinkSupervisor`（`@MainActor @Observable`）: `idle → connecting(attempt) → connected(Welcome) → reconnecting(attempt, delay)`。
   未ペアリングの LAN の先では `needsPairing(serverName)` で止まり、つながない。`paired(code)` で pin を残してつなぎ直す。
@@ -139,7 +159,7 @@ Swift の channel meta は **1 channel に 1 つの Event 型**しか持てな�
   無音の見張りは**最初の心拍が来てから**数え始める（`unison mock` のように心拍を出さない相手を切らない）
 - `BackoffPolicy`: 0.5 秒から倍々、上限 10 秒
 - `LnxFinder`: 実機は Bonjour（`NWBrowser` の `.bonjourWithTXTRecord` → UDP の "接続" で host:port に解く）。見つけた先は `.host(address, port:, name: TXT の name、無ければインスタンス名)`。
-  解けた先は service ごとの帳簿（`FoundTargets`）に載せ、Bonjour から消えた service の先は忘れる。解決が 5 秒で決まらない・失敗したら、広告が残っている間は IPv4 / IPv6 を交互に試し直す。browser が失敗したら作り直す。
+  解けた先は service ごとの帳簿（`FoundTargets`）に載せ、Bonjour から消えた service の先は忘れる。browse の結果が変わるたびに、解けている先も解き直す（経路が変わるとアドレスが変わる）。解決が 5 秒で決まらない・失敗したら、広告が残っている間は IPv4 / IPv6 を交互に試し直す。browser が失敗したら作り直す。
   実機はペアリング済みの先を優先し（LAN に別の `_lnx._udp` が居ても縛られない）、無ければ先頭（IPv4 が前）。
   シミュレータと Mac は常に `[::1]:12730`（カメラで QR を読めず、同じ機械のサーバで足りる。Mac から別の LNX へつなぐのは次）
 - `ScreenRoute.resolve(state, selection)`: つながるまで `connecting`、つながれば `lnxHome`、選べば `remote(server)`、ペアリングが要れば `pairing(serverName)`
@@ -162,6 +182,29 @@ mise run ios:run         # ビルド → シミュレータへインストール
 切り替わり戻ることを見る（サーバが居なければ skip。`mise run server:run` を立ててから `mise run ios:test`）。
 シミュレータの端末は `LNX_IOS_SIM` と `LNX_IOS_OS` で選ぶ（同名の端末が runtime ごとにあるため）。
 
+## 事故のときログで何を見るか
+
+「iPad が LNX を見つけない / 解決が時間切れ」のとき、サーバが LAN 側で名乗りに答えているかを、ログと直接の問い合わせで切り分ける。
+
+- **ログ:** 常駐（Mac 版のメニュー、`server:install`）は `~/Library/Logs/lnx-server.log`（`mise run server:logs`）。
+  mdns-sd の出来事を `mdns:` で始まる行で出す（`advertise::describe_event`）。立ち上がりに、名乗った NIC ごとの `mdns: 名乗った <名前>（<ホスト>:<NIC>）` が出る
+- **直接問う:** 同じ Mac の `dns-sd -L` / `-G` は mDNSResponder のキャッシュの見え方で、当てにならない。
+  NIC ごとに legacy unicast（エフェメラルな port から 224.0.0.251 / ff02::fb へ SRV を問う）で、IPv4 と IPv6 を別々に問う。
+  `mise run server:ask [名前]`（既定は常駐の名乗り。`tasks/_lib/mdns_ask.rb`）。問い合わせを送るだけで、サーバには何も書かない。
+  「問えない（No route to host）」は問う側の失敗で、端末のアプリ（VP など）のローカルネットワークの許可が判定し直されている間に出る
+  （2026-11-23、VP の daemon を再起動した直後の約 20 秒）。少し置いて問い直す
+
+| 形 | NIC ごとに問った結果 | ログ |
+|---|---|---|
+| (a) ローカルネットワークの許可 | lo0 は答え、LAN 側（en0 など）は IPv4 も IPv6 も答えない | `mdns:` の出来事が無いまま黙る。常駐の初めての起動では、判定がつくまでの数秒だけ起きる |
+| (b) XNU の巻き添え | IPv4 だけ、join の早い NIC から順に答えない（lo0 → en0 → …）。IPv6 は答える | その前に `mdns: アドレスが消えた <IPv4>（IPv4）`（warn）。bridge100（iPad の USB）の抜き差しで起きやすい。5 秒後に `mdns: Bonjour を作り直した`（warn）が出て戻る |
+| (ii) 改名 | 元の名前で問うと、その NIC だけ答えない（改名後の名前なら答える） | `mdns: 名前がぶつかって改名した <元> → <新>（<RR>、<NIC>）`（warn）。作り直しのあとにも同じ行が出る（probe し直して改名し直す） |
+
+- **戻し方:** (b) はサーバが自分で作り直す（上の「Bonjour の作り直し」）。手で今すぐ作り直すなら `kill -USR1 <pid>`（ログに `SIGUSR1 を受けたので Bonjour を作り直す`）。
+  それでも戻らなければサーバを立て直す（Mac 版のメニュー「再起動」、`server:restart`）。mdns-sd 側の直し（消えたアドレスで leave しない）は上流に報告した（keepsimple1/mdns-sd#557）
+- **深く追うとき:** `RUST_LOG=info,mdns_sd=debug` で mdns-sd の中のログがそのまま出る（受けた packet ごとに出るので常駐には多すぎる。Mac 版では plist の EnvironmentVariables）
+- `get_metrics()` の定期の debug 出力は入れていない。上の 3 つは出来事で見分けられるため。要るなら間隔をここに書いてから足す
+
 ## やってはいけない
 
 - **手元用の listener を `[::]` や LAN のアドレスに bind しない。** ペアリング URL（= pin する証明書）を誰にでも渡すことになる。`serve::loopback_only` が起動時に断る
@@ -171,7 +214,7 @@ mise run ios:run         # ビルド → シミュレータへインストール
 - **スキーマを変えたら `LnxProtocol.swift` も同じ PR で。** codegen は無く、ズレると Hello の応答が decode できずに timeout になる
 - **mdns-sd の TXT はタプルの slice で渡さない。** `IntoTxtProperties` は `HashMap<String, String>` と `Vec<TxtProperty>` だけ
 - **Swift の 1 channel に複数の event 型を置かない。** `Event` は 1 つ。種類が要るなら payload に `kind` を持たせるか channel を分ける
-- **実機で「LNX を探しています」のまま動かないときは、まず「ローカルネットワーク」の許可を疑う。** 許可しないと Bonjour は何も返さない。アプリを消して入れ直すと聞き直す（iPad の実例 2026-11-04）
+- **実機で「lnx を探しています」のまま動かないときは、まず「ローカルネットワーク」の許可を疑う。** 許可しないと Bonjour は何も返さない。アプリを消して入れ直すと聞き直す（iPad の実例 2026-11-04）
 - **実機の足跡は stderr に出す。** stdout はパイプ先でバッファされ、`devicectl … --console` に届かない。`--console` の devicectl を殺すとアプリも終わる。行の頭に時刻（その機械の時刻、ミリ秒）を付けている。**ログは起動ごとに別のファイルへ取る**（同じファイルに `>` で取り直すと、前の起動の区間が消える。サーバ側の出来事と突き合わせられなくなった実例 2026-11-04）
 - **同じ Mac で、本番と同じ名前の lnx-server をもう一つ立てない。** 試験は別の `--name` か `--no-mdns`。
   Bonjour を始めてから落ちると goodbye を出し、動いている本物の記録（SRV / TXT / A）を LAN 中のキャッシュから消す。
@@ -184,9 +227,6 @@ mise run ios:run         # ビルド → シミュレータへインストール
 
 - 経由型（iPad は LNX と 1 本だけ、LNX が中継）は Unison の Hub 層の仕事。LNX で先行実装してよい
 - registry の生きた供給源（VP daemon の `registry.list`、Ladyland の fieldd）、Pi 配置、音（lnx-engine）は次の区切り
-- サーバが同じ service のまま IP だけ変えた（browse の変化が来ない）ときは、解き直さない。つなぎ直しが続くときに解き直す道は次
-- 切断の検出は心拍の流れが終わること（と無音の見張り）。club-unison の `connectionEvents` は相手からの切断で `.disconnected` を出さないので、`waitUntilDisconnected` は実物では自分で閉じたときにしか戻らない（`FakeSession` はそれより親切）
-- club-unison の待ち（connect / openChannel / request）が cancel に応じれば `withTimeout` の工夫は要らなくなる（上流へ相談）
 - QR のカメラ読み取りは iPad（iPad13,16）の実機で確認済み（2026-11-04）。iPhone は未
 - Bonjour 探索は iPhone 16 Pro と iPad（iPad13,16）の実機で確認済み（2026-11-04）。解決は IPv4 を優先し、だめなら IPv6（scope つき）
 - macOS のローカルネットワークの許可は、端末から立てたサーバでは端末のアプリ（VP など）に、常駐（LaunchAgent）では lnx-server 自身に掛かる。
@@ -197,9 +237,45 @@ mise run ios:run         # ビルド → シミュレータへインストール
   (a) 07:08 に VP と Claude のセッションが立ち上がり直し、サーバの許可の持ち主（親のアプリ）が消えた。常駐ならこの筋は起きない。
   (b) mdns-sd が消えたアドレスで multicast から抜け、XNU が別の NIC の membership を外す（カーネルの挙動は実験で確認済み）。
   次に起きたら、常駐のログ（`server:logs`）と時刻で突き合わせる
+- 2026-11-06 20:1x に Mac 版の常駐（pid 26369）で同じ形が生きたまま出た。IPv4 は en0 と lo0 が答えず bridge100 だけ答え、IPv6 は en0 と lo0 が答えた。
+  (b) の形そのもの（(a) なら lo0 は塞がれず、en0 の IPv6 も塞がれる）。引き金は bridge100 の IPv4 が 2 回消えたこととみられるが、unified log が残っておらず時刻は不明
+- 2026-11-23 の実機確認（昼）で、A の前の常駐（pid 729）は、iPad の USB を一度差して抜いただけで、lo0 と en0 の IPv4 が両方答えなくなった（IPv6 は答える）。
+  巻き添えは、差したときに 1 つ、抜いたときに 1 つ出たと読む（この版は `mdns:` の出来事を出さないので、下の流れは夜の観測と mdns-sd のソースからの推定）:
+  - **差したとき**: USB の en9 は、まず自己割り当ての IPv4（169.254.x）を得る。約 3 秒後に bridge100 の一員になり、IPv4 も IPv6 も失う（system log の `LINKLOCAL en9: setting 169.254…` → `bridge_set_lro: en9`。13:52:31 → 13:52:34）。
+    アドレスを全部失った NIC は、mdns-sd が消えた NIC と扱い、消えた 169.254 で抜けるので、join の早い lo0 が外れる
+  - **抜いたとき**: bridge100 が消え（13:56:25）、mdns-sd は消えた 192.168.234.1 で抜けるので、次の en0 が外れる。
+    同時に外れる en9 と anri0 は抜けない。en9 は差した時点で mdns-sd の一覧から外れている（169.254 は bridge に入った時点でカーネルから消える。夜の同じ形で IpDel を確かめた。
+    configd は 13:56:25 に外そうとして Device not configured で失敗しているが、帳簿の上だけ）。anri0 は IPv6 のリンクローカルだけ
+
+  抜き差しの回数ではなく、アドレスを全部失う NIC の、最後の IPv4 の数だけ外れる（IPv4 だけ消えて IPv6 が残る NIC は抜けない）。
+  11/6 の形（lo0 と en0 が黙り、bridge100 だけ答える）も、差して抜いて、また差した流れと合う（時刻の記録は無い）
+- 2026-11-23 の実機確認（夜）で、A を入れた常駐（pid 5357、nightly bafe757）が、USB を差したときに自分で作り直した。
+  mdns-sd は 19:07:18.857 に en9 の 169.254.213.227 を見つけ（configd が付けたのは 19:07:16.266）、19:07:19.612 に失ったと報せた（`mdns: アドレスが消えた 169.254.213.227（IPv4）`、同じ瞬間に en9 の IPv6 も消え、bridge100 に 192.168.234.1 が付く）。
+  19:07:24.768 に `mdns: Bonjour を作り直した`（IpDel の 5.16 秒後）、19:07:25.898 に lo0 / en0 / anri0 / bridge100 で名乗り直した。
+  その後 `server:ask` で lo0 / en0 / bridge100 は IPv4 でも答え、mDNS のソケットは v4 / v6 が 1 つずつのまま（古いほうは閉じた）
+- 2026-11-24 の実機確認で、A を入れた常駐（pid 912。実行ファイルの sha256 が mac lane の入れた nightly bafe757 のものと一致）が、USB を抜いたときにも自分で作り直した。
+  17:35:15.93 に USB を抜く（system log の link inactive）→ 17:35:20.504 `mdns: アドレスが消えた 192.168.234.1（IPv4）`（次の IP check）→
+  17:35:25.770 `mdns: Bonjour を作り直した`（IpDel の 5.27 秒後）→ 17:35:26.924 en0 / lo0 で名乗り直した。
+  その後 `server:ask` で lo0 / en0 とも IPv4 / IPv6 で答え、mDNS のソケットは新しいものに入れ替わって v4 / v6 が 1 つずつ。
+  iPad は抜いて 8.9 秒後（17:35:24.863）に Wi-Fi から新しくつないだ。作り直しより先なので、作り直しを待たずにつながった
+  （17:34:44 に Wi-Fi の先を解いていたことは ios lane の足跡にあるが、つなぎ直しでそれを使ったか、解き直したかは、足跡が USB を抜いた瞬間に切れていて見ていない）。
+  古い USB の 1 本は抜いて 30.6 秒後にサーバの無音の見張り（accept_bi timed out）で閉じた。
+  この日は USB を差したとき、en9 に 169.254 が付いていたのは約 3.3 秒（17:02:55.682 → 17:02:58.988）で、mdns-sd はそれを一度も報せなかった。
+  en9 の 169.254 での join も leave も、作り直しも起きていない（bridge100 の 192.168.234.1 での join はある。mDNS のソケットは基準のときと同じもの）。差したときに巻き添えが出るかは、mdns-sd がこの数秒の間に 169.254 を見るか次第
 
 ## Status log
 
+- 2026-11-24: 画面と [link] の足跡の「心拍」を「heartbeat」に（mako の依頼「馴染みがある単語で」）。識別子（KDL の `Heartbeat` 等）はそのまま
+- 2026-11-24: A の作り直しを、USB を抜いたときにも本番で確かめた（「関連 / 未決」）。差したとき（11/23）と合わせて、A の実機確認は済み
+- 2026-11-23: iPad 実機（Wi-Fi と USB の両方）で、USB を差したことによる常駐の作り直し（A）の名乗り直しを受けて、つながったまま en0 → bridge100 → en0 と張り替えた。つながっている間は同じサーバの別アドレスに張り替えないようにした。張り替えのたびに前の接続はきちんと閉じ、サーバ側の UDP は増えなかった（club-unison 2.3.0 の close は iOS でも効いている）
+- 2026-11-23: A を入れた常駐が、iPad の USB を差したときに自分で作り直したのを本番で確かめた（「関連 / 未決」）。昼の巻き添えの読みを「抜いたときに 2 つ」から「差したときに 1 つ、抜いたときに 1 つ」に直した
+- 2026-11-23: iPad 実機で club-unison 2.3.0 を確かめた（USB を抜く）。切断には約 6 秒で気づいたが、Bonjour の名前が残ったままアドレスだけ消えたのを解き直さず、消えた USB 側のアドレスに 21 回つなぎ続けた。Bonjour の変化と 2 回続けての失敗で解き直すように直し、切断の理由（heartbeat の流れの終わり / `.disconnected` / heartbeat の無音）を足跡に出す
+- 2026-11-23: IPv4 の IpDel を受けたら Bonjour を作り直す（A、mako の GO）。`RebuildPlan`（5 秒静かになってから・作り直し同士は 30 秒・SIGUSR1 はすぐ）。
+  作り直しで記録が消えないことを別名で試した（goodbye の 2〜3 ms 後にアナウンス、`dns-sd -B` に Rmv 無し）。NIC ごとに直接問う `server:ask` を足した。
+  mdns-sd の leave の件は上流に報告（keepsimple1/mdns-sd#557）
+- 2026-11-23: club-unison 2.3.0 に上げた（ios lane の報告 3 件の修正入り）。`disconnect()` しても UDP ソケットが 1 本ずつ残っていたのが止まった（再現パッケージで 2.2.0: 5 回で 5 本 → 2.3.0: 0 本、macOS）。待ちが cancel に応じ、相手からの切断で `connectionEvents` に `.disconnected` が出る（`waitUntilDisconnected` が実物でも戻る）。iOS 実機での確認は未
+- 2026-11-06: mdns-sd の出来事をログに出す（G、mako の GO）。Advertiser が monitor() を受ける専用スレッドを持ち、IpAdd / IpDel / NameChange / Error / Announce を `mdns:` の行で出す
+  （IPv4 の IpDel と NameChange と Error は warn、Respond は出さない）。「事故のときログで何を見るか」を足した
 - 2026-11-05: 守り（外のプロセスが待ち受けを握っていたら「開始」「再起動」を出さない）をこの Mac で実測。常駐を「停止」して端末と同じ `server:run`（pid 9028）を立てると、
   メニューは「lnx-server（pid 9028）が待ち受けを握っています」「端末の mise run server:run なら Ctrl-C で止めてから「開始」」になり、「開始」は出なかった。
   止めてから「開始」で常駐に戻した。そのあいだ lnx-mac を名乗ったのは常に一つ。アプリが前面にいるとステータス項目は Accessibility に出ない（System Events の最後のメニューバーがアプリ本体のものになる）

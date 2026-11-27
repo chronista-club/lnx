@@ -126,6 +126,78 @@ struct ServerMenuModelTests {
         await model.refresh()
         #expect(model.phase == .requiresApproval)
     }
+
+    @Test("稼働中は GearProbe から Gear 一覧とサマリを更新し、停止したら閉じてクリアし、再稼働で再び Probe する")
+    func gearProbeLifecycleAndSummaryLine() async {
+        let residency = FakeResidency(registration: .enabled, settled: running)
+        let probe = FakeGearProbe(
+            result: GearProbeResult(
+                connected: true,
+                serviceVersion: "0.1.0-alpha3",
+                serviceExecutable: "/Applications/LnxCreare.app/Contents/MacOS/lnx-server",
+                summary: GearSummary(present: 2, releasingStuck: 1, errors: 1),
+                gears: [
+                    GearFacts(
+                        id: "roto", name: "Roto-Control", present: true, assignedTo: "vp",
+                        revision: 1, held: true, phase: "active", maker: "Melbourne Instruments",
+                        model: "ROTO-CONTROL"
+                    ),
+                    GearFacts(
+                        id: "maru", name: "maru", present: true, assignedTo: "ladyland",
+                        revision: 2, held: true, phase: "releasing", releasingTo: "vp",
+                        error: "timeout", releasingStuck: true, hasGearAsset: false
+                    ),
+                ]
+            )
+        )
+        let model = ServerMenuModel(residency: residency, gearProbe: probe, pause: { _ in })
+        await model.refresh()
+        #expect(model.phase == .running(pid: 4242))
+        #expect(probe.probeCalls == 1)
+        #expect(model.gearRows.count == 2)
+        #expect(model.gearServiceVersion == "0.1.0-alpha3")
+        #expect(model.gearSummaryLine == "Gear: 2 台接続 / エラー 1 件 / 引き継ぎ待ち 1 件")
+
+        // 停止すると probe.close() が呼ばれ、一覧・サマリがクリアされる
+        residency.onUnregister = {
+            residency.registration = .notRegistered
+            residency.settled = nil
+        }
+        await model.stop()
+        #expect(probe.closeCalls >= 1)
+        #expect(model.gearRows.isEmpty)
+        #expect(model.gearSummary == GearSummary(present: 0, releasingStuck: 0, errors: 0))
+        #expect(model.gearServiceVersion == nil)
+        #expect(model.gearSummaryLine == nil)
+
+        // 再び開始すると、一度 close() された後でも再度 probe() して一覧が復活する
+        residency.onRegister = { [running] in
+            residency.registration = .enabled
+            residency.settled = running
+        }
+        await model.start()
+        #expect(probe.probeCalls == 2)
+        #expect(model.gearRows.count == 2)
+    }
+}
+
+final class FakeGearProbe: GearProbing, @unchecked Sendable {
+    var result: GearProbeResult
+    var probeCalls = 0
+    var closeCalls = 0
+
+    init(result: GearProbeResult) {
+        self.result = result
+    }
+
+    func probe() async -> GearProbeResult {
+        probeCalls += 1
+        return result
+    }
+
+    func close() async {
+        closeCalls += 1
+    }
 }
 
 /// SMAppService と launchctl の代わり。呼ばれた順を残す（読むほうは job だけ）

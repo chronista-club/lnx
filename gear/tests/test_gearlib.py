@@ -1,0 +1,196 @@
+"""意味の層（gear.json）の純粋テスト。Blender は要らない。
+`python3 -m unittest discover -s gear/tests` で回す。"""
+import json
+import os
+import sys
+import unittest
+
+HERE = os.path.dirname(__file__)
+sys.path.insert(0, os.path.dirname(HERE))
+import gearlib  # noqa: E402
+
+ROOT = os.path.dirname(HERE)
+
+
+class Ids(unittest.TestCase):
+    def test_canonical_ids_follow_inventory(self):
+        self.assertEqual(gearlib.canonical_id("ncxse"), "numa")
+        self.assertEqual(gearlib.canonical_id("fgdp50"), "fgdp")
+        self.assertEqual(gearlib.canonical_id("lpd8"), "lpd8")
+
+    def test_rename_keeps_model_and_blend_root(self):
+        spec = {"id": "ncxse", "title": "Numa Compact X SE", "parts": [],
+                "sections": [{"id": "ncxse.keys", "kind": "keys", "parts": []}]}
+        out = gearlib.normalize(spec)
+        self.assertEqual(out["id"], "numa")
+        self.assertEqual(out["model"], "Numa Compact X SE")
+        self.assertEqual(out["blend_root"], "ncxse")
+        self.assertEqual(out["sections"][0]["id"], "numa.keys")
+
+    def test_all_specs_normalize_to_their_directory(self):
+        for gid in gearlib.GEAR_IDS:
+            spec = gearlib.load(ROOT, gid)
+            self.assertEqual(spec["id"], gid, gid)
+            self.assertTrue(spec["model"], gid)
+
+
+class Controls(unittest.TestCase):
+    """部品名（1 始まり）→ ControlEvent（0 始まり index）。rename ではなく対応を書く"""
+
+    def test_nanokontrol_matches_device_input(self):
+        spec = gearlib.load(ROOT, "nanokontrol")
+        c = gearlib.control_map(spec)
+        self.assertEqual(c["fader_1"], "fader.0")
+        self.assertEqual(c["knob_8"], "knob.7")
+        self.assertEqual(c["s_1"], "button.0")
+        self.assertEqual(c["m_1"], "button.8")
+        self.assertEqual(c["r_8"], "button.23")
+        self.assertEqual(c["track_prev"], "button.24")
+        self.assertEqual(c["track_next"], "button.25")
+        self.assertNotIn("play", c, "transport は profile が読まない = control 無し")
+
+    def test_lpd8_pads_and_knobs(self):
+        c = gearlib.control_map(gearlib.load(ROOT, "lpd8"))
+        self.assertEqual(c["pad_1"], "pad.0")
+        self.assertEqual(c["knob_8"], "knob.7")
+
+    def test_xtouch_faders_and_master(self):
+        c = gearlib.control_map(gearlib.load(ROOT, "xtouch"))
+        self.assertEqual(c["fader_1"], "fader.0")
+        self.assertEqual(c["fader_master"], "fader.8")
+        self.assertNotIn("fader_1_tick_0", c)
+
+    def test_default_rule_uses_section_order(self):
+        c = gearlib.control_map(gearlib.load(ROOT, "minilab"))
+        self.assertEqual(c["pad_1"], "pad.0")
+        self.assertEqual(c["encoder_16"], "knob.15")
+
+    def test_controls_are_written_into_parts(self):
+        spec = gearlib.load(ROOT, "lpd8")
+        by_name = {p["name"]: p for p in spec["parts"]}
+        self.assertEqual(by_name["pad_1"]["control"], "pad.0")
+        self.assertNotIn("control", by_name["cc"])
+
+
+class Keybed(unittest.TestCase):
+    def test_expanded_spec_has_keys(self):
+        spec = gearlib.expanded(gearlib.load(ROOT, "keystage"))
+        keys = [p for p in spec["parts"] if p["kind"].startswith("key_")]
+        self.assertEqual(len(keys), 61)
+        self.assertEqual(keys[0]["name"], "key_36")
+
+
+class Heights(unittest.TestCase):
+    """推定だった縦の内訳を同じ比率で伸ばし、全高（公式の仕様値）に合わせる"""
+
+    def spec(self):
+        return {"id": "x", "size": [100, 50, 40], "body_height": 20,
+                "parts": [{"name": "knob_1", "kind": "knob", "center": [0, 0], "size": [10, 10, 15], "base": 22},
+                          {"name": "pad_1", "kind": "pad", "center": [0, 0], "size": [10, 10, 3]}],
+                "keybed": {"lowest": 48, "count": 2, "left": 0, "front": 0, "white_width": 20,
+                           "white_length": 80, "black_width": 10, "black_length": 50, "height": 10, "base": 12}}
+
+    def test_scales_every_vertical_estimate(self):
+        out = gearlib.scale_heights(self.spec(), 1.5)
+        self.assertEqual(out["body_height"], 30)
+        knob = out["parts"][0]
+        self.assertEqual(knob["size"], [10, 10, 22.5])
+        self.assertEqual(knob["base"], 33)
+        self.assertEqual(out["parts"][1]["size"][2], 4.5)
+        self.assertEqual(out["keybed"]["height"], 15)
+        self.assertEqual(out["keybed"]["base"], 18)
+
+    def test_keeps_footprint_and_spec(self):
+        out = gearlib.scale_heights(self.spec(), 1.5)
+        self.assertEqual(out["size"], [100, 50, 40], "全高は仕様値（事実）なので触らない")
+        self.assertEqual(out["parts"][0]["center"], [0, 0])
+        self.assertEqual(out["parts"][0]["size"][:2], [10, 10])
+
+    def test_does_not_mutate_input(self):
+        spec = self.spec()
+        gearlib.scale_heights(spec, 2)
+        self.assertEqual(spec["body_height"], 20)
+
+
+class Manifest(unittest.TestCase):
+    def test_manifest_hashes_every_file(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            for name, body in [("lpd8.usdz", b"usd"), ("lpd8.glb", b"glb"), ("lpd8.json", b"{}")]:
+                with open(os.path.join(d, name), "wb") as f:
+                    f.write(body)
+            m = gearlib.manifest(d, source_commit="abc1234", gear_ids=["lpd8"])
+            self.assertEqual(m["schema"], gearlib.SCHEMA_VERSION)
+            self.assertEqual(m["source_commit"], "abc1234")
+            self.assertEqual(set(m["gear"]["lpd8"]), {"usdz", "glb", "json"})
+            self.assertEqual(len(m["gear"]["lpd8"]["glb"]["sha256"]), 64)
+
+    def test_manifest_includes_blend_when_shipped(self):
+        """見た目の層もアプリの Blender シーン（机・棚）がリンクできるよう配布物に置く"""
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("lpd8.usdz", "lpd8.blend"):
+                with open(os.path.join(d, name), "wb") as f:
+                    f.write(b"x")
+            m = gearlib.manifest(d, source_commit="abc1234", gear_ids=["lpd8"])
+            self.assertIn("blend", m["gear"]["lpd8"])
+
+
+class NewGear(unittest.TestCase):
+    """L6max / Zenith 2 / ROTO / Numa / FGDP。意味の層だけで読めること"""
+
+    def test_l6max_and_zenith2_are_registered_and_match_directories(self):
+        self.assertIn("l6max", gearlib.GEAR_IDS)
+        self.assertIn("zenith2", gearlib.GEAR_IDS)
+        dirs = sorted(
+            d for d in os.listdir(ROOT)
+            if os.path.isfile(os.path.join(ROOT, d, "gear.json"))
+        )
+        self.assertEqual(sorted(gearlib.GEAR_IDS), dirs)
+
+    def test_roto_numa_and_fgdp_controls_and_keybeds(self):
+        roto = gearlib.control_map(gearlib.load(ROOT, "roto"))
+        self.assertEqual(roto["knob_1"], "knob.0")
+        self.assertEqual(roto["knob_8"], "knob.7")
+        self.assertEqual(roto["key_1"], "button.0")
+        self.assertEqual(roto["key_8"], "button.7")
+        self.assertNotIn("mode", roto)
+
+        numa_spec = gearlib.expanded(gearlib.load(ROOT, "numa"))
+        numa_keys = [p for p in numa_spec["parts"] if p["kind"].startswith("key_")]
+        self.assertEqual(len(numa_keys), 88)
+
+        fgdp = gearlib.control_map(gearlib.load(ROOT, "fgdp"))
+        self.assertEqual(fgdp["pad_a1"], "pad.0")
+        self.assertEqual(fgdp["rgb_1"], "pad.18")
+
+    def test_l6max_controls_follow_sections(self):
+        c = gearlib.control_map(gearlib.load(ROOT, "l6max"))
+        self.assertEqual(c["encoder_1"], "knob.0")
+        self.assertEqual(c["encoder_8"], "knob.7")
+        self.assertEqual(c["master"], "knob.8")
+        self.assertEqual(c["mute_1"], "button.0")
+        self.assertEqual(c["sound_pad_4"], "pad.3")
+        self.assertNotIn("eq_high", c, "profile が読まない部品には control を付けない")
+
+    def test_zenith2_is_visual_only(self):
+        spec = gearlib.load(ROOT, "zenith2")
+        self.assertEqual(gearlib.control_map(spec), {})
+        self.assertEqual(spec["size"], [135.0, 130.0, 60])
+        self.assertTrue(all(p["size"][1] <= 0.5 for p in spec["parts"] if p["kind"] == "port"),
+                        "端子の突き出しは外形 ±2 mm の検査に収める")
+
+
+class MakerModel(unittest.TestCase):
+    """「どこの何か」（mako 2026-10-12）。maker と model は全機材に要る。app の一覧がこれを出す"""
+
+    def test_every_gear_names_its_maker_and_model(self):
+        for gid in gearlib.GEAR_IDS:
+            spec = gearlib.load(ROOT, gid)
+            self.assertTrue(spec.get("maker"), gid)
+            self.assertTrue(spec.get("model"), gid)
+            self.assertNotIn(spec["maker"], spec["model"], f"{gid}: model にメーカー名を重ねない")
+
+
+if __name__ == "__main__":
+    unittest.main()

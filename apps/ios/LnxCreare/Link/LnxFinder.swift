@@ -16,6 +16,7 @@ final class LnxFinder {
     private var advertised: Set<NWEndpoint> = []
     /// service ごとの名乗り（TXT の name、無ければインスタンス名）。pin の鍵
     private var names: [NWEndpoint: String] = [:]
+    private var lastRefresh: ContinuousClock.Instant?
     /// stop のたびに進める。作り直しを待つタスクは、間に stop されていたら何もしない
     private var generation = 0
     /// 解決を待つ上限と、試し直すまでの間。落ちたサーバの広告（幽霊）は SRV が返らず、いつまでも ready にならない。
@@ -41,7 +42,8 @@ final class LnxFinder {
             return pins.certificate(for: name) != nil
         }
         if let paired { return paired }
-        if let current, found.contains(current) { return current }
+        // 今の先は名前で照合する（解き直しでアドレスだけ変わることがある。名前が無ければそのもので）
+        if let current, let same = found.first(where: { Self.isSameServer($0, current) }) { return same }
         return found.first
     }
 
@@ -105,7 +107,9 @@ final class LnxFinder {
             connection.cancel()
             resolving[endpoint] = nil
         }
-        for endpoint in advertised where resolving[endpoint] == nil && !ledger.contains(endpoint) {
+        // 解けている先も解き直す。Bonjour の名前はそのままでも、経路が変わる（USB を抜いた、Wi-Fi が変わった）と
+        // 前のアドレスは届かない。新しいアドレスが解けるまで、帳簿の前のアドレスは残す（2026-11-23 の実機の例）
+        for endpoint in Self.endpointsToResolve(advertised: advertised, resolving: Set(resolving.keys)) {
             resolve(endpoint, ipv4Only: true)
         }
         LinkLog.note("found: \(found.map(\.displayName))")
@@ -147,6 +151,24 @@ final class LnxFinder {
         connection.start(queue: .main)
     }
 
+    /// 広告されている先を解き直す（つなぎ直しが続けて失敗しているとき。経路が変わってアドレスが古い恐れ）。
+    /// 連打しないよう resolveRetry に一度まで
+    func refresh() {
+        guard browser != nil else { return }
+        let clock = ContinuousClock()
+        if let last = lastRefresh, clock.now - last < Self.resolveRetry { return }
+        lastRefresh = clock.now
+        let targets = Self.endpointsToResolve(advertised: advertised, resolving: Set(resolving.keys))
+        guard !targets.isEmpty else { return }
+        LinkLog.note("refresh: \(targets.count) 件を解き直す")
+        for endpoint in targets { resolve(endpoint, ipv4Only: true) }
+    }
+
+    /// browse の結果が変わったときに解く先: 広告されているもののうち、いま解いていないもの全部（解けているものも含む）
+    nonisolated static func endpointsToResolve(advertised: Set<NWEndpoint>, resolving: Set<NWEndpoint>) -> Set<NWEndpoint> {
+        advertised.subtracting(resolving)
+    }
+
     /// 期限までに解けなかった。IPv4 だけで刺さったなら次は IPv6 も許す（交互に試す）
     private func giveUpIfStuck(_ endpoint: NWEndpoint, _ connection: NWConnection, ipv4Only: Bool) {
         guard resolving[endpoint] === connection, connection.state != .cancelled else { return }
@@ -175,6 +197,12 @@ final class LnxFinder {
         guard browser != nil, advertised.contains(endpoint) else { return }
         ledger.set(.host(address, port: port, name: names[endpoint] ?? Self.serviceName(endpoint)), for: endpoint)
         LinkLog.note("found: \(found.map(\.displayName))")
+    }
+
+    /// 同じサーバか。LAN の先は名前で比べる（アドレスは経路で変わる）
+    nonisolated static func isSameServer(_ a: LinkTarget, _ b: LinkTarget) -> Bool {
+        if case .host(_, _, let nameA?) = a, case .host(_, _, let nameB?) = b { return nameA == nameB }
+        return a == b
     }
 
     /// Bonjour のインスタンス名（例 lnx-mac）

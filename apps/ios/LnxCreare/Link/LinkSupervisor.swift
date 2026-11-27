@@ -24,7 +24,8 @@ final class LinkSupervisor {
     private let heartbeatTimeout: Duration
     private var runner: Task<Void, Never>?
     /// 接続の世代。止める・解除・切り替えのたびに進め、古い世代のタスクには状態を書かせない。
-    /// club-unison の待ちは cancel に応じないので、cancel 後に遅れて戻った応答が connected を書き戻しうる（deep レビュー P3-2）
+    /// cancel と応答が競うと、遅れて戻った古い世代が connected を書き戻しうる
+    /// （club-unison 2.2 までは待ちが cancel に応じず、なおさら起きた。deep レビュー P3-2）
     private var epoch = 0
     private var heartbeatCount = 0
 
@@ -81,6 +82,23 @@ final class LinkSupervisor {
     var canCancelPairing: Bool {
         guard case .host(_, _, let name?) = target else { return false }
         return pins.certificate(for: name) != nil
+    }
+
+    /// LAN の先へのつなぎ直しが続けて失敗している。経路が変わって（USB を抜いた、Wi-Fi が変わった）アドレスが
+    /// 古い恐れがあるので、RootView が Finder に解き直しを頼む（同じアドレスを叩き続けない。2026-11-23 の実機の例）
+    var needsFreshAddress: Bool {
+        guard case .host = target, case .reconnecting(let attempt, _) = state else { return false }
+        return attempt >= 2
+    }
+
+    /// 見つかった先へ張り替えるか。つながっていて健全な間は、同じサーバ（名前が同じ）の別のアドレスには張り替えない。
+    /// Wi-Fi と USB の両方があると、Bonjour の変化で解き直すたびに解けるアドレスが入れ替わり、つながったまま
+    /// 経路を行き来していた（2026-11-23 の実機、4 秒で 2 回）。張り替えるのはつなぎ直しに入ってから
+    func shouldSwitch(to candidate: LinkTarget) -> Bool {
+        guard let target else { return true }
+        if candidate == target { return false }
+        if case .connected = state, LnxFinder.isSameServer(candidate, target) { return false }
+        return true
     }
 
     /// ペアリングを解除できるか（今の先が LAN のサーバ）
@@ -188,12 +206,14 @@ final class LinkSupervisor {
     /// （`@MainActor` 付きの閉包を addTask に渡すと Swift 6 の isolation checker が解けない）
     private func run(_ session: any LnxSession, epoch: Int) async {
         let timeout = heartbeatTimeout
-        await withTaskGroup(of: Void.self) { group in
+        // 子のどれが先に終わったか（= 切れたと気づいた理由）を足跡に残す
+        await withTaskGroup(of: String.self) { group in
             group.addTask { [weak self] in
                 for await beat in await session.heartbeats() {
-                    guard let self else { return }
+                    guard let self else { return "見張りの持ち主が居ない" }
                     await self.record(beat, epoch: epoch)
                 }
+                return "heartbeat の流れが終わった"
             }
             group.addTask { [weak self] in
                 if let list = try? await session.listServers() {
@@ -202,20 +222,24 @@ final class LinkSupervisor {
                 for await servers in await session.registryChanges() {
                     await self?.update(servers: servers, epoch: epoch)
                 }
+                return "一覧の流れが終わった"
             }
             group.addTask {
                 await session.waitUntilDisconnected()
+                return "切断の知らせ（.disconnected）"
             }
             group.addTask { [weak self] in
                 // 無音の見張り。最初の心拍が来てから数え始める
                 while !Task.isCancelled {
-                    guard let self else { return }
+                    guard let self else { return "見張りの持ち主が居ない" }
                     let before = await self.heartbeatCount
-                    do { try await Task.sleep(for: timeout) } catch { return }
-                    if before > 0, await self.heartbeatCount == before { return }
+                    do { try await Task.sleep(for: timeout) } catch { return "見張りを止めた" }
+                    if before > 0, await self.heartbeatCount == before { return "heartbeat が \(timeout) 無い" }
                 }
+                return "見張りを止めた"
             }
-            await group.next()
+            let reason = await group.next() ?? "不明"
+            if isCurrent(epoch) { LinkLog.note("切れた: \(reason)") }
             group.cancelAll()
         }
         await session.close()

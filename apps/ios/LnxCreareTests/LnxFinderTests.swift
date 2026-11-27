@@ -27,6 +27,12 @@ struct LnxFinderTests {
         #expect(LnxFinder.choose(from: [b], pins: MemoryPinStore(), current: a) == b)
     }
 
+    @Test("今の先は名前で照合する（解き直しでアドレスだけ変わっても、別のサーバへ飛ばない）")
+    func keepsCurrentByName() {
+        let aMoved = LinkTarget.host("192.168.0.9", port: 12730, name: "lnx-a")
+        #expect(LnxFinder.choose(from: [b, aMoved], pins: MemoryPinStore(), current: a) == aMoved)
+    }
+
     @Test("ペアリング済みが無ければ先頭")
     func fallsBackToFirst() {
         #expect(LnxFinder.choose(from: [a, b], pins: MemoryPinStore()) == a)
@@ -87,5 +93,19 @@ struct LnxFinderTests {
         #expect(ledger.targets == [.host("192.168.0.3", port: 12730, name: "lnx-b")])
         #expect(!ledger.contains(svcA))
         #expect(ledger.contains(svcB))
+    }
+
+    // MARK: - 解き直し
+
+    @Test("Bonjour が変わったら、解けている先も解き直す（同じ名前のまま IP だけ変わる。USB を抜いた実例 2026-11-23）")
+    func reResolvesResolvedOnChange() {
+        // svcA は解決済み（帳簿にある）、svcB は解決中
+        let toResolve = LnxFinder.endpointsToResolve(advertised: [svcA, svcB], resolving: [svcB])
+        #expect(toResolve == [svcA])
+    }
+
+    @Test("解決中の先は二重に解かない")
+    func doesNotDoubleResolve() {
+        #expect(LnxFinder.endpointsToResolve(advertised: [svcA], resolving: [svcA]).isEmpty)
     }
 }
