@@ -24,6 +24,9 @@ lnx/
 │   └── ios/                 # iOS / macOS アプリ「lnx creare」（SwiftUI + XcodeGen）
 │                            #   iPad / iPhone: lnx-server へ常時接続する窓
 │                            #   Mac: メニューバー常駐管理（SMAppService）+ ペアリング QR
+├── formal/
+│   ├── lean/                # Lean 4（4.36.0、公理ゼロ定理証明）: Broker 排他・二段階 handoff・7bit/14bit 変換・SysEx 安全性
+│   └── quint/               # Quint（0.33.1、6 モード反例探索）: Gear 引き継ぎ状態機械の設計規則検査
 ├── tasks/                   # mise の開発タスク（Ruby）
 └── docs/                    # ドキュメント（spec / design / guide / archive）
 ```
