@@ -43,6 +43,11 @@ struct LnxCreareApp: App {
             GearStatusWindow(model: server)
         }
         .defaultSize(width: 920, height: 480)
+        Window("lnx — Gear & Desk", id: LnxWindow.gearDesk) {
+            GearDeskView()
+                .preferredColorScheme(.dark)
+        }
+        .defaultSize(width: 920, height: 620)
         Window("lnx — ログとトレース", id: LnxWindow.gearLog) {
             GearLogWindow(server: server, vm: gearLogs)
         }

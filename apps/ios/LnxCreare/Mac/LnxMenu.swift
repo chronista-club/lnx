@@ -8,6 +8,7 @@ enum LnxWindow {
     static let pairing = "pairing"
     static let gearStatus = "gear-status"
     static let gearLog = "gear-log"
+    static let gearDesk = "gear-desk"
 }
 
 /// メニューバーの lnx（裁定「midistageみたいに、LNXのメニューがあって」、todo mem_1CgiUS2HyVdxMAGfnfE3QX + Step 4 mem_1ChTQGKFcpBxpP2ArK6M9T）。
@@ -39,6 +40,11 @@ struct LnxMenu: View {
             show(LnxWindow.gearStatus)
         } label: {
             Label { Text("Gear ステータスを開く") } icon: { Icon.menuImage(.waveform) }
+        }
+        Button {
+            show(LnxWindow.gearDesk)
+        } label: {
+            Label { Text("Gear & Desk（机配置）を開く") } icon: { Icon.menuImage(.appWindow) }
         }
         Button {
             logs.tab = .flow

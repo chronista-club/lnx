@@ -22,8 +22,10 @@ lnx/
 │   └── swift/               # [actions] Swift SDK「LnxClient」（Swift Package、Ladyland / Mac 用）
 ├── apps/
 │   └── ios/                 # iOS / macOS アプリ「lnx creare」（SwiftUI + XcodeGen）
-│                            #   iPad / iPhone: lnx-server へ常時接続する窓
-│                            #   Mac: メニューバー常駐管理（SMAppService）+ ペアリング QR
+│                            #   iPad / iPhone: lnx-server へ常時接続する窓 + Gear & Desk（机配置）
+│                            #   Mac: メニューバー常駐管理（SMAppService）+ Gear ステータス / トレース / ログ + ペアリング QR
+├── gear/                    # Gear の 3D 資産（意味の層 <id>/gear.json + 見た目の層 <id>/<id>.blend、build.py / check.py）
+├── config/examples/         # 机配置スキーマ（desk-home.kdl / desk-studio.kdl）
 ├── formal/
 │   ├── lean/                # Lean 4（4.36.0、公理ゼロ定理証明）: Broker 排他・二段階 handoff・7bit/14bit 変換・SysEx 安全性
 │   └── quint/               # Quint（0.33.1、6 モード反例探索）: Gear 引き継ぎ状態機械の設計規則検査

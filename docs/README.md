@@ -22,6 +22,7 @@
 |---|---|---|---|
 | 01 | [lnx サーバと lnx creare の常時接続](design/01-lnx-server-link.md) | Draft | Unison / QUIC の 1 本の接続。session（名乗り・心拍）と registry（一覧）、再接続、Bonjour、テストの三層 |
 | 02 | [lnx の構成 — Unison の上に載せる Signal Hub + Routing](design/02-architecture.md) | Draft | `lnx-server` + Apple アプリ（`lnx creare`）の構成要素と現状、Signal Hub + Routing 統合の 6 Steps、Unison の使い方 |
+| 03 | [Gear の 3D 資産と机配置（desk.kdl）](design/03-gear-and-desk.md) | Draft | 意味の層（`gear/<id>/gear.json`）と見た目の層（`<id>.blend`）、机配置スキーマ（`config/examples/desk-*.kdl`）、Mac / iPad での机配置表示 |
 
 ## guide — どう使うか
 
