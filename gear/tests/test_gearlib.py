@@ -136,16 +136,33 @@ class Manifest(unittest.TestCase):
             self.assertIn("blend", m["gear"]["lpd8"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class NewGear(unittest.TestCase):
-    """L6max / Zenith 2（2026-10-11 追加）。意味の層だけで読めること"""
+    """L6max / Zenith 2 / ROTO / Numa / FGDP。意味の層だけで読めること"""
 
-    def test_l6max_and_zenith2_are_registered(self):
+    def test_l6max_and_zenith2_are_registered_and_match_directories(self):
         self.assertIn("l6max", gearlib.GEAR_IDS)
         self.assertIn("zenith2", gearlib.GEAR_IDS)
+        dirs = sorted(
+            d for d in os.listdir(ROOT)
+            if os.path.isfile(os.path.join(ROOT, d, "gear.json"))
+        )
+        self.assertEqual(sorted(gearlib.GEAR_IDS), dirs)
+
+    def test_roto_numa_and_fgdp_controls_and_keybeds(self):
+        roto = gearlib.control_map(gearlib.load(ROOT, "roto"))
+        self.assertEqual(roto["knob_1"], "knob.0")
+        self.assertEqual(roto["knob_8"], "knob.7")
+        self.assertEqual(roto["key_1"], "button.0")
+        self.assertEqual(roto["key_8"], "button.7")
+        self.assertNotIn("mode", roto)
+
+        numa_spec = gearlib.expanded(gearlib.load(ROOT, "numa"))
+        numa_keys = [p for p in numa_spec["parts"] if p["kind"].startswith("key_")]
+        self.assertEqual(len(numa_keys), 88)
+
+        fgdp = gearlib.control_map(gearlib.load(ROOT, "fgdp"))
+        self.assertEqual(fgdp["pad_a1"], "pad.0")
+        self.assertEqual(fgdp["rgb_1"], "pad.18")
 
     def test_l6max_controls_follow_sections(self):
         c = gearlib.control_map(gearlib.load(ROOT, "l6max"))
@@ -173,3 +190,7 @@ class MakerModel(unittest.TestCase):
             self.assertTrue(spec.get("maker"), gid)
             self.assertTrue(spec.get("model"), gid)
             self.assertNotIn(spec["maker"], spec["model"], f"{gid}: model にメーカー名を重ねない")
+
+
+if __name__ == "__main__":
+    unittest.main()

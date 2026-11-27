@@ -65,18 +65,24 @@ struct GearStatusRowsTests {
         #expect(rows.last?.tone == .quiet)
     }
 
-    @Test("引き継ぎ停滞やエラー・設定エラーは attention になり先頭へ並ぶ")
-    func stuckHandoffAndErrorsAreAttentionAndSortedFirst() {
+    @Test("引き継ぎ停滞やエラー・設定エラーは attention になり先頭へ並び、未接続でも attention を維持する")
+    func stuckHandoffAndErrorsAndConfigErrorAreAttentionAndSortedFirst() {
         let rows = gearStatusRows([
             makeGearFacts("roto", configuring: true, currentSetup: 8),
             makeGearFacts("lpd8", phase: "releasing", releasingTo: "vp", stuck: true),
-            makeGearFacts("numa", phase: "error", error: "two units"),
+            makeGearFacts("numa", present: false, phase: "error", error: "two units"),
+            makeGearFacts("xtouch", configError: "serial busy"),
         ])
-        #expect(rows[0].tone == .attention && rows[1].tone == .attention)
-        #expect(rows.map(\.id).contains("lpd8") && rows[2].id == "roto")
+        #expect(rows[0].tone == .attention && rows[1].tone == .attention && rows[2].tone == .attention)
+        // attention の中では「挿さっている」行が「見当たらない」行より先に来る
+        #expect(rows[0].presence == "挿さっている" && rows[1].presence == "挿さっている")
+        #expect(rows[2].id == "numa" && rows[2].presence == "見当たらない" && rows[2].tone == .attention)
+        #expect(rows[3].id == "roto" && rows[3].tone == .normal)
         let lpd8 = rows.first { $0.id == "lpd8" }!
         #expect(lpd8.phase == "releasing → vp")
         #expect(lpd8.note?.contains("引き継ぎが止まっています") == true)
+        let xtouch = rows.first { $0.id == "xtouch" }!
+        #expect(xtouch.note == "設定エラー: serial busy")
         let roto = rows.first { $0.id == "roto" }!
         #expect(roto.note == "設定中… / SETUP 09")
     }

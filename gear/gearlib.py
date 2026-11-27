@@ -1,8 +1,8 @@
-"""意味の層（`gear/<id>/gear.json`）を読む・揃える・対応を付ける純粋関数（docs/design/04）。
+"""意味の層（`gear/<id>/gear.json`）を読む・揃える・対応を付ける純粋関数（docs/design/03-gear-and-desk.md）。
 
 Blender に依存しない。`build.py` / `check.py` が Blender の中からここを import する。
 
-- 機材 ID は inventory（crates/lnx-server/src/gear/inventory.rs）を正とする
+- Gear ID は inventory（crates/lnx-server/src/gear/inventory.rs）を正とする
 - 部品名（`pad_1`、1 始まり）は触らない。`control`（`pad.0`、ControlEvent の 0 始まり index）を
   対応として書く。profile が読まない部品には付けない
 - JSON は mm。座標は機材の中心が原点、x = 右 +、z = 手前 +
@@ -17,9 +17,6 @@ SCHEMA_VERSION = 1
 LEGACY_IDS = {"ncxse": "numa", "fgdp50": "fgdp"}
 
 GEAR_IDS = ["roto", "lpd8", "nanokontrol", "keystage", "numa", "minilab", "fgdp", "xtouch", "l6max", "zenith2"]
-
-#: kind → ControlEvent の種類（既定の対応。section の並び順で index を振る）
-KIND_TO_CONTROL = {"pad": "pad", "knob": "knob", "encoder": "knob", "fader": "fader", "button": "button"}
 
 
 def canonical_id(gear_id):
@@ -43,7 +40,7 @@ def normalize(spec):
 # ---- control の対応 ----------------------------------------------------------
 
 def _nanokontrol(spec):
-    """crates/midistage-profiles device_input.rs `nanokontrol` と同じ番号。
+    """crates/lnx-gear/src/gear_input.rs `nanokontrol` と同じ番号。
     S = 0-7、M = 8-15、R = 16-23、TRACK ◀ ▶ = 24 / 25。transport は profile が読まない"""
     c = {}
     for n in range(1, 9):
@@ -57,7 +54,7 @@ def _nanokontrol(spec):
 
 
 def _xtouch(spec):
-    """device_input.rs `xtouch`: Fader 0-7 = ch1-8、8 = master。ボタン・エンコーダーは未定義"""
+    """crates/lnx-gear/src/gear_input.rs `xtouch`: Fader 0-7 = ch1-8、8 = master。ボタン・エンコーダーは未定義"""
     c = {f"fader_{n}": f"fader.{n - 1}" for n in range(1, 9)}
     c["fader_master"] = "fader.8"
     return c

@@ -59,7 +59,7 @@ graph TB
 | **Step 1** | 未接続の旧 3 crate（`lnx-engine` / `lnx-cli` / Bevy `lnx-creare`）と未使用依存を撤去し workspace を純化 | 完了（#51） |
 | **Step 2** | `Gear` を中心語彙にした I/O なしの純粋層 `crates/lnx-protocol` と `crates/lnx-gear`（`maru` の入力変換・SysEx 投影込み）を導入 | 完了（#52） |
 | **Step 3** | `lnx-server` に Gear Runtime と `gear` channel を組み込み、`crates/lnx-client`（Rust SDK）と `clients/swift`（`LnxClient`）を追加 | 完了（#53） |
-| **Step 3.5** | Lean 4（4.36.0、公理ゼロ 24 定理）と Quint（0.33.1、6 モード反例探索）による `lnx-protocol` / `lnx-gear` の形式検証を追加 | 完了（#54） |
+| **Step 3.5** | Lean 4（4.36.0、公理ゼロ 27 定理）と Quint（0.33.1、6 モード反例探索）による `lnx-protocol` / `lnx-gear` の形式検証を追加 | 完了（#54） |
 | **Step 4** | Mac 版 `LnxCreare.app` メニューバーに Gear ステータス一覧・トレース・ログ表示を合流 | 完了（#55） |
 | **Step 5** | 3D 機材資産（`gear/`）と机配置（`desk.kdl`）を `lnx` に合流し、Mac / iPad の `lnx creare` に展開 | **本変更で完了** |
 | **Step 6** | `Ladyland` と `VP` を `LnxClient` / `lnx-client` に繋ぎ替え、`midistage` をアーカイブ | 次 |
@@ -114,7 +114,7 @@ graph TB
   - Rust: `cargo test --workspace`（`lnx-gear` 72 件、`lnx-protocol` 13 件、`lnx-server` 単体 54 件 + 統合テスト 57 件）
   - Swift SDK: `cd clients/swift && swift test`（Rust `gear_fixture` との実 QUIC 引き継ぎ・ROTO setup RPC 相互接続テスト 6 件）
   - 形式検証:
-    - Lean 4（4.36.0、公理ゼロ）: `cd formal/lean && lean -DwarningAsError=true LnxCore.lean`（全 24 定理すべて `does not depend on any axioms`）
+    - Lean 4（4.36.0、公理ゼロ）: `cd formal/lean && lean -DwarningAsError=true LnxCore.lean`（全 27 定理すべて `does not depend on any axioms`）
     - Quint（0.33.1、6 モード反例探索）: `bun formal/quint/check.ts`（6 モード × 8 シナリオ = 48 シナリオ、6 モード × 5 不変条件 = 30 チェック）
   - iOS / macOS アプリ: `mise run mac:test` / `mise run ios:test`
 
@@ -136,6 +136,6 @@ graph TB
 - 2026-11-27: 火花 `mem_1ChTKc23Veo6sEXMJ16mAf`（「接続方式とか通信規格とかいろいろややこしいんで、全部まとめてGearじゃ。どのアプリがどのGear使うか。そう認識したい。」）を受け、中心語彙を `Gear` に統一。
   Step 2（#52、`mem_1ChTKjX4gofAKD7vNcWB62`）として、I/O なしの純粋層 `crates/lnx-protocol`（`GearState` / `Broker` / `wire`）と `crates/lnx-gear`（`GearInput` / `GearProfile` / `roto_serial` / `roto_palette` / `keystage`、`maru` の入力変換と SysEx 投影を含む）を導入した
 - 2026-11-27: Step 3（#53、`mem_1ChTLTLa5yr1LQ2CtNHo8p`）として、`lnx-server` に Gear Runtime（`crates/lnx-server/src/gear/`、CoreMIDI / 仮想ポート bridge / ROTO Serial / `settings.json` / `endpoint.json`）と `gear` channel（`schemas/gear.kdl`）を統合し、Rust SDK（`crates/lnx-client`）および Swift SDK（`clients/swift` の `LnxClient`）を新設した
-- 2026-11-27: Step 3.5（#54、`mem_1ChTPJv4KqgX7AuML7cY5T`）として、`club-kdl/formal` と同じ流儀で `formal/lean/LnxCore.lean`（Lean 4.36.0、公理ゼロ 24 定理）と `formal/quint/gear_handoff.qnt` + `check.ts`（Quint 0.33.1、6 モード × 8 シナリオ・30 不変条件チェック）による形式検証を追加した
+- 2026-11-27: Step 3.5（#54、`mem_1ChTPJv4KqgX7AuML7cY5T`）として、`club-kdl/formal` と同じ流儀で `formal/lean/LnxCore.lean`（Lean 4.36.0、公理ゼロ 27 定理）と `formal/quint/gear_handoff.qnt` + `check.ts`（Quint 0.33.1、6 モード × 8 シナリオ・30 不変条件チェック）による形式検証を追加した
 - 2026-11-27: Step 4（#55、`mem_1ChTQGKFcpBxpP2ArK6M9T`）として、Mac 版 `LnxCreare.app` メニューバー（`apps/ios/LnxCreare/Mac/`）に `LnxClient` を使った Gear ステータス一覧（`GearStatusWindow` / `GearStatusRows` / `GearProbe`）、MIDI トレース切り替え（`GearTrace`）、および「流れ」と「MIDI トレース」の 2 タブを持つログ window（`GearLogWindow` / `GearLogTail` / `GearLogLines`）を合流した
 - 2026-11-27: Step 5（`mem_1ChTQm4n2KdX3Zs3xmEdKK`）として、3D 機材資産（`gear/<id>/gear.json` + `<id>.blend`、`gearlib.py` / `build.py` / `check.py`）と机配置（`config/examples/desk-{home,studio}.kdl`）を `lnx` に合流し、Mac / iPad の `lnx creare` に `GearCatalog`・`DeskKdlParser`・`GearDeskView` を展開した（[design 03](03-gear-and-desk.md)）

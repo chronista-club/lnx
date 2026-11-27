@@ -2,7 +2,7 @@
 書き出しは build.py、呼び出しは generate.py（`-- nanokontrol --output …`）。
 
 アプリの 3D の机（`Desk3DView`）は
-`~/Library/Application Support/ladyland/gear/nanokontrol.usdz` があればそれを読み、
+`~/Library/Application Support/club.chronista.lnx-server/gear/nanokontrol.usdz` があればそれを読み、
 **部品を名前で掴む**（`fader_1`〜`8` を音量の位置へ動かす、`m_1`〜`8` をミュートで赤く）。
 寸法と配置は `Sources/Ladyland/Gear3D.swift` の `GearBlueprint.nanoKontrol2` と同じ
 （外形は取扱説明書の 325 × 83 × 30 mm、配置は KORG 公式の真上の写真のトレース）。清書するときも部品名は保つこと。

@@ -22,8 +22,8 @@ struct GearDeskView: View {
                 }
                 Spacer()
                 Picker("Desk", selection: $selectedDeskName) {
-                    Text("home（家・10 Gear）").tag("home")
-                    Text("studio（スタジオ・5 Gear）").tag("studio")
+                    Text("home（家・\(DeskPresets.home.gears.count) Gear）").tag("home")
+                    Text("studio（スタジオ・\(DeskPresets.studio.gears.count) Gear）").tag("studio")
                 }
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 320)
@@ -108,7 +108,7 @@ private struct DeskBlueprintCanvas: View {
             let pad: CGFloat = 24
             let availW = max(1, geo.size.width - pad * 2)
             let availH = max(1, geo.size.height - pad * 2)
-            let scale = min(availW / CGFloat(fp.width), availH / CGFloat(fp.depth))
+            let scale = min(availW / max(1, CGFloat(fp.width)), availH / max(1, CGFloat(fp.depth)))
             let cx = geo.size.width / 2
             let cz = geo.size.height / 2
 

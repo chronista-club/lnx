@@ -71,7 +71,6 @@ async fn main() -> Result<()> {
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
-        .with_target(false)
         // 常駐（launchd）のログはファイルに出る。端末でなければ色の制御文字を入れない
         .with_ansi(std::io::stdout().is_terminal())
         .init();

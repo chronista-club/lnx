@@ -196,7 +196,7 @@ impl Runtime {
         if !current || self.driver_errors.contains_key(gear_id) {
             return false;
         }
-        tracing::warn!(device = %gear_id, token = %lease.token, "MIDI I/O fault: {message}");
+        tracing::warn!("{gear_id}: MIDI I/O fault: {message} ({})", lease.token);
         self.driver_errors.insert(gear_id.into(), message);
         let _ = self.broker.set_present(gear_id, false);
         self.log_flow();
