@@ -35,7 +35,7 @@ Rust の workspace（`crates/`）と Apple のアプリ（`apps/ios`）を、**m
 - **mise**: `.mise.toml` が `xcodegen` / `gh` / `pre-commit` を入れる（`mise install`）。`RUST_LOG=info`、`RUST_BACKTRACE=1` も mise の env
 - **Xcode 27 以上**（iOS 27 SDK）。シミュレータの既定は `iPad Pro 11-inch (M5)` / iOS 27.2（`LNX_IOS_SIM` / `LNX_IOS_OS`）。
   同名の端末が runtime ごとにあるので OS も指定する。Simulator.app が無い Mac でも `simctl` だけで動く
-- **club-unison**: Rust は crates.io の `club-unison` 2.2、Swift は Swift Package（`exactVersion: 2.2.0`）。どちらも初回ビルドで取れる
+- **club-unison**: Rust は crates.io の `club-unison` 2.3（`lnx-client` / `lnx-server`）、Swift は Swift Package（`clients/swift` が `from: "2.3.0"`、`apps/ios` が `exactVersion: 2.2.0`）。どちらも初回ビルドで取れる
 - 低遅延のオーディオ I/F は推奨だが、サーバと lnx creare の接続には要らない（音はまだ出ない）
 
 ## Usage
@@ -208,6 +208,7 @@ UDID は `xcrun devicectl list devices` で見る。「lnx を探しています
 
 ## Status log
 
+- 2026-11-27: Step 2 / Step 3（`mem_1ChTKjX4gofAKD7vNcWB62`、`mem_1ChTLTLa5yr1LQ2CtNHo8p`）で `crates/lnx-protocol`, `crates/lnx-gear`, `crates/lnx-client`, `clients/swift` を追加し、`club-unison` 2.3 の記載を追記した
 - 2026-11-27: Step 1（`mem_1ChTKAxCNTrpAgXr4XM1Cc`）で旧 `lnx-engine` / `lnx-cli` / Bevy `lnx-creare` を撤去したのに合わせ、Usage と Troubleshooting からそれらのコマンド記載を整理した
 
 - 2026-11-23: `server:ask`（NIC ごとに IPv4 / IPv6 で名乗りを直接問う）を足した。`server:test` は `tasks/_lib/test` の Ruby のテストをすべて回す

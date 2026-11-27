@@ -1,0 +1,20 @@
+[package]
+name = "lnx-client"
+description = "lnx — アプリが lnx-server の gear channel に接続する Rust SDK"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+lnx-protocol = { path = "../lnx-protocol" }
+club-unison = "2.2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = "1"
+thiserror = "2"
+tokio = { workspace = true, features = ["time"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }

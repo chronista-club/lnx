@@ -14,7 +14,12 @@ lnx（リンクス）は、機器と場をつなぐもの。読みの「リン�
 lnx/
 ├── Cargo.toml               # Rust ワークスペース設定
 ├── crates/
-│   └── lnx-server/          # lnx サーバ（Unison / QUIC、Bonjour _lnx._udp、Signal Hub + Router）
+│   ├── lnx-protocol/        # [data + calculations] Gear の使用権・引き継ぎ・wire 型の純粋状態機械
+│   ├── lnx-gear/            # [calculations] Gear ごとの入力変換・SysEx/ROTO 表示投影（maru / ROTO / Keystage / LPD8 等）
+│   ├── lnx-client/          # [actions] Rust SDK（lnx-server の gear channel クライアント）
+│   └── lnx-server/          # [actions] lnx サーバ（Unison / QUIC、Bonjour _lnx._udp、Signal Hub + Router）
+├── clients/
+│   └── swift/               # [actions] Swift SDK「LnxClient」（Swift Package、Ladyland / Mac 用）
 ├── apps/
 │   └── ios/                 # iOS / macOS アプリ「lnx creare」（SwiftUI + XcodeGen）
 │                            #   iPad / iPhone: lnx-server へ常時接続する窓

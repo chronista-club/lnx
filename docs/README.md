@@ -28,7 +28,7 @@
 | 番号 | 文書 | Status | 一行 |
 |---|---|---|---|
 | 01 | [開発の回し方](guide/01-development.md) | Draft | mise のタスク（server / ios / mac）、rust-toolchain.toml、XcodeGen、通しの動かし方、トラブルシューティング |
-| 02 | [MIDI 機器 — Korg Keystage 49 と Akai LPD8](guide/02-midi-devices.md) | Draft | 2 台の MIDI 仕様（ノート / CC / SysEx）と推奨設定。lnx 側の実装はまだ無い |
+| 02 | [MIDI 機器 — Korg Keystage 49 と Akai LPD8](guide/02-midi-devices.md) | Draft | 2 台の MIDI 仕様（ノート / CC / SysEx）と推奨設定。`crates/lnx-gear` と `crates/lnx-server/src/gear/` で認識・変換・ルーティングを実装 |
 
 ## archive
 

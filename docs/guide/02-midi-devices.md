@@ -1,18 +1,17 @@
 # 02. MIDI 機器 — Korg Keystage 49 と Akai LPD8
 
 > **Status**: Draft（Status log 参照）
-> **Related**: [spec 01](../spec/01-core-concept.md)（道具・楽器との自然な対話）、[design 02](../design/02-architecture.md)（MIDI は未実装・未決）
-> **対象**: `crates/lnx-engine/`（`midir` は依存にあるだけ。MIDI 入力の実装はまだ無い）、`crates/lnx-cli/src/main.rs`（`lnx midi` サブコマンド、TODO）
+> **Related**: [spec 01](../spec/01-core-concept.md)（道具・楽器との自然な対話）、[design 02](../design/02-architecture.md)（Signal Hub + Routing と Gear 層）
+> **対象**: `crates/lnx-gear/src/gear_input.rs`, `crates/lnx-gear/src/gear_profile.rs`, `crates/lnx-gear/src/keystage.rs`, `crates/lnx-server/src/gear/inventory.rs`
 
 ## Overview
 
-LNX が手元で前提にしている 2 台の MIDI 機器の仕様と、lnx で使うときの推奨設定。
+LNX が手元で前提にしている代表的な MIDI 機器（Keystage 49 と LPD8）の仕様と、lnx で使うときの推奨設定。
 Keystage 49 がメインの鍵盤（メロディ、ch 1）、LPD8 がパッドコントローラー（ドラム、ch 10）。
 
-**lnx 側の実装はまだ無い。** `midir` 0.9 は workspace の依存にあるが読むコードは無く、
-`lnx midi list / connect / monitor / test-keystage` は TODO の表示だけ。
-方針は、ポート名に `Keystage` / `KEYSTAGE` / `LPD8` を含む入力ポートを自動で見つけ（spec 01「ゼロコンフィグ、自動認識」）、
-Keystage の Note / CC と LPD8 の ch 10 Note On をビートマシンのパッドやパラメータに写すこと。
+**実装の所在**:
+- ポート名からの自動認識（spec 01「ゼロコンフィグ、自動認識」）は `crates/lnx-server/src/gear/inventory.rs`（`keystage`, `lpd8` ほか `roto`, `maru`, `xtouch`, `nanokontrol`, `numa`, `minilab`, `fgdp`, `l6max`, `zenith2`）
+- 入力イベント（Note / CC）の正規化と SysEx / 接続モード（Keystage Daw In/Out）は `crates/lnx-gear`（`KeystageInput`, `Lpd8Input`, `keystage` モジュール）に実装されている。
 
 ## Prerequisites
 
@@ -108,10 +107,11 @@ CC モードのパッドは CC 1〜8（Program 依存）。ノブは Program 1 �
 
 - **認識されない**: Audio MIDI 設定の MIDI スタジオに出ているか見る。出ていなければケーブルとポートを替える（どちらもドライバ不要）
 - **レイテンシが大きい**: バッファは 64〜128 サンプル、USB ハブを避けて直結、ほかの USB 機器との干渉を避ける
-- **lnx が反応しない**: 実装がまだ無い（Overview）。`lnx midi list` の表示は固定値
+- **Gear として見えない**: `lnx-server` の `inventory.rs` でポート名（`Keystage` / `LPD8`）を照合している。`LNX_TRACE=1` でトレースを有効にするか、`gear` channel の `Snapshot` で `present` を確認する
 
 ## Status log
 
+- 2026-11-27: Step 2 / Step 3（`mem_1ChTKjX4gofAKD7vNcWB62`、`mem_1ChTLTLa5yr1LQ2CtNHo8p`）で `crates/lnx-gear` と `crates/lnx-server/src/gear/` に Keystage / LPD8 の自動認識と入力変換が実装されたのに合わせ、Overview と Troubleshooting を更新した
 - 2025-09-27: `docs/MIDI_DEVICES.md`（機器仕様、lnx-engine での実装例、推奨設定、トラブルシューティング）
 - 2026-11-04: guide の骨格で `docs/guide/02-midi-devices.md` に移設、Draft。機器の仕様と推奨設定は保ち、Rust の定数ブロックは表にした。
   落とした・直したもの: 実装例のコード（lnx-engine に MIDI 実装が無く、例も `self.input` を持たないなどそのままでは動かない）、

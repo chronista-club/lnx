@@ -442,4 +442,38 @@ mod tests {
         assert_eq!(b.gears["nano-1"].phase, Phase::Active);
         assert_ne!(b.gears["nano-1"].lease.as_ref().unwrap().token, old.token);
     }
+
+    #[test]
+    fn duplicate_session_or_client_and_pending_or_conflict_transitions_are_rejected() {
+        let mut b = rig();
+        assert_eq!(
+            b.register_session("a1", "other"),
+            Err(AccessError::AlreadyConnected)
+        );
+        assert_eq!(
+            b.register_session("a2", "ladyland"),
+            Err(AccessError::AlreadyConnected)
+        );
+
+        // Waiting の担当アプリが再接続したとき自動で Active に昇格する
+        b.enable("maru-1", "a1", 0, false).unwrap();
+        b.disconnect_session("a1");
+        b.drained("maru-1").unwrap();
+        assert_eq!(b.gears["maru-1"].phase, Phase::Waiting);
+        b.register_session("a2", "ladyland").unwrap();
+        assert_eq!(b.gears["maru-1"].phase, Phase::Active);
+        assert_eq!(b.gears["maru-1"].lease.as_ref().unwrap().session_id, "a2");
+
+        // 他アプリの disable は Conflict、Releasing 中の enable は Pending、新オーナーの disable で Off へ着地
+        assert_eq!(b.disable("maru-1", "b1", 1), Err(AccessError::Conflict));
+        let old_token = b.gears["maru-1"].lease.as_ref().unwrap().token.clone();
+        b.enable("maru-1", "b1", 1, true).unwrap();
+        assert_eq!(b.gears["maru-1"].phase, Phase::Releasing);
+        assert_eq!(b.enable("maru-1", "a2", 2, true), Err(AccessError::Pending));
+        b.disable("maru-1", "b1", 2).unwrap();
+        b.quiesced("maru-1", "a2", &old_token).unwrap();
+        b.drained("maru-1").unwrap();
+        assert_eq!(b.gears["maru-1"].phase, Phase::Off);
+        assert!(b.gears["maru-1"].assignment.client_id.is_none());
+    }
 }

@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/lnx-protocol",
     "crates/lnx-gear",
+    "crates/lnx-client",
     "crates/lnx-server",
 ]
 

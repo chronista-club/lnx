@@ -338,7 +338,7 @@ pub mod xtouch {
             match status {
                 // pitch bend = fader 値（LSB, MSB の順）
                 0xE0 if channel < FADER_COUNT => {
-                    let value14 = ((msg[2] as u16) << 7) | (msg[1] & 0x7F) as u16;
+                    let value14 = (((msg[2] & 0x7F) as u16) << 7) | (msg[1] & 0x7F) as u16;
                     Some(ControlEvent::Fader {
                         index: channel,
                         value: value14 as f32 / 16383.0,
@@ -663,6 +663,40 @@ pub mod maru {
             assert_eq!(input.parse(&[0x90, 61, 127]), None);
             assert_eq!(input.parse(&[0xF0, 0x7D, 0xF7]), None);
             assert_eq!(input.parse(&[0xB0, 99, 1]), None);
+            assert_eq!(input.parse(&[]), None);
+            assert_eq!(input.parse(&[0xB0, 1]), None);
+            assert_eq!(input.parse(&[0xB0, 1, 2, 3]), None);
+            assert_eq!(input.parse(&[0xB0, 128, 0]), None);
+            assert_eq!(input.parse(&[0xB0, 33, 128]), None);
+        }
+
+        #[test]
+        fn consecutive_lo_messages_reuse_stored_hi_and_initial_hi_is_zero() {
+            let mut input = MaruInput::default();
+            // hi 未受信で lo だけ来た場合は hi=0 として合成
+            assert_eq!(
+                input.parse(&[0xB0, 33, 64]),
+                Some(ControlEvent::Knob {
+                    index: 0,
+                    value: 64.0 / 16383.0
+                })
+            );
+            // hi を一度送ったあと lo を連続で送ると同じ hi が保たれる
+            assert_eq!(input.parse(&[0xB0, 1, 10]), None);
+            assert_eq!(
+                input.parse(&[0xB0, 33, 1]),
+                Some(ControlEvent::Knob {
+                    index: 0,
+                    value: ((10u16 << 7) | 1) as f32 / 16383.0
+                })
+            );
+            assert_eq!(
+                input.parse(&[0xB0, 33, 2]),
+                Some(ControlEvent::Knob {
+                    index: 0,
+                    value: ((10u16 << 7) | 2) as f32 / 16383.0
+                })
+            );
         }
     }
 }
