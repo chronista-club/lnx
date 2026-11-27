@@ -1,0 +1,13 @@
+[package]
+name = "lnx-protocol"
+description = "lnx — どのアプリがどの Gear を使うかの契約と状態機械（I/O なし）"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = "2"
