@@ -1,8 +1,8 @@
 # 02. lnx の構成 — Unison の上に載せる Signal Hub + Routing
 
 > **Status**: Draft（Status log 参照）
-> **Related**: [spec 01](../spec/01-core-concept.md)（機器と場をつなぐもの、場の同期）、[spec 02](../spec/02-creare.md)（統合のハブ、UI の方針）、[design 01](01-lnx-server-link.md)（最初の実装）、[design 03](03-gear-and-desk.md)（Gear 3D 資産と机配置）、`mem_1ChTKAVaEY4JhcPwSuBqPc`（midistage・maru・lnx 統合構想 6 Steps）、`mem_1ChTKc23Veo6sEXMJ16mAf`（火花: 全部まとめて Gear）、`mem_1ChTKAxCNTrpAgXr4XM1Cc`（Step 1）、`mem_1ChTKjX4gofAKD7vNcWB62`（Step 2）、`mem_1ChTLTLa5yr1LQ2CtNHo8p`（Step 3）、`mem_1ChTPJv4KqgX7AuML7cY5T`（Step 3.5: Lean 4 + Quint 形式検証）、`mem_1ChTQGKFcpBxpP2ArK6M9T`（Step 4: Mac メニューバー統合）、`mem_1ChTQm4n2KdX3Zs3xmEdKK`（Step 5: 3D 資産と机配置）、[archive/ARCHITECTURE.md](../archive/ARCHITECTURE.md)（前身、Deprecated）
-> **対象**: `Cargo.toml`, `rust-toolchain.toml`, `crates/lnx-protocol/`, `crates/lnx-gear/`, `crates/lnx-client/`, `crates/lnx-server/`, `clients/swift/`, `gear/`, `config/examples/`, `formal/lean/`, `formal/quint/`, `apps/ios/project.yml`
+> **Related**: [spec 01](../spec/01-core-concept.md)（機器と場をつなぐもの、場の同期）、[spec 02](../spec/02-creare.md)（統合のハブ、UI の方針）、[design 01](01-lnx-server-link.md)（最初の実装）、[design 03](03-gear-and-desk.md)（Gear 3D 資産と机配置）、`mem_1ChTKAVaEY4JhcPwSuBqPc`（midistage・maru・lnx 統合構想 6 Steps）、`mem_1ChTKc23Veo6sEXMJ16mAf`（火花: 全部まとめて Gear）、`mem_1ChTKAxCNTrpAgXr4XM1Cc`（Step 1）、`mem_1ChTKjX4gofAKD7vNcWB62`（Step 2）、`mem_1ChTLTLa5yr1LQ2CtNHo8p`（Step 3）、`mem_1ChTPJv4KqgX7AuML7cY5T`（Step 3.5: Lean 4 + Quint 形式検証）、`mem_1ChTQGKFcpBxpP2ArK6M9T`（Step 4: Mac メニューバー統合）、`mem_1ChTQm4n2KdX3Zs3xmEdKK`（Step 5: 3D 資産と机配置）、`mem_1ChTVF7sokPJFj9Xbo641w`（Step 6: Ladyland / VP の lnx 繋ぎ替え）、[archive/ARCHITECTURE.md](../archive/ARCHITECTURE.md)（前身、Deprecated）
+> **対象**: `Cargo.toml`, `Package.swift`, `rust-toolchain.toml`, `crates/lnx-protocol/`, `crates/lnx-gear/`, `crates/lnx-client/`, `crates/lnx-server/`, `clients/swift/`, `gear/`, `config/examples/`, `formal/lean/`, `formal/quint/`, `apps/ios/project.yml`
 
 ## Abstract
 
@@ -61,8 +61,8 @@ graph TB
 | **Step 3** | `lnx-server` に Gear Runtime と `gear` channel を組み込み、`crates/lnx-client`（Rust SDK）と `clients/swift`（`LnxClient`）を追加 | 完了（#53） |
 | **Step 3.5** | Lean 4（4.36.0、公理ゼロ 27 定理）と Quint（0.33.1、6 モード反例探索）による `lnx-protocol` / `lnx-gear` の形式検証を追加 | 完了（#54） |
 | **Step 4** | Mac 版 `LnxCreare.app` メニューバーに Gear ステータス一覧・トレース・ログ表示を合流 | 完了（#55） |
-| **Step 5** | 3D 機材資産（`gear/`）と机配置（`desk.kdl`）を `lnx` に合流し、Mac / iPad の `lnx creare` に展開 | **本変更で完了** |
-| **Step 6** | `Ladyland` と `VP` を `LnxClient` / `lnx-client` に繋ぎ替え、`midistage` をアーカイブ | 次 |
+| **Step 5** | 3D 機材資産（`gear/`）と机配置（`desk.kdl`）を `lnx` に合流し、Mac / iPad の `lnx creare` に展開 | 完了（#56・#57） |
+| **Step 6** | `Ladyland` と `VP` を `LnxClient` / `lnx-client`・`lnx-gear` に繋ぎ替え | **完了**（`mem_1ChTVF7sokPJFj9Xbo641w`） |
 
 ### Unison をどう使うか
 
@@ -138,4 +138,5 @@ graph TB
 - 2026-11-27: Step 3（#53、`mem_1ChTLTLa5yr1LQ2CtNHo8p`）として、`lnx-server` に Gear Runtime（`crates/lnx-server/src/gear/`、CoreMIDI / 仮想ポート bridge / ROTO Serial / `settings.json` / `endpoint.json`）と `gear` channel（`schemas/gear.kdl`）を統合し、Rust SDK（`crates/lnx-client`）および Swift SDK（`clients/swift` の `LnxClient`）を新設した
 - 2026-11-27: Step 3.5（#54、`mem_1ChTPJv4KqgX7AuML7cY5T`）として、`club-kdl/formal` と同じ流儀で `formal/lean/LnxCore.lean`（Lean 4.36.0、公理ゼロ 27 定理）と `formal/quint/gear_handoff.qnt` + `check.ts`（Quint 0.33.1、6 モード × 8 シナリオ・30 不変条件チェック）による形式検証を追加した
 - 2026-11-27: Step 4（#55、`mem_1ChTQGKFcpBxpP2ArK6M9T`）として、Mac 版 `LnxCreare.app` メニューバー（`apps/ios/LnxCreare/Mac/`）に `LnxClient` を使った Gear ステータス一覧（`GearStatusWindow` / `GearStatusRows` / `GearProbe`）、MIDI トレース切り替え（`GearTrace`）、および「流れ」と「MIDI トレース」の 2 タブを持つログ window（`GearLogWindow` / `GearLogTail` / `GearLogLines`）を合流した
-- 2026-11-27: Step 5（`mem_1ChTQm4n2KdX3Zs3xmEdKK`）として、3D 機材資産（`gear/<id>/gear.json` + `<id>.blend`、`gearlib.py` / `build.py` / `check.py`）と机配置（`config/examples/desk-{home,studio}.kdl`）を `lnx` に合流し、Mac / iPad の `lnx creare` に `GearCatalog`・`DeskKdlParser`・`GearDeskView` を展開した（[design 03](03-gear-and-desk.md)）
+- 2026-11-27: Step 5（#56、`mem_1ChTQm4n2KdX3Zs3xmEdKK`）として、3D 機材資産（`gear/<id>/gear.json` + `<id>.blend`、`gearlib.py` / `build.py` / `check.py`）と机配置（`config/examples/desk-{home,studio}.kdl`）を `lnx` に合流し、Mac / iPad の `lnx creare` に `GearCatalog`・`DeskKdlParser`・`GearDeskView` を展開した（[design 03](03-gear-and-desk.md)）。続く #57 で Step 3.5〜5 の 3 スタンド並列 deep review 指摘を根治し、ルート `Package.swift` と `lnx_client::Client::default_endpoint_path()` を整備した
+- 2026-11-27: Step 6（`mem_1ChTVF7sokPJFj9Xbo641w`）として、`Ladyland`（chronista-club/ladyland#62）を Swift `LnxClient` + `club.chronista.lnx-server/gear` に、`Vantage Point` を Rust `lnx-client` / `lnx-gear` + `club.chronista.lnx-server/{endpoint.json,gear}` に切り替え、全 6 Steps の統合を完了した
