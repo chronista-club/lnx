@@ -21,7 +21,7 @@
 | 番号 | 文書 | Status | 一行 |
 |---|---|---|---|
 | 01 | [lnx サーバと lnx creare の常時接続](design/01-lnx-server-link.md) | Draft | Unison / QUIC の 1 本の接続。session（名乗り・心拍）と registry（一覧）、再接続、Bonjour、テストの三層 |
-| 02 | [lnx の構成 — Unison の上に載せる](design/02-architecture.md) | Draft | 4 crate + Apple アプリの構成要素と現状、レイヤー、Unison の使い方、workspace と lnx-engine の型、未決（UI 技術ほか） |
+| 02 | [lnx の構成 — Unison の上に載せる Signal Hub + Routing](design/02-architecture.md) | Draft | `lnx-server` + Apple アプリ（`lnx creare`）の構成要素と現状、Signal Hub + Routing 統合の 6 Steps、Unison の使い方 |
 
 ## guide — どう使うか
 

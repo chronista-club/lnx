@@ -1,9 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/lnx-engine",
-    "crates/lnx-cli",
-    "crates/lnx-creare",
     "crates/lnx-server",
 ]
 
@@ -15,53 +12,19 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/chronista-club/lnx"
 
 [workspace.dependencies]
-# Core audio processing
-cpal = "0.16.0"
-dasp = "0.11"
-ringbuf = "0.4.8"
-
-# FFI and safety
+# FFI and OS
 libc = "0.2"
 
 # Async runtime
 tokio = { version = "1.35", features = ["sync", "rt"] }
-
-# Lock-free data structures
-crossbeam-channel = "0.5"
-atomic_float = "0.1"
-
-# MIDI support
-midir = "0.9"
 
 # Serialization for config
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
 
-
-# Logging
-log = "0.4"
-env_logger = "0.11"
-
-# Audio file format support
-hound = "3.5"  # WAV file I/O
-
-# GUI framework
-slint = "1.9"  # Rust-native cross-platform GUI toolkit
-
-# NDI SDK bindings for network video/audio
-grafton-ndi = "0.8"  # NDI 6 SDK bindings (high-performance)
-
-# macOS specific
-coreaudio-rs = "0.13.0"
-coreaudio-sys = "0.2"
-core-foundation = "0.10.1"
-
 [profile.release]
 opt-level = 3
 lto = true
 codegen-units = 1
 panic = "abort"
-
-[profile.dev]
-opt-level = 2  # Some optimization even in debug for audio performance
