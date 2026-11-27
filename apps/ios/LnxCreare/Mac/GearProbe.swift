@@ -116,16 +116,22 @@ actor GearProbe: GearProbing {
         let dist = gearAssetDir().appending(path: "\(id).usdz")
         if FileManager.default.fileExists(atPath: dist.path) { return true }
         if Bundle.main.url(forResource: id, withExtension: "usdz") != nil { return true }
-        // 3D 資産の配布ディレクトリ自体がまだ無い場合は「模型なし」の警告を抑制する
+        if let entry = GearCatalog.entry(for: id) { return entry.hasModel3D }
         return !FileManager.default.fileExists(atPath: gearAssetDir().path)
     }
 
     private func makerModel(_ id: String) -> (String?, String?) {
         let url = gearAssetDir().appending(path: "\(id).json")
-        guard let data = try? Data(contentsOf: url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return (nil, nil) }
-        return makerAndModel(fromGearJSON: json)
+        if let data = try? Data(contentsOf: url),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
+            let mm = makerAndModel(fromGearJSON: json)
+            if mm.0 != nil || mm.1 != nil { return mm }
+        }
+        if let entry = GearCatalog.entry(for: id) {
+            return (entry.maker, entry.model)
+        }
+        return (nil, nil)
     }
 
     private func facts(_ snapshot: Snapshot) -> [GearFacts] {

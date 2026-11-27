@@ -3,6 +3,7 @@ import SwiftUI
 /// LNX 自身の画面。心拍が脈打ち、知っているサーバが並ぶ
 struct LnxHomeView: View {
     let supervisor: LinkSupervisor
+    @State private var showingGearDesk = false
     #if os(macOS)
     @State private var offeringPairing = false
     #else
@@ -12,10 +13,14 @@ struct LnxHomeView: View {
     var body: some View {
         VStack(spacing: 24) {
             header
-            #if os(macOS)
-            Button("iPad をペアリング") { offeringPairing = true }
-                .accessibilityIdentifier("home.pairIPad")
-            #endif
+            HStack(spacing: 16) {
+                #if os(macOS)
+                Button("iPad をペアリング") { offeringPairing = true }
+                    .accessibilityIdentifier("home.pairIPad")
+                #endif
+                Button("Gear & Desk") { showingGearDesk = true }
+                    .accessibilityIdentifier("home.gearDesk")
+            }
             Spacer()
             Pulse(seq: supervisor.heartbeat?.seq ?? 0)
             Text(heartbeatLine)
@@ -38,6 +43,10 @@ struct LnxHomeView: View {
         // 画面いっぱいに広げてから重ねる（VStack は中身の幅に縮むので、そのままだと見出しの右上に乗る）
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .topTrailing) { menu.padding(20) }
+        .sheet(isPresented: $showingGearDesk) {
+            GearDeskView { showingGearDesk = false }
+                .preferredColorScheme(.dark)
+        }
         #if os(macOS)
         .sheet(isPresented: $offeringPairing) {
             PairingOfferView { offeringPairing = false }
