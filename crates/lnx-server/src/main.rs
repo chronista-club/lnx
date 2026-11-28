@@ -191,10 +191,21 @@ async fn main() -> Result<()> {
                 .name("roto-setup".into())
                 .spawn(move || {
                     while setup_running.load(Ordering::Acquire) {
-                        let job = {
+                        let (job, taken) = {
                             let mut r = setups.lock().expect("runtime mutex poisoned");
                             r.plan_setup_switches();
-                            r.next_setup_job()
+                            let job = r.next_setup_job();
+                            // 誰かの席（画面の再ロードで経由しない index）
+                            let taken: Vec<u8> = job
+                                .as_ref()
+                                .map(|j| {
+                                    r.setup_owners(&j.gear_id)
+                                        .into_values()
+                                        .flatten()
+                                        .collect()
+                                })
+                                .unwrap_or_default();
+                            (job, taken)
                         };
                         if let Some(job) = job {
                             use lnx_server::gear::runtime::SetupAction;
@@ -206,16 +217,24 @@ async fn main() -> Result<()> {
                                     lnx_server::gear::roto_admin::apply_setup(
                                         job.setup,
                                         desired,
+                                        &taken,
                                         &backup_dir,
                                     )
                                     .map(|a| {
+                                        let reload = match a.reloaded_via {
+                                            Some(via) => {
+                                                format!(", screen reloaded via setup {via}")
+                                            }
+                                            None => String::new(),
+                                        };
                                         info!(
-                                            "{}: setup {} written: {} op(s), port open {} ms, {} requests, backup {}",
+                                            "{}: setup {} written: {} op(s), port open {} ms, {} requests{}, backup {}",
                                             job.gear_id,
                                             job.setup,
                                             a.ops,
                                             a.port_open_ms,
                                             a.requests,
+                                            reload,
                                             a.backup.display()
                                         );
                                     })

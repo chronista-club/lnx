@@ -104,7 +104,7 @@ graph TB
 | `runtime.rs` | `Broker` と保存設定（`settings.json`）、仮想ポート束縛（`NativeBinding`）、ROTO setup ジョブキューを統合管理する |
 | `service.rs` | Unison の `gear` channel（`schemas/gear.kdl`）を loopback（`[::1]` と `127.0.0.1` の同一ポート）で提供し、`Endpoint`（`endpoint.json`）を出す |
 | `native.rs`, `io_fence.rs` | macOS CoreMIDI の read-only 列挙と CFRunLoop notify スレッド、active lease ごとの仮想 source / destination（`Lnx/…`）ブリッジ生成、SysEx 完了待ち送信、Keystage 接続モードの後始末 |
-| `roto_admin.rs`, `roto_setup.rs` | ROTO-CONTROL の USB Serial admin ポートを介した setup 切り替えと差分書き込み（控え保存つき） |
+| `roto_admin.rs`, `roto_setup.rs` | ROTO-CONTROL の USB Serial admin ポートを介した setup 切り替えと差分書き込み（控え保存つき）。表に出ている setup を `ApplyGearSetup` で書いた場合は、`END CONFIG UPDATE` が保存領域にしか効かないため、同じ Serial セッション内で未割り当ての別 index（`reload_via`）へ一度 `SET SETUP` してから元の setup へ戻し、本体の画面・手応えにも反映済みで完了（`configuring=false`）させる |
 | `settings.rs`, `flow.rs`, `trace.rs` | 原子的な `settings.json` / `endpoint.json` 書き出しと `RuntimeLock`、状態変化の 1 行 info ログ、動的 ON/OFF 可能な MIDI トレース（`lnx_trace` / `LNX_TRACE`） |
 
 ## Implementation
