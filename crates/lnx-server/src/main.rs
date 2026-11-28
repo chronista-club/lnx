@@ -42,7 +42,7 @@ struct Cli {
     /// Bonjour で名乗らない
     #[arg(long)]
     no_mdns: bool,
-    /// 証明書と設定・endpoint.json の置き場（既定は ~/Library/Application Support/club.chronista.lnx-server）。
+    /// 証明書と設定・endpoint.json の置き場（既定は ~/Library/Application Support/tech.anycreative.lnx-server）。
     /// 消すと次の起動で作り直し、アプリはペアリングし直しになる
     #[arg(long, env = "LNX_SERVER_STATE")]
     state_dir: Option<PathBuf>,

@@ -66,7 +66,7 @@ graph LR
 - **Python 純粋層と検証**:
   - `python3 -m unittest discover -s gear/tests -p "test_*.py"`（Blender 不要の 18 テスト）
   - `/Applications/Blender.app/Contents/MacOS/Blender --background --python gear/check.py`（Blender 契約検査）
-  - `/Applications/Blender.app/Contents/MacOS/Blender --background --python gear/build.py`（`~/Library/Application Support/club.chronista.lnx-server/gear/` への USDZ / GLB / JSON / manifest 書き出し）
+  - `/Applications/Blender.app/Contents/MacOS/Blender --background --python gear/build.py`（`~/Library/Application Support/tech.anycreative.lnx-server/gear/` への USDZ / GLB / JSON / manifest 書き出し）
 - **Apple アプリ（`apps/ios`）**:
   - `LnxCreare/Model/GearDeskModel.swift`: `GearCatalog`（11 種のメーカー・モデル・実寸）と `DeskKdlParser` / `DeskPresets`（`home` / `studio`）
   - `LnxCreare/Screens/GearDeskView.swift`: Mac / iPad 共通の実寸上面図キャンバスと机別 Gear 一覧
@@ -74,4 +74,4 @@ graph LR
 ## Status log
 
 - 2026-10-10〜10-19: `midistage` にて `gear/`（10 機種の `gear.json` + `.blend`、`gearlib.py` / `build.py` / `check.py` / `generate.py`）および `config/examples/desk-{home,studio}.kdl` を整備
-- 2026-11-27: Step 5（`mem_1ChTQm4n2KdX3Zs3xmEdKK`）として `lnx` に合流。配布先を `~/Library/Application Support/club.chronista.lnx-server/gear/` に統一し、Mac / iPad の `lnx creare` に `GearDeskModel` と `GearDeskView` を展開した
+- 2026-11-27: Step 5（`mem_1ChTQm4n2KdX3Zs3xmEdKK`）として `lnx` に合流。配布先を `~/Library/Application Support/tech.anycreative.lnx-server/gear/` に統一し、Mac / iPad の `lnx creare` に `GearDeskModel` と `GearDeskView` を展開した

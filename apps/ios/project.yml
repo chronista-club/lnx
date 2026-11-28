@@ -4,7 +4,7 @@
 name: LnxCreare
 
 options:
-  bundleIdPrefix: club.chronista.lnx
+  bundleIdPrefix: tech.anycreative.lnx
   deploymentTarget:
     iOS: "27.0"
     macOS: "27.0"
@@ -24,7 +24,7 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     DEVELOPMENT_TEAM: 3EQKG4B352  # ANYCREATIVE, K.K.
     CODE_SIGN_STYLE: Automatic
-    MARKETING_VERSION: "0.2.0"
+    MARKETING_VERSION: "0.3.0"
     CURRENT_PROJECT_VERSION: "1"
 
 targets:
@@ -48,7 +48,7 @@ targets:
         basedOnDependencyAnalysis: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare
+        PRODUCT_BUNDLE_IDENTIFIER: tech.anycreative.lnx.creare
         INFOPLIST_FILE: LnxCreare/Info.plist
         PRODUCT_NAME: LnxCreare
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -76,7 +76,7 @@ targets:
         product: UnisonClient
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare.tests
+        PRODUCT_BUNDLE_IDENTIFIER: tech.anycreative.lnx.creare.tests
         GENERATE_INFOPLIST_FILE: YES
 
   # Mac 版の単体テスト。Mac だけのもの（メニューバー、同梱の lnx-server）と、共有の LnxCreareTests を Mac でも回す
@@ -93,7 +93,7 @@ targets:
         product: UnisonClient
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare.mactests
+        PRODUCT_BUNDLE_IDENTIFIER: tech.anycreative.lnx.creare.mactests
         GENERATE_INFOPLIST_FILE: YES
         # host が iOS と macOS の両方のターゲットなので、XcodeGen は iOS の形（LnxCreare.app/LnxCreare）を付ける。Mac の形に直す
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/LnxCreare.app/Contents/MacOS/LnxCreare
@@ -108,7 +108,7 @@ targets:
       - target: LnxCreare
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: club.chronista.lnx.creare.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: tech.anycreative.lnx.creare.uitests
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:

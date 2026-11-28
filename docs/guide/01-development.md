@@ -63,7 +63,7 @@ cargo run -p lnx-server -- --addr '[::]:12730' --name lnx-mac --no-mdns
 サーバは手元用（ペアリング）の待ち受けも `[::1]:12731` に立てる。Mac 版 lnx creare がここからペアリング URL を取って QR を出す。ターミナルに QR を出したいときは `--qr`。
 `--addr` / `--config` は環境変数 `LNX_SERVER_ADDR` / `LNX_SERVER_CONFIG` でも渡せる。名乗りの確認は `dns-sd -B _lnx._udp`。
 `--config` を渡さなければ、証明書と同じ置き場の `lnx-server.toml` を読む（無ければ名乗り `--name` か `lnx-<LocalHostName>` で作って保存する。名乗りは iPad の pin の鍵なので、この Mac で `--config` も `--name` も無しに一度立てると、以後の常駐の名乗りがそれで決まる）。
-この Mac を Mac 版の常駐へ移すとき、名乗りを今の `lnx-mac`（iPad の pin の鍵）のまま残すなら、先に `~/Library/Application Support/club.chronista.lnx-server/lnx-server.toml` に `name = "lnx-mac"` を置く（`crates/lnx-server/lnx-server.example.toml` を写せばよい）。置かずに立つと `lnx-<LocalHostName>` で作り、iPad は QR でペアリングし直しになる。
+この Mac を Mac 版の常駐へ移すとき、名乗りを今の `lnx-mac`（iPad の pin の鍵）のまま残すなら、先に `~/Library/Application Support/tech.anycreative.lnx-server/lnx-server.toml` に `name = "lnx-mac"` を置く（`crates/lnx-server/lnx-server.example.toml` を写せばよい）。置かずに立つと `lnx-<LocalHostName>` で作り、iPad は QR でペアリングし直しになる。
 `--log-file <path>`（`LNX_SERVER_LOG`）で stdout / stderr をファイルへ向けられる。先頭の `~/` は自分で展開する（launchd の plist は展開しない）。
 偽サーバが要るときは club-unison の `unison` CLI で `unison mock --schema crates/lnx-server/schemas/lnx.kdl --addr '[::1]:12730'`（心拍は出さない）。
 サーバは SIGTERM / SIGINT（Ctrl-C）で畳んで抜け、Bonjour の goodbye を出す（幽霊を残さない）。
@@ -83,17 +83,17 @@ mise run server:uninstall   # 常駐をやめる
 
 | 置き場 | 中身 |
 |---|---|
-| `~/Library/LaunchAgents/club.chronista.lnx-server.plist` | LaunchAgent（`RunAtLoad` + `KeepAlive`）。引数は install のときの env で決まる |
+| `~/Library/LaunchAgents/tech.anycreative.lnx-server.plist` | LaunchAgent（`RunAtLoad` + `KeepAlive`）。引数は install のときの env で決まる |
 | `~/.local/share/lnx-server/bin/lnx-server` | 常駐が指す実行ファイル。`target/` はビルドのたびに変わり、mbx では symlink の先なので、写したものを指す。差し替えは rename（走っているプロセスを壊さない） |
-| `~/Library/Application Support/club.chronista.lnx-server/lnx-server.toml` | 設定（名乗りと既知サーバの一覧）。無ければ install が example から写す。あれば触らない（手で直した一覧を消さない）。`--config` 無しで立ったサーバもここを読み、無ければ名乗り `lnx-<LocalHostName>` で作る（名乗りは iPad の pin の鍵なので変えない） |
-| `~/Library/Application Support/club.chronista.lnx-server/{cert,key}.pem` | 証明書。`server:run` と同じ既定の置き場なので、ペアリング済みの pin はそのまま |
+| `~/Library/Application Support/tech.anycreative.lnx-server/lnx-server.toml` | 設定（名乗りと既知サーバの一覧）。無ければ install が example から写す。あれば触らない（手で直した一覧を消さない）。`--config` 無しで立ったサーバもここを読み、無ければ名乗り `lnx-<LocalHostName>` で作る（名乗りは iPad の pin の鍵なので変えない） |
+| `~/Library/Application Support/tech.anycreative.lnx-server/{cert,key}.pem` | 証明書。`server:run` と同じ既定の置き場なので、ペアリング済みの pin はそのまま |
 | `~/Library/Logs/lnx-server.log` | stdout / stderr（色の制御文字は入れない） |
 
 - 引数を変えて入れる: `LNX_SERVER_ADDR` / `LNX_SERVER_LOCAL_ADDR` / `LNX_SERVER_CONFIG` / `LNX_SERVER_STATE` / `LNX_SERVER_NAME` / `LNX_SERVER_NO_MDNS=1` を付けて `server:install`。
   plist の中身が変わるので、`server:restart` ではなく install し直す。restart / status / uninstall は env ではなく、入っている plist の引数を見る
 - 試験は別のラベルで。plist・実行ファイル・ログの置き場はラベルから分かれる。port・名乗り・証明書の置き場も本番と分けないと install が断る
   （本番の 12730 / 12731、`LNX_SERVER_NAME` も `LNX_SERVER_NO_MDNS=1` も無い、`LNX_SERVER_STATE` が無い、のどれでも止まる）:
-  `LNX_SERVER_LABEL=club.chronista.lnx-server.test LNX_SERVER_ADDR='[::]:12740' LNX_SERVER_LOCAL_ADDR='[::1]:12741' LNX_SERVER_STATE=/tmp/lnx-agent-test LNX_SERVER_NAME=lnx-agent-test mise run server:install`。
+  `LNX_SERVER_LABEL=tech.anycreative.lnx-server.test LNX_SERVER_ADDR='[::]:12740' LNX_SERVER_LOCAL_ADDR='[::1]:12741' LNX_SERVER_STATE=/tmp/lnx-agent-test LNX_SERVER_NAME=lnx-agent-test mise run server:install`。
   restart / status / logs / uninstall にも同じ `LNX_SERVER_LABEL` を付ける（引数は入っている plist から読む）
 - `server:run` / `server:install` が古いサーバを止めるとき、LaunchAgent が管理している lnx-server は止めずに案内する（止めても `KeepAlive` で立ち上がり直す）
 - タスクは macOS 付属の Ruby（2.6）でも動く（mise は Ruby を入れない）。`ruby tasks/_lib/test/agent_test.rb` が組み立てのテスト
@@ -106,7 +106,7 @@ mise run server:uninstall   # 常駐をやめる
 ### Mac 版のメニューバーから常駐させる（SMAppService）
 
 Mac 版 lnx creare は lnx-server を `.app` に同梱し、メニューバーの LNX（波形のアイコン）から常駐させる（todo `mem_1CgiUS2HyVdxMAGfnfE3QX`、
-前例は midistage `mem_1Cfuxqjxy6HUi7p7ByQRY4`）。`server:install` の素の LaunchAgent を置き換える形で、ラベルは同じ `club.chronista.lnx-server`。
+前例は midistage `mem_1Cfuxqjxy6HUi7p7ByQRY4`）。`server:install` の素の LaunchAgent を置き換える形で、ラベルは同じ `tech.anycreative.lnx-server`。
 
 | メニュー | すること |
 |---|---|
@@ -116,7 +116,7 @@ Mac 版 lnx creare は lnx-server を `.app` に同梱し、メニューバー�
 | 再起動 | 解除 → 前のプロセスが launchd から消えるのを待つ（最大 5 秒）→ 登録。同梱の lnx-server を作り直したあとはこれで入れ替える（SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある）） |
 | Gear ステータスを開く | `endpoint.json` から `gear` channel に接続し、認識されているすべての Gear（メーカー・モデル・担当アプリ・握っているアプリ・phase・SETUP 番号や注意）を表で一覧する窓を開く |
 | ログとトレースを開く | `~/Library/Logs/lnx-server.log` を追尾する窓を開く。「流れ」（通常の info / warn ログ）と「MIDI トレース」（向き・Gear・app・判定・種類・バイト列の表）の 2 タブで絞り込み・追従・消去ができる |
-| MIDI トレースを開始 / 止める | `~/Library/Application Support/club.chronista.lnx-server/trace` フラグを置き消しし、`lnx-server` を再起動せずに MIDI トレースの記録をオン／オフする |
+| MIDI トレースを開始 / 止める | `~/Library/Application Support/tech.anycreative.lnx-server/trace` フラグを置き消しし、`lnx-server` を再起動せずに MIDI トレースの記録をオン／オフする |
 | ログを開く | `~/Library/Logs/lnx-server.log`（lnx-server が `--log-file` で自分で書く。`server:logs` と同じ場所） |
 | iPad をペアリング… | 今の QR の画面を別の窓で。サーバが動いているときだけ |
 | lnx creare の窓を開く | 主の窓（Mac は 1 つだけ）を前に出す |
@@ -129,16 +129,16 @@ mise run mac:test           # メニューの組み立てと、同梱の中身�
 
 - 同梱は `apps/ios/scripts/embed-lnx-server.sh`（`project.yml` の postBuildScripts。macOS のビルドだけ）。repo の root で `cargo build -p lnx-server`
   （Debug は dev、Release は `--release`）→ `Contents/MacOS/lnx-server` に写して、アプリと同じ identity で署名（hardened runtime）→
-  `apps/ios/LaunchAgents/club.chronista.lnx-server.plist` を `Contents/Library/LaunchAgents/` へ。
+  `apps/ios/LaunchAgents/tech.anycreative.lnx-server.plist` を `Contents/Library/LaunchAgents/` へ。
   cargo は Xcode の env を剥がして呼ぶ（`MACOSX_DEPLOYMENT_TARGET` などが端末と違うと rustc が全部作り直す）。PATH は rustup の cargo と brew の `protoc`（club-unison の build が使う）だけ
 - plist は `BundleProgram` + `KeepAlive = { SuccessfulExit = false }`（落ちたときだけ立ち上がり直す。SIGTERM で畳んだ exit 0 では起こさない）。
-  launchd は plist の `~` を展開しないので、設定・証明書・名乗りはサーバの既定の置き場（`~/Library/Application Support/club.chronista.lnx-server/`）、ログは `--log-file` がサーバ側で `~` を展開する
+  launchd は plist の `~` を展開しないので、設定・証明書・名乗りはサーバの既定の置き場（`~/Library/Application Support/tech.anycreative.lnx-server/`）、ログは `--log-file` がサーバ側で `~` を展開する
 - **常駐の実体は、登録した .app の中の lnx-server。** だから登録は `mac:install` で入れた `~/Applications/LnxCreare.app` から行う。
   `mac:run` の `build-mac` の .app は作り直すたびに中身が変わり、worktree を消すと行き先も無くなる（#38 が実行ファイルを `~/.local/share` へ写すのと同じ理由）。
   中身が変わったあとの次の起動は、2026-11-05 に一度だけ測った: 実行ファイルを入れ替えて（同じチーム署名、中身は別）登録し直さずに kill -9 すると、launchd は 1 秒以内に新しい実行ファイルで立て直した（ログイン時は未測定）。SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある）ので、入れ直したら「再起動」する。
   開発用のビルドから開くと、メニューに「開発用のビルドです」と出る。そこからは登録しない
 - `mac:install` は、入っている .app が開いていれば終わらせてから入れ替えて開く（ほかの置き場の lnx creare と常駐のサーバには触らない）。常駐中なら、そのあとメニューの「再起動」で新しい lnx-server に入れ替わる。置き場は `LNX_MAC_APPS` で変えられる（試験用）
-- 登録・解除はメニューの操作でだけ行う（起動しただけでは登録しない）。状態は 2 秒おきに `launchctl print gui/<uid>/club.chronista.lnx-server` を読む
+- 登録・解除はメニューの操作でだけ行う（起動しただけでは登録しない）。状態は 2 秒おきに `launchctl print gui/<uid>/tech.anycreative.lnx-server` を読む
 - 窓を閉じてもアプリはメニューバーに残る。終わるときはメニューの「lnx creare を終了」（サーバは常駐したまま）
 
 ### lnx creare（iOS / macOS）
@@ -174,7 +174,7 @@ cd apps/ios
 xcodebuild -project LnxCreare.xcodeproj -scheme LnxCreare -destination 'id=<UDID>' \
   -allowProvisioningUpdates -derivedDataPath build-device build   # 初回は端末をチームに登録する
 xcrun devicectl device install app --device <UDID> build-device/Build/Products/Debug-iphoneos/LnxCreare.app
-xcrun devicectl device process launch --device <UDID> club.chronista.lnx.creare
+xcrun devicectl device process launch --device <UDID> tech.anycreative.lnx.creare
 ```
 
 UDID は `xcrun devicectl list devices` で見る。「lnx を探しています」のまま止まるときは、端末の設定でローカルネットワークの許可を確認する（design 01 の「やってはいけない」）。
@@ -205,7 +205,7 @@ UDID は `xcrun devicectl list devices` で見る。「lnx を探しています
 | `server:*` が「Mac 版 lnx creare（メニューバー）が SMAppService で常駐させている」と言って止まる | 同じラベルを Mac 版が載せている（`launchctl print` の `managed_by` が ServiceManagement）。開始・停止・再起動はメニューから。端末で回したいときはメニューで止めてから |
 | 常駐が立ち上がらない（`server:install` が「立ち上がらない」で止まる） | 出てきたログの最後を見る。ポートを別のプロセスが握っていれば `KeepAlive` が 10 秒おきに立て直し続けるので、`server:status` の待ち受けで握っている pid を探す |
 | メニューバーが「…（pid N）が待ち受けを握っています」と言って「開始」を出さない | 端末の `mise run server:run` などが 12730 / 12731 を握っている（`lsof -nP -iUDP:12730`）。それを止めてから「開始」。登録済みなら、握られているあいだ常駐は 10 秒おきに落ちているので、止められないなら「停止」で常駐をやめる（許可待ちなら「登録をやめる」） |
-| メニューバーが「server:install の常駐で動いています」/「…が入っています」と言って「開始」を出さない | `~/Library/LaunchAgents/club.chronista.lnx-server.plist` がある。`mise run server:uninstall` で外してから「開始」 |
+| メニューバーが「server:install の常駐で動いています」/「…が入っています」と言って「開始」を出さない | `~/Library/LaunchAgents/tech.anycreative.lnx-server.plist` がある。`mise run server:uninstall` で外してから「開始」 |
 | Mac 版のビルドが「failed to run protoc」で止まる | 同梱の script は brew の `protoc` を `/opt/homebrew/bin` か `/usr/local/bin` に探す。`brew install protobuf` |
 | `mac:install` し直したのに、常駐しているサーバが古いまま | 走っているプロセスは前の実行ファイルのまま。メニューの「再起動」で入れ替える（SDK のヘッダは、実行ファイルや plist を変えたら登録し直すよう求めている（しないと立ち上がらないことがある）） |
 

@@ -3,7 +3,7 @@
     /Applications/Blender.app/Contents/MacOS/Blender --background --python gear/build.py -- \
         [--output DIR] [--only id,id] [--commit SHA]
 
-出力（既定 `~/Library/Application Support/club.chronista.lnx-server/gear/`）:
+出力（既定 `~/Library/Application Support/tech.anycreative.lnx-server/gear/`）:
   <id>.usdz   RealityKit 向け（アプリ A）
   <id>.glb    Web / Three.js 向け（アプリ B）
   <id>.json   意味の層（ID を揃え、control を付け、鍵盤を展開済み）
@@ -24,7 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import gearlib  # noqa: E402
 
-DEFAULT_OUT = os.path.expanduser("~/Library/Application Support/club.chronista.lnx-server/gear")
+DEFAULT_OUT = os.path.expanduser("~/Library/Application Support/tech.anycreative.lnx-server/gear")
 
 
 def args():

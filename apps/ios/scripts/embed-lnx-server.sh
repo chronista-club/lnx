@@ -1,8 +1,8 @@
 #!/bin/sh
 # Mac 版 lnx creare に lnx-server を同梱する（project.yml の postBuildScripts から。iOS では何もしない）。
 #
-#   Contents/MacOS/lnx-server                                  … repo の cargo build の成果物を写して署名
-#   Contents/Library/LaunchAgents/club.chronista.lnx-server.plist … SMAppService.agent(plistName:) が登録する
+#   Contents/MacOS/lnx-server                                     … repo の cargo build の成果物を写して署名
+#   Contents/Library/LaunchAgents/tech.anycreative.lnx-server.plist … SMAppService.agent(plistName:) が登録する
 #
 # Debug は dev profile、Release は --release。cargo は Xcode の env を剥がして呼ぶ
 # （MACOSX_DEPLOYMENT_TARGET などが端末の cargo build と違うと、rustc が全 crate を作り直す）
@@ -31,11 +31,11 @@ mkdir -p "${CONTENTS}/MacOS" "${AGENTS}"
 # 走っている常駐の実行ファイルを壊さないよう、隣に写してから rename で差し替える
 cp "${SOURCE}" "${DEST}.new"
 mv -f "${DEST}.new" "${DEST}"
-cp "${PROJECT_DIR}/LaunchAgents/club.chronista.lnx-server.plist" "${AGENTS}/"
-plutil -lint -s "${AGENTS}/club.chronista.lnx-server.plist"
+cp "${PROJECT_DIR}/LaunchAgents/tech.anycreative.lnx-server.plist" "${AGENTS}/"
+plutil -lint -s "${AGENTS}/tech.anycreative.lnx-server.plist"
 
 # 入れ子の実行ファイルは .app より先に署名する（.app の署名は中身が署名済みであることを求める）。
 # identity が無い（署名しないビルド）なら ad-hoc
 codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --options runtime \
-    --identifier club.chronista.lnx-server "${DEST}"
+    --identifier tech.anycreative.lnx-server "${DEST}"
 echo "同梱: ${DEST}"

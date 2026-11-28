@@ -10,11 +10,11 @@ require_relative "lnx"
 
 module Lnx
   module Agent
-    DEFAULT_LABEL = "club.chronista.lnx-server"
+    DEFAULT_LABEL = "tech.anycreative.lnx-server"
     DEFAULT_ADDR = "[::]:12730"
     DEFAULT_LOCAL_ADDR = "[::1]:12731"
     # lnx-server の既定の証明書の置き場（identity::default_dir と同じ）。設定ファイルもここに置く
-    SUPPORT_DIR = "Library/Application Support/club.chronista.lnx-server"
+    SUPPORT_DIR = "Library/Application Support/tech.anycreative.lnx-server"
 
     # install のときに決まる一式。plist の中身はここから作る
     Settings = Struct.new(:label, :home, :addr, :local_addr, :state_dir, :config, :name, :no_mdns, keyword_init: true) do
@@ -35,9 +35,9 @@ module Lnx
         label == DEFAULT_LABEL
       end
 
-      # 置き場の名前（club.chronista.lnx-server → lnx-server、試験用 .test → lnx-server.test）
+      # 置き場の名前（tech.anycreative.lnx-server → lnx-server、試験用 .test → lnx-server.test）
       def short_name
-        label.delete_prefix("club.chronista.")
+        label.delete_prefix("tech.anycreative.")
       end
 
       def plist_path

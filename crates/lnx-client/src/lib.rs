@@ -15,11 +15,11 @@ pub struct Client {
 }
 
 impl Client {
-    /// macOS / Unix の既定 endpoint.json パス（`~/Library/Application Support/club.chronista.lnx-server/endpoint.json`）
+    /// macOS / Unix の既定 endpoint.json パス（`~/Library/Application Support/tech.anycreative.lnx-server/endpoint.json`）
     pub fn default_endpoint_path() -> Option<std::path::PathBuf> {
         std::env::var_os("HOME").map(|home| {
             std::path::PathBuf::from(home)
-                .join("Library/Application Support/club.chronista.lnx-server/endpoint.json")
+                .join("Library/Application Support/tech.anycreative.lnx-server/endpoint.json")
         })
     }
 

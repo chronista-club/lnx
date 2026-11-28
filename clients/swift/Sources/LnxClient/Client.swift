@@ -12,7 +12,7 @@ public final class Client: Sendable {
 
     public static var defaultEndpointURL: URL {
         URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).appendingPathComponent(
-            "Library/Application Support/club.chronista.lnx-server/endpoint.json"
+            "Library/Application Support/tech.anycreative.lnx-server/endpoint.json"
         )
     }
 

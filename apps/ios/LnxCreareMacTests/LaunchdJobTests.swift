@@ -6,7 +6,7 @@ import Testing
 struct LaunchdJobTests {
     /// SMAppService で載った agent の実物（midistaged、2026-11-05）を縮めたもの。入れ子の state を混ぜてある
     static let runningOutput = """
-        gui/501/club.chronista.lnx-server = {
+        gui/501/tech.anycreative.lnx-server = {
         \tactive count = 1
         \tpath = (submitted by smd.353)
         \ttype = Submitted
@@ -14,7 +14,7 @@ struct LaunchdJobTests {
         \tstate = running
 
         \tprogram identifier = Contents/MacOS/lnx-server (mode: 2)
-        \tparent bundle identifier = club.chronista.lnx.creare
+        \tparent bundle identifier = tech.anycreative.lnx.creare
         \truns = 1
         \tpid = 69784
         \tlast exit code = (never exited)
@@ -36,7 +36,7 @@ struct LaunchdJobTests {
     @Test("止まっている: pid は無く、シグナルで終わったならそれを前の終わり方にする")
     func stoppedBySignal() {
         let out = """
-            gui/501/club.chronista.lnx-server = {
+            gui/501/tech.anycreative.lnx-server = {
             \tstate = not running
             \truns = 3
             \tlast exit code = 0

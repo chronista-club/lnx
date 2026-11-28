@@ -128,6 +128,6 @@ struct GearStatusRowsTests {
         #expect(gearPhaseTone("off") == .off)
         #expect(bundleMatchesClient(bundleID: "tech.anycreative.vp", clientID: "vp"))
         #expect(bundleMatchesClient(bundleID: "club.chronista.ladyland", clientID: "ladyland"))
-        #expect(!bundleMatchesClient(bundleID: "club.chronista.lnx.creare", clientID: "vp"))
+        #expect(!bundleMatchesClient(bundleID: "tech.anycreative.lnx.creare", clientID: "vp"))
     }
 }

@@ -19,11 +19,10 @@ Audio / Visual の**リアルタイム表現**のためのツールで、モッ�
 - **画面と文書では小文字の lnx と書く。** 大文字だけの「LNX」は Linux と読まれやすいので、単独では使わない（裁定 2026-11-23、起票 `mem_1ChKHcAuXn7Yfo9mtEoTpm`）。
   文書の初出には読みを添える（lnx（リンクス））。既にある文書の本文の「LNX」はまとめて置き換えず、見出しと初出から直す。
   アプリの画面の文字列と権限の説明文は、Mac のテスト `NamingTests`（`mise run mac:test`）が見張る
-- **識別子は変えない。** Bonjour の種類 `_lnx._udp`、ペアリング URL の `lnx://`、bundle id `club.chronista.lnx.creare`、
-  Keychain の pin の service `club.chronista.lnx.creare.pin`、Unison の namespace `club.chronista.lnx`、
-  証明書と設定の置き場・launchd のラベル `club.chronista.lnx-server`、crate 名 `lnx-*`、環境変数 `LNX_*`、
-  ターゲット名 `LnxCreare`（`LnxCreare.app` の名前）、型名（`LnxFinder`、`LnxDefaults` など）。
-  変えると、ペアリングのし直しや常駐の入れ直しになる
+- **識別子の役割分担（法人 `tech.anycreative.*` とコミュニティ `club.chronista.*`）。**
+  - **OS にインストール・署名・常駐する実体**は法人 **`tech.anycreative.*`**（ANYCREATIVE, K.K.）を使う: bundle id `tech.anycreative.lnx.creare`、Keychain の pin の service `tech.anycreative.lnx.creare.pin`、証明書と設定・3D 機材資産の置き場および launchd のラベル `tech.anycreative.lnx-server`。
+  - **コミュニティ空間・プロトコル規格**は **`club.chronista.*`**（chronista.club / GitHub `chronista-club`）を使う: Unison の namespace `club.chronista.lnx` / `club.chronista.lnx.local`。
+  - その他の識別子（Bonjour の種類 `_lnx._udp`、ペアリング URL の `lnx://`、crate 名 `lnx-*`、環境変数 `LNX_*`、ターゲット名 `LnxCreare`、型名 `LnxFinder` / `LnxDefaults` など）も固定する。変えると、ペアリングのし直しや常駐の入れ直しになる
 - 標語 **Low-Latency, High-Quality, Human-Friendly** は名前の説明ではなく、音と映像の質を語る言葉として残す
 
 ## Motivation
@@ -174,3 +173,4 @@ XR 空間での没入型パフォーマンス）、個人的な探求（自分�
   全体像の図を簡素化し、場の同期の最初の実装である lnx-server を足した
 - 2026-11-23: 名前の見せ方を決めた（裁定 mako「いいね。GO」、idea `mem_1ChKHPQeQX8MGazuQCo4gP`）。冒頭で「lnx（リンクス）は、機器と場をつなぐもの」と定義し、
   「名前と表記」を足した。画面の大文字「LNX」単独は「lnx」に（Mac 版のメニュー、接続・ペアリングの画面、権限の説明文）。識別子は変えない
+- 2026-11-28: 逆ドメイン識別子の役割分担を定義（裁定 mako「案2かな。なんか腹落ちした」）。OS にインストール・署名・常駐する実体（Bundle ID `tech.anycreative.lnx.creare`、Keychain `tech.anycreative.lnx.creare.pin`、LaunchAgent・Application Support `tech.anycreative.lnx-server`）は法人 `tech.anycreative.*`（ANYCREATIVE, K.K.）、Unison スキーマ等のプロトコル・コミュニティ空間は `club.chronista.*`（chronista.club）に統一した

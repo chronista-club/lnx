@@ -5,7 +5,7 @@ import Foundation
 enum GearTrace {
     static var stateDir: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: "Library/Application Support/club.chronista.lnx-server")
+            .appending(path: "Library/Application Support/tech.anycreative.lnx-server")
     }
     static var flagURL: URL { stateDir.appending(path: "trace") }
 
