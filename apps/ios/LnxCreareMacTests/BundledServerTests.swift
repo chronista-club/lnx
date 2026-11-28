@@ -13,7 +13,7 @@ struct BundledServerTests {
         let url = app.appending(path: "Contents/Library/LaunchAgents/\(BundledServer.plistName)")
         let data = try Data(contentsOf: url)
         let plist = try #require(try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
-        #expect(plist["Label"] as? String == "club.chronista.lnx-server")
+        #expect(plist["Label"] as? String == "tech.anycreative.lnx-server")
         #expect(plist["BundleProgram"] as? String == "Contents/MacOS/lnx-server")
         // launchd は ~ を展開しないので、ログの置き場はサーバが --log-file で展開する
         #expect(plist["ProgramArguments"] as? [String] == ["lnx-server", "--log-file", "~/Library/Logs/lnx-server.log"])
@@ -21,7 +21,7 @@ struct BundledServerTests {
         // crash だけ立ち上がり直す。SIGTERM で畳んだ（exit 0）ときは起こし直さない
         let keepAlive = try #require(plist["KeepAlive"] as? [String: Any])
         #expect(keepAlive["SuccessfulExit"] as? Bool == false)
-        #expect(plist["AssociatedBundleIdentifiers"] as? [String] == ["club.chronista.lnx.creare"])
+        #expect(plist["AssociatedBundleIdentifiers"] as? [String] == ["tech.anycreative.lnx.creare"])
     }
 
     @Test("lnx-server の実行ファイルが Contents/MacOS にあり、走る")

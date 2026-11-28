@@ -51,7 +51,7 @@ final class CachedPinStore: PinStore {
 
 /// 実物。Keychain の generic password（service 固定、account = サーバ名）
 struct KeychainPinStore: PinStore {
-    var service = "club.chronista.lnx.creare.pin"
+    var service = "tech.anycreative.lnx.creare.pin"
 
     func certificate(for serverName: String) -> Data? {
         var query = baseQuery(serverName)

@@ -11,7 +11,7 @@ module Lnx
   IOS_DIR = File.join(ROOT, "apps", "ios")
   SERVER_CONFIG = File.join(ROOT, "crates", "lnx-server", "lnx-server.example.toml")
   SERVER_BIN = File.join(ROOT, "target", "debug", "lnx-server")
-  APP_ID = "club.chronista.lnx.creare"
+  APP_ID = "tech.anycreative.lnx.creare"
   # シミュレータは名前 + OS で選ぶ（同名の端末が runtime ごとにあるため）
   SIM_NAME = ENV.fetch("LNX_IOS_SIM", "iPad Pro 11-inch (M5)")
   SIM_OS = ENV.fetch("LNX_IOS_OS", "26.5")

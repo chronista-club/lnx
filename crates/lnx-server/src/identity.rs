@@ -87,9 +87,9 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 
-/// 既定の置き場（macOS なら ~/Library/Application Support/club.chronista.lnx-server）
+/// 既定の置き場（macOS なら ~/Library/Application Support/tech.anycreative.lnx-server）
 pub fn default_dir() -> Option<PathBuf> {
-    directories::ProjectDirs::from("club", "chronista", "lnx-server")
+    directories::ProjectDirs::from("tech", "anycreative", "lnx-server")
         .map(|d| d.data_dir().to_path_buf())
 }
 

@@ -6,7 +6,7 @@ import ServiceManagement
 /// 登録・解除は人の操作でだけ呼ぶ（起動しただけで勝手に register しない）
 struct BundledServer: ServerResidency {
     /// server:install（tasks/_lib/agent.rb の DEFAULT_LABEL）と同じ。launchd は同じラベルを二つ載せない
-    nonisolated static let label = "club.chronista.lnx-server"
+    nonisolated static let label = "tech.anycreative.lnx-server"
     nonisolated static let plistName = "\(label).plist"
 
     nonisolated private static var home: URL { FileManager.default.homeDirectoryForCurrentUser }

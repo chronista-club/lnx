@@ -65,7 +65,7 @@ actor GearProbe: GearProbing {
         let task = connecting ?? Task {
             try await Client.connect(
                 endpointURL: url,
-                clientID: "club.chronista.lnx.creare.mac",
+                clientID: "tech.anycreative.lnx.creare.mac",
                 displayName: "lnx creare",
                 nativeMIDI: false
             )
@@ -116,7 +116,7 @@ actor GearProbe: GearProbing {
 
     private func gearAssetDir() -> URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: "Library/Application Support/club.chronista.lnx-server/gear")
+            .appending(path: "Library/Application Support/tech.anycreative.lnx-server/gear")
     }
 
     private func hasAsset(_ id: String) -> Bool {

@@ -6,10 +6,10 @@
          メニューバーの「開始」で SMAppService.agent(plistName:) が登録する。BundleProgram は .app 相対。
          ラベルは server:install（tasks/_lib/agent.rb）と同じ。launchd は同じラベルを二つ載せないので、二重に立たない -->
     <key>Label</key>
-    <string>club.chronista.lnx-server</string>
+    <string>tech.anycreative.lnx-server</string>
     <key>BundleProgram</key>
     <string>Contents/MacOS/lnx-server</string>
-    <!-- 先頭は argv[0]。設定・名乗り・証明書はサーバの既定の置き場（~/Library/Application Support/club.chronista.lnx-server/）。
+    <!-- 先頭は argv[0]。設定・名乗り・証明書はサーバの既定の置き場（~/Library/Application Support/tech.anycreative.lnx-server/）。
          ログは lnx-server が自分で書く（--log-file の ~/ はサーバが展開する。launchd は plist の ~ を展開しない） -->
     <key>ProgramArguments</key>
     <array>
@@ -35,7 +35,7 @@
     <!-- 「ログイン項目」に lnx creare の名前で出す -->
     <key>AssociatedBundleIdentifiers</key>
     <array>
-        <string>club.chronista.lnx.creare</string>
+        <string>tech.anycreative.lnx.creare</string>
     </array>
 </dict>
 </plist>

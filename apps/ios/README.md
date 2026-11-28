@@ -64,7 +64,7 @@ apps/ios/
 | 項目 | 値 | 理由 |
 |---|---|---|
 | 表示名 / ターゲット | lnx creare / `LnxCreare` | Bevy 版 `crates/lnx-creare` と同じ看板 |
-| bundle id | `club.chronista.lnx.creare` | 過去の Apple アプリ（LNXX / Sizma）の `club.chronista.` に揃え、`lnx.` 配下で増やせるようにした |
+| bundle id | `tech.anycreative.lnx.creare` | OS にインストール・署名・常駐する実体（Bundle ID / LaunchAgent / Application Support / Keychain）は法人 `tech.anycreative.*`（ANYCREATIVE, K.K.）に統一し、プロトコル・スキーマ空間はコミュニティ `club.chronista.*` とする |
 | Team | `3EQKG4B352`（ANYCREATIVE, K.K.） | 有償チーム。iPad に先に入っていたビルドと揃えた（2026-11-04）。Personal Team の `J627YTC8NE`（無料）は、入れるたびに端末で開発元の信頼が要り、プロファイルも 7 日で切れるので使わない |
 | 対応 OS | iOS 27.0 以上、macOS 27.0 以上 | 最新の OS に揃える（mako の裁定 2026-11-04。手元の iPhone / iPad / Mac はすべて 27）。一つのターゲットで iOS と macOS（`supportedDestinations`）。Mac は同じ機械の localhost も接続候補 |
 | メイン開発機 | iPad（iPhone も `TARGETED_DEVICE_FAMILY` に残す） | ユーザー指定（2026-11-03）。iPad は 4 方向すべて対応（Stage Manager 前提） |

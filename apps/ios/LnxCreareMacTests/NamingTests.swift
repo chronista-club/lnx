@@ -70,7 +70,7 @@ struct NamingTests {
         #expect(!Self.standaloneLNX(in: "LnxDefaults"))
         #expect(!Self.standaloneLNX(in: "_lnx._udp"))
         #expect(!Self.standaloneLNX(in: "lnx://pair?v=1"))
-        #expect(!Self.standaloneLNX(in: "club.chronista.lnx.creare"))
+        #expect(!Self.standaloneLNX(in: "tech.anycreative.lnx.creare"))
         // 前後を見る条件を試す（ただの "LNX" の検索ならここで引っかかる）
         #expect(!Self.standaloneLNX(in: "LNX_SERVER_ADDR"))
         #expect(!Self.standaloneLNX(in: "LNXKit"))

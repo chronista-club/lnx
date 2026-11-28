@@ -15,7 +15,7 @@ struct PinStoreTests {
     @Test("Keychain: 保存・読み出し・上書き・削除")
     func keychain() {
         // 本物の pin と混ざらないよう、試験ごとに service を分ける
-        let store = KeychainPinStore(service: "club.chronista.lnx.creare.pin.test.\(UUID().uuidString)")
+        let store = KeychainPinStore(service: "tech.anycreative.lnx.creare.pin.test.\(UUID().uuidString)")
         exercise(store)
     }
 

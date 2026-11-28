@@ -8,7 +8,7 @@ require_relative "../agent"
 
 class AgentSettingsTest < Minitest::Test
   HOME = "/Users/someone"
-  SUPPORT = "#{HOME}/Library/Application Support/club.chronista.lnx-server".freeze
+  SUPPORT = "#{HOME}/Library/Application Support/tech.anycreative.lnx-server".freeze
 
   def settings(env = {})
     Lnx::Agent::Settings.from_env(env, home: HOME)
@@ -16,8 +16,8 @@ class AgentSettingsTest < Minitest::Test
 
   def test_既定のラベルと置き場
     s = settings
-    assert_equal "club.chronista.lnx-server", s.label
-    assert_equal "#{HOME}/Library/LaunchAgents/club.chronista.lnx-server.plist", s.plist_path
+    assert_equal "tech.anycreative.lnx-server", s.label
+    assert_equal "#{HOME}/Library/LaunchAgents/tech.anycreative.lnx-server.plist", s.plist_path
     assert_equal "#{HOME}/.local/share/lnx-server/bin/lnx-server", s.bin_path
     assert_equal "#{HOME}/Library/Logs/lnx-server.log", s.log_path
     assert_equal "#{SUPPORT}/lnx-server.toml", s.config_path
@@ -35,8 +35,8 @@ class AgentSettingsTest < Minitest::Test
   end
 
   def test_試験用のラベルは置き場が全部べつになる
-    s = settings("LNX_SERVER_LABEL" => "club.chronista.lnx-server.test")
-    assert_equal "#{HOME}/Library/LaunchAgents/club.chronista.lnx-server.test.plist", s.plist_path
+    s = settings("LNX_SERVER_LABEL" => "tech.anycreative.lnx-server.test")
+    assert_equal "#{HOME}/Library/LaunchAgents/tech.anycreative.lnx-server.test.plist", s.plist_path
     assert_equal "#{HOME}/.local/share/lnx-server.test/bin/lnx-server", s.bin_path
     assert_equal "#{HOME}/Library/Logs/lnx-server.test.log", s.log_path
   end
@@ -66,7 +66,7 @@ class AgentSettingsTest < Minitest::Test
 end
 
 class AgentIsolationTest < Minitest::Test
-  TEST = "club.chronista.lnx-server.test"
+  TEST = "tech.anycreative.lnx-server.test"
 
   def problems(env)
     Lnx::Agent.isolation_problems(Lnx::Agent::Settings.from_env(env, home: "/Users/someone"))
@@ -104,10 +104,10 @@ end
 
 class LaunchdLabelTest < Minitest::Test
   # launchctl list の形（PID / Status / Label のタブ区切り。走っていなければ PID は "-"）
-  LIST = "PID\tStatus\tLabel\n-\t0\tcom.apple.x\n36821\t0\tclub.chronista.lnx-server.test\n512\t-9\tcom.example.y\n"
+  LIST = "PID\tStatus\tLabel\n-\t0\tcom.apple.x\n36821\t0\ttech.anycreative.lnx-server.test\n512\t-9\tcom.example.y\n"
 
   def test_pid_を管理している_launchd_のラベルを引く
-    assert_equal "club.chronista.lnx-server.test", Lnx.launchd_label(36821, LIST)
+    assert_equal "tech.anycreative.lnx-server.test", Lnx.launchd_label(36821, LIST)
     assert_nil Lnx.launchd_label(4242, LIST)
   end
 end
@@ -119,7 +119,7 @@ class AgentPlistTest < Minitest::Test
 
   def test_plist_は常駐の鍵を持つ
     xml = Lnx::Agent.plist(settings)
-    assert_includes xml, "<key>Label</key>\n  <string>club.chronista.lnx-server</string>"
+    assert_includes xml, "<key>Label</key>\n  <string>tech.anycreative.lnx-server</string>"
     assert_match %r{<key>RunAtLoad</key>\s*<true/>}, xml
     assert_match %r{<key>KeepAlive</key>\s*<true/>}, xml
     assert_match %r{<key>StandardOutPath</key>\s*<string>/Users/a&amp;b/Library/Logs/lnx-server.log</string>}, xml
@@ -146,7 +146,7 @@ end
 
 class AgentStateTest < Minitest::Test
   # launchctl print gui/<uid>/<label> の抜粋（2026-11-04 に試験用ラベルで取った形）
-  KILLED = "gui/501/club.chronista.lnx-server.test = {\n\tactive count = 1\n\tstate = running\n\n" \
+  KILLED = "gui/501/tech.anycreative.lnx-server.test = {\n\tactive count = 1\n\tstate = running\n\n" \
            "\truns = 3\n\tpid = 36821\n\tlast terminating signal = Killed: 9\n" \
            "\tendpoints = {\n\t\t\"x\" = {\n\t\t\tport = 0\n\t\t\tstate = active\n\t\t}\n\t}\n}\n"
   EXITED = "gui/501/x = {\n\tstate = not running\n\truns = 1\n\tlast exit code = 1\n}\n"
@@ -164,17 +164,17 @@ end
 
 class AgentAppManagedTest < Minitest::Test
   # launchctl print の抜粋（2026-11-05 にこの Mac で読み取り。SMAppService の midistaged と、#38 の plist から載せたもの）
-  SMAPP = "gui/501/club.chronista.lnx-server = {\n\tactive count = 1\n\tpath = (submitted by smd.353)\n" \
+  SMAPP = "gui/501/tech.anycreative.lnx-server = {\n\tactive count = 1\n\tpath = (submitted by smd.353)\n" \
           "\tmanaged_by = com.apple.xpc.ServiceManagement\n\tstate = running\n\n" \
-          "\tparent bundle identifier = club.chronista.lnx.creare\n\truns = 1\n\tpid = 69784\n}\n"
-  PLIST = "gui/501/club.chronista.lnx-server = {\n\tactive count = 1\n" \
-          "\tpath = /Users/someone/Library/LaunchAgents/club.chronista.lnx-server.plist\n" \
+          "\tparent bundle identifier = tech.anycreative.lnx.creare\n\truns = 1\n\tpid = 69784\n}\n"
+  PLIST = "gui/501/tech.anycreative.lnx-server = {\n\tactive count = 1\n" \
+          "\tpath = /Users/someone/Library/LaunchAgents/tech.anycreative.lnx-server.plist\n" \
           "\tstate = running\n\truns = 1\n\tpid = 100\n}\n"
 
   def test_parse_state_は持ち主を読む
     st = Lnx::Agent.parse_state(SMAPP)
     assert_equal "com.apple.xpc.ServiceManagement", st[:managed_by]
-    assert_equal "club.chronista.lnx.creare", st[:parent_bundle]
+    assert_equal "tech.anycreative.lnx.creare", st[:parent_bundle]
     assert_nil Lnx::Agent.parse_state(PLIST)[:managed_by]
   end
 
@@ -195,7 +195,7 @@ class AgentAppManagedTest < Minitest::Test
   def test_案内はメニューを指す
     s = Lnx::Agent::Settings.from_env({}, home: "/Users/someone")
     message = Lnx::Agent.app_managed_message(s)
-    assert_includes message, "club.chronista.lnx-server"
+    assert_includes message, "tech.anycreative.lnx-server"
     assert_includes message, "メニュー"
   end
 end

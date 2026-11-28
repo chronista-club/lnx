@@ -81,7 +81,7 @@ graph TB
 |---|---|---|
 | 中心語彙 | **すべて `Gear` に統一。「どのアプリがどの `Gear` を使うか」** | 接続方式や通信規格（MIDI / SysEx / USB Serial / QUIC）の複雑さを裏に隠し、3D 資産（`gear/`）や机配置（`desk.kdl`）とも語彙を一本化する（`mem_1ChTKc23Veo6sEXMJ16mAf`） |
 | 役割と境界 | **`midistage` と `lnx-server` を統合し、`lnx-server` を唯一の Signal Hub + Router にする**。`maru` は市販コントローラと同じ Gear レイヤーに置く | 裁定 2026-11-27（`mem_1ChTKAVaEY4JhcPwSuBqPc`） |
-| 後方互換 | **旧 `midistage` 名や旧パスとの後方互換は持たず、あるべき姿（`lnx` と `Gear` の語彙・置き場）へ一直線に揃える** | 裁定 2026-11-27「後方互換なんて気にせず、あるべき姿に目指して、一直線でいこうよ」（`mem_1ChTKAVaEY4JhcPwSuBqPc`）。`endpoint.json` と `settings.json` も `~/Library/Application Support/club.chronista.lnx-server/` に一本化 |
+| 後方互換 | **旧 `midistage` 名や旧パスとの後方互換は持たず、あるべき姿（`lnx` と `Gear` の語彙・置き場）へ一直線に揃える** | 裁定 2026-11-27「後方互換なんて気にせず、あるべき姿に目指して、一直線でいこうよ」（`mem_1ChTKAVaEY4JhcPwSuBqPc`）。`endpoint.json` と `settings.json` も `~/Library/Application Support/tech.anycreative.lnx-server/` に一本化 |
 | 旧 3 crate | **`lnx-engine` / `lnx-cli` / Bevy `lnx-creare` は撤去済み** | Step 1（#51、`mem_1ChTKAxCNTrpAgXr4XM1Cc`） |
 | 言語 | サーバ・プロトコル・Gear 変換・Rust SDK は Rust、Apple の UI と Swift SDK は Swift | 純粋計算層と低遅延通信は Rust、UI は Apple ネイティブ（`apps/ios`） |
 | ノード間通信 | Unison Protocol 一本 | tokio 等を直接ではなく Unison 経由にする |
@@ -92,7 +92,7 @@ graph TB
 ### Rust workspace（`Cargo.toml`）
 
 - `[workspace]` の 4 member: `crates/lnx-protocol`, `crates/lnx-gear`, `crates/lnx-client`, `crates/lnx-server`
-- `workspace.package` は version `0.2.0`、edition 2024、license `MIT OR Apache-2.0`
+- `workspace.package` は version `0.3.0`、edition 2024、license `MIT OR Apache-2.0`
 - `workspace.dependencies`: `libc`、`tokio`、`serde`、`serde_json`、`toml`
 - profile: release は `opt-level 3` / LTO / `codegen-units 1` / `panic = abort`
 
@@ -139,4 +139,5 @@ graph TB
 - 2026-11-27: Step 3.5（#54、`mem_1ChTPJv4KqgX7AuML7cY5T`）として、`club-kdl/formal` と同じ流儀で `formal/lean/LnxCore.lean`（Lean 4.36.0、公理ゼロ 27 定理）と `formal/quint/gear_handoff.qnt` + `check.ts`（Quint 0.33.1、6 モード × 8 シナリオ・30 不変条件チェック）による形式検証を追加した
 - 2026-11-27: Step 4（#55、`mem_1ChTQGKFcpBxpP2ArK6M9T`）として、Mac 版 `LnxCreare.app` メニューバー（`apps/ios/LnxCreare/Mac/`）に `LnxClient` を使った Gear ステータス一覧（`GearStatusWindow` / `GearStatusRows` / `GearProbe`）、MIDI トレース切り替え（`GearTrace`）、および「流れ」と「MIDI トレース」の 2 タブを持つログ window（`GearLogWindow` / `GearLogTail` / `GearLogLines`）を合流した
 - 2026-11-27: Step 5（#56、`mem_1ChTQm4n2KdX3Zs3xmEdKK`）として、3D 機材資産（`gear/<id>/gear.json` + `<id>.blend`、`gearlib.py` / `build.py` / `check.py`）と机配置（`config/examples/desk-{home,studio}.kdl`）を `lnx` に合流し、Mac / iPad の `lnx creare` に `GearCatalog`・`DeskKdlParser`・`GearDeskView` を展開した（[design 03](03-gear-and-desk.md)）。続く #57 で Step 3.5〜5 の 3 スタンド並列 deep review 指摘を根治し、ルート `Package.swift` と `lnx_client::Client::default_endpoint_path()` を整備した
-- 2026-11-27: Step 6（`mem_1ChTVF7sokPJFj9Xbo641w`）として、`Ladyland`（chronista-club/ladyland#62）を Swift `LnxClient` + `club.chronista.lnx-server/gear` に、`Vantage Point` を Rust `lnx-client` / `lnx-gear` + `club.chronista.lnx-server/{endpoint.json,gear}` に切り替え、全 6 Steps の統合を完了した
+- 2026-11-27: Step 6（`mem_1ChTVF7sokPJFj9Xbo641w`）として、`Ladyland`（chronista-club/ladyland#62）を Swift `LnxClient` + `tech.anycreative.lnx-server/gear` に、`Vantage Point` を Rust `lnx-client` / `lnx-gear` + `tech.anycreative.lnx-server/{endpoint.json,gear}` に切り替え、全 6 Steps の統合を完了した
+- 2026-11-28: OS にインストール・署名・常駐する実体（Bundle ID `tech.anycreative.lnx.creare`、LaunchAgent・Application Support `tech.anycreative.lnx-server`）を法人 `tech.anycreative.*` に統一し、`v0.3.0` としてリリースした
